@@ -9,9 +9,9 @@
 			canvas {
                 width: 100%;
                 height: 100%;
-                background: -moz-linear-gradient(top,  skyblue 0%, #555555 100%); /* FF3.6-15 */
-                background: -webkit-linear-gradient(top,  skyblue 0%,#555555 100%); /* Chrome10-25,Safari5.1-6 */
-                background: linear-gradient(to bottom,  skyblue 0%,#555555 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+                background: -moz-linear-gradient(top,  lightskyblue 0%, midnightblue 100%); /* FF3.6-15 */
+                background: -webkit-linear-gradient(top,  lightskyblue 0%,midnightblue 100%); /* Chrome10-25,Safari5.1-6 */
+                background: linear-gradient(to bottom,  lightskyblue 0%,midnightblue 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
             }
 
 
@@ -24,10 +24,70 @@
 		<script>
 			var scene = new THREE.Scene();
             // scene.background = new THREE.Color('skyblue');
-			var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+			var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 100);
 			var renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
 			renderer.setSize(window.innerWidth, window.innerHeight);
 			document.body.appendChild(renderer.domElement);
+
+
+
+            class ViewerNode {
+                constructor(name) {
+                    this.name = name;
+                    this.children = {};
+                    this.geometry_objects = [];
+                    this.object = new THREE.Object3D;
+                }
+
+                addChild(name) {
+                    let child = new ViewerNode(name, this);
+                    this.object.add(child.object);
+                    this.children[name] = child;
+                    return child;
+                }
+
+                getChild(name) {
+                    let child = this.children[name]
+                    if (child === undefined) {
+                        return this.addChild(name);
+                    } else {
+                        return child;
+                    }
+                }
+
+                setGeometryObjects(objs) {
+                    for (let obj of this.geometry_objects) {
+                        this.object.remove(obj);
+                    }
+                    for (let obj of objs) {
+                        this.object.add(obj);
+                    }
+                    this.geometry_objects = objs;
+                }
+
+                getPath(path) {
+                    if (path.length > 0) {
+                        let child = this.getChild(path[0]);
+                        return child.getPath(path.slice(1, path.length + 1));
+                    } else {
+                        return this;
+                    }
+                }
+            }
+
+            let root = new ViewerNode("TreeViewer")
+            scene.add(root.object);
+
+            let geom = new THREE.Geometry();
+            geom.vertices.push(new THREE.Vector3(0, 0, 0));
+            geom.vertices.push(new THREE.Vector3(0, 0.2, 0));
+            geom.vertices.push(new THREE.Vector3(0, 0.2, 0.2));
+            geom.faces.push(new THREE.Face3(0, 1, 2));
+            let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0xffffff, reflectivity: 0.5}));
+
+            root.getPath(["foo", "bar"]).setGeometryObjects([object]);
+            root.getPath(["foo"]).object.position.x = 1;
+            root.getPath(["foo", "bar"]).object.position.z = 2;
 
 			var geometry = new THREE.BoxGeometry(1, 1, 1);
 			var material = new THREE.MeshPhongMaterial({color: 0x00ff00,
@@ -74,11 +134,16 @@
 				geom.setIndex(new THREE.BufferAttribute(command.faces, 1));
 				geom.computeVertexNormals();
 
-                if (command.uvs !== undefined) {
-                    geom.addAttribute('uv', new THREE.BufferAttribute(command.uvs, 2));
+                if (command.texture !== undefined) {
+                    geom.addAttribute('uv', new THREE.BufferAttribute(command.texture.coordinates, 2));
+
+                    let png_bytes = command.texture.png;
+                    let blob = new Blob([png_bytes], {type: "image/png"});
+                    let pngUrl = URL.createObjectURL(blob);
+
     				let loader = new THREE.TextureLoader();
     				loader.load(
-    				    'HeadTextureMultisense.png',
+                        pngUrl,
                         function (texture) {
             				let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({
             					color: 0xffffff,
@@ -88,6 +153,10 @@
                             object.position.set(1.5, 0, 0);
                             object.rotation.set(-Math.PI / 2, 0, 0);
             				scene.add(object);
+                        },
+                        undefined,
+                        function (err) {
+                            console.error(err);
                         }
                     );
                 } else {
@@ -118,20 +187,6 @@
 				for (let cmd of data.setgeometry) {
 					handle_setgeometry(cmd);
 				}
-				// // let data = JSON.parse(raw_data.data);
-				// // console.log(data);
-				// let geom = new THREE.Geometry();
-
-				// for (let vertdata of data["vertices"]) {
-				// 	geom.vertices.push(new THREE.Vector3(vertdata[0], vertdata[1], vertdata[2]));
-				// }
-				// for (let facedata of data["faces"]) {
-				// 	geom.faces.push(new THREE.Face3(facedata[0], facedata[1], facedata[2]));
-				// }
-				// // geom.vertices.push(new THREE.Vector3(0, 0, 0));
-				// // geom.vertices.push(new THREE.Vector3(0, 1, 0));
-				// // geom.vertices.push(new THREE.Vector3(0, 1, 1));
-				// // geom.faces.push(new THREE.Face3(0, 1, 2));
 			};
 
 
@@ -161,20 +216,15 @@
 			// 			}
 			// );
 
-			// var geom = new THREE.Geometry();
-			// geom.vertices.push(new THREE.Vector3(0, 0, 0));
-			// geom.vertices.push(new THREE.Vector3(0, 1, 0));
-			// geom.vertices.push(new THREE.Vector3(0, 1, 1));
-			// geom.faces.push(new THREE.Face3(0, 1, 2));
-			// var object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0xffffff, reflectivity: 0.5}));
-			// scene.add(object);
+
 
 
             scene.add(new THREE.GridHelper(20, 40));
+            // let axes = new THREE.AxesHelper(1);
+            // axes.position.set(3, 0, 3);
+            // scene.add(axes);
 
-
-
-			camera.position.z = 5;
+			camera.position.x = 3;
 
 			var controls = new THREE.OrbitControls(camera);
 

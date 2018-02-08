@@ -39,6 +39,7 @@ wsh = WebSocketHandler() do req,client
     while true
         req = read(client)
         mesh = load("head_multisense.obj", GLUVMesh)
+        texture_png = open(read, "HeadTextureMultisense.png", "r")
         num_points = MsgPack.unpack(req)
         verts = [rand(Point3f0) for i in 1:num_points]
 		msg = MsgPack.pack(
@@ -55,7 +56,10 @@ wsh = WebSocketHandler() do req,client
                         "type" => "mesh_data",
                         "vertices" => PackedVector(vertices(mesh)),
                         "faces" => PackedVector(faces(mesh)),
-                        "uvs" => PackedVector(texturecoordinates(mesh))
+                        "texture" => Dict(
+                            "coordinates" => PackedVector(texturecoordinates(mesh)),
+                            "png" => PackedVector(texture_png)
+                        )
                     )
                 ]
 			)
