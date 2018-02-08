@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<title>My first three.js app</title>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+	<body>
+		<script src="js/three.js"></script>
+		<script src="js/OrbitControls.js"></script>
+		<script src="js/msgpack.min.js"></script>
+		<script>
+			var scene = new THREE.Scene();
+			var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			document.body.appendChild(renderer.domElement);
+
+			var geometry = new THREE.BoxGeometry(1, 1, 1);
+			var material = new THREE.MeshPhongMaterial({color: 0x00ff00, 
+				reflectivity: 0.5,
+				shininess: Math.pow(2, 10)
+			});
+			var cube = new THREE.Mesh(geometry, material);
+			// scene.add(cube);
+
+			var light = new THREE.DirectionalLight(0xffffff, 0.5);
+			light.position.set(5, 5, 10);
+			scene.add(light);
+
+			var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
+			scene.add(ambient_light);
+
+			var connection = new WebSocket('ws://127.0.0.1:8765');
+			connection.binaryType = "arraybuffer";
+			connection.onopen = function () {
+				connection.send(msgpack.encode(1000000));
+			};
+
+			connection.onmessage = function (raw_data) {
+				// console.log(raw_data);
+
+				console.time('decode');
+				let data = msgpack.decode(new Uint8Array(raw_data.data));
+				console.timeEnd('decode');
+
+				console.time('attrs');
+				let geom = new THREE.BufferGeometry();
+				geom.addAttribute('position', new THREE.BufferAttribute(data.vertices, 3));
+				geom.addAttribute('color', new THREE.BufferAttribute(data.colors, 3));
+				console.timeEnd('attrs');
+
+
+				// // let data = JSON.parse(raw_data.data);
+				// // console.log(data);
+				// let geom = new THREE.Geometry();
+
+				// for (let vertdata of data["vertices"]) {
+				// 	geom.vertices.push(new THREE.Vector3(vertdata[0], vertdata[1], vertdata[2]));
+				// } 
+				// for (let facedata of data["faces"]) {
+				// 	geom.faces.push(new THREE.Face3(facedata[0], facedata[1], facedata[2]));
+				// } 
+				// // geom.vertices.push(new THREE.Vector3(0, 0, 0));
+				// // geom.vertices.push(new THREE.Vector3(0, 1, 0));
+				// // geom.vertices.push(new THREE.Vector3(0, 1, 1));
+				// // geom.faces.push(new THREE.Face3(0, 1, 2));
+				var object = new THREE.Points(geom, new THREE.PointsMaterial({
+					size: 0.01,
+					vertexColors: THREE.VertexColors
+				}));
+
+				console.time('scene');
+				scene.add(object);
+				console.timeEnd('scene');
+
+
+			};
+
+
+			// particleLight = new THREE.Mesh( new THREE.SphereBufferGeometry( 0.05, 8, 8 ), new THREE.MeshBasicMaterial( { color: 0xffffff } ) );
+			// particleLight.position.set(2, 0, 0);
+			// scene.add( particleLight );
+
+			// var point_light = new THREE.PointLight(0xffffff, 2, 800);
+			// point_light.position.set(2, 1, 1);
+			// scene.add(point_light);
+			// particleLight.add(point_light);
+
+			// var loader = new THREE.OBJLoader();
+			// loader.load('head_multisense.obj',
+			//             function(object) {
+			//             	scene.add(object);
+			//             },
+			//             function (xhr) {
+			//             	console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+
+			// 			},
+			// 			// called when loading has errors
+			// 			function ( error ) {
+
+			// 				console.log( 'An error happened' );
+
+			// 			}
+			// );
+
+			// var geom = new THREE.Geometry();
+			// geom.vertices.push(new THREE.Vector3(0, 0, 0));
+			// geom.vertices.push(new THREE.Vector3(0, 1, 0));
+			// geom.vertices.push(new THREE.Vector3(0, 1, 1));
+			// geom.faces.push(new THREE.Face3(0, 1, 2));
+			// var object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0xffffff, reflectivity: 0.5}));
+			// scene.add(object);
+
+
+
+
+
+			camera.position.z = 5;
+
+			var controls = new THREE.OrbitControls(camera);
+
+			function animate() {
+				requestAnimationFrame(animate);
+				// cube.rotation.x += 0.1;
+				// cube.rotation.y += 0.1;
+				controls.update();
+				renderer.render(scene, camera);
+			}
+			animate();
+		</script>
+	</body>
+</html>
