@@ -77,6 +77,7 @@
 
             let root = new ViewerNode("TreeViewer")
             scene.add(root.object);
+            root.object.rotateX(-Math.PI/2);
 
             let geom = new THREE.Geometry();
             geom.vertices.push(new THREE.Vector3(0, 0, 0));
@@ -86,8 +87,8 @@
             let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0xffffff, reflectivity: 0.5}));
 
             root.getPath(["foo", "bar"]).setGeometryObjects([object]);
-            root.getPath(["foo"]).object.position.x = 1;
-            root.getPath(["foo", "bar"]).object.position.z = 2;
+            root.getPath(["foo"]).object.position.y = 1;
+            root.getPath(["foo", "bar"]).object.position.z = 1;
 
 			var geometry = new THREE.BoxGeometry(1, 1, 1);
 			var material = new THREE.MeshPhongMaterial({color: 0x00ff00,
@@ -125,7 +126,7 @@
 					vertexColors: THREE.VertexColors
 				}));
 
-				scene.add(object);
+				root.object.add(object);
 			}
 
 			function add_mesh_data(command) {
@@ -148,17 +149,17 @@
     					reflectivity: 0.5,
                         map: texture
     				}));
-                    object.position.set(1.5, 0, 0);
-                    object.rotation.set(-Math.PI / 2, 0, 0);
-    				scene.add(object);
+                    object.position.set(1.5, 0, 0.5);
+                    // object.rotation.set(-Math.PI / 2, 0, 0);
+    				root.object.add(object);
                 } else {
                     let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({
                         color: 0xffffff,
                         reflectivity: 0.5
                     }));
-                    object.position.set(1.5, 0, 0);
-                    object.rotation.set(-Math.PI / 2, 0, 0);
-                    scene.add(object);
+                    object.position.set(1.5, 0, 0.5);
+                    // object.rotation.set(-Math.PI / 2, 0, 0);
+                    root.object.add(object);
                 }
 
 			}
