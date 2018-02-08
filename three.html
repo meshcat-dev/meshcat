@@ -107,7 +107,7 @@
 			var connection = new WebSocket('ws://127.0.0.1:8765');
 			connection.binaryType = "arraybuffer";
 			connection.onopen = function () {
-				connection.send(msgpack.encode(100000));
+				connection.send(msgpack.encode(1000000));
 			};
 
 			function add_pointcloud(command) {
@@ -142,23 +142,15 @@
                     let pngUrl = URL.createObjectURL(blob);
 
     				let loader = new THREE.TextureLoader();
-    				loader.load(
-                        pngUrl,
-                        function (texture) {
-            				let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({
-            					color: 0xffffff,
-            					reflectivity: 0.5,
-                                map: texture
-            				}));
-                            object.position.set(1.5, 0, 0);
-                            object.rotation.set(-Math.PI / 2, 0, 0);
-            				scene.add(object);
-                        },
-                        undefined,
-                        function (err) {
-                            console.error(err);
-                        }
-                    );
+    				let texture = loader.load(pngUrl);
+    				let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({
+    					color: 0xffffff,
+    					reflectivity: 0.5,
+                        map: texture
+    				}));
+                    object.position.set(1.5, 0, 0);
+                    object.rotation.set(-Math.PI / 2, 0, 0);
+    				scene.add(object);
                 } else {
                     let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({
                         color: 0xffffff,
@@ -224,7 +216,8 @@
             // axes.position.set(3, 0, 3);
             // scene.add(axes);
 
-			camera.position.x = 3;
+			camera.position.set(3, 1, 0);
+
 
 			var controls = new THREE.OrbitControls(camera);
 
