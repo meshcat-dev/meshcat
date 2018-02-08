@@ -20,6 +20,7 @@
 	<body>
 		<script src="js/three.js"></script>
 		<script src="js/OrbitControls.js"></script>
+        <script src="js/OBJLoader.js"></script>
 		<script src="js/msgpack.min.js"></script>
 		<script>
 			var scene = new THREE.Scene();
@@ -79,6 +80,12 @@
             scene.add(root.object);
             root.object.rotateX(-Math.PI/2);
 
+            let o1 = new THREE.Object3D();
+            let o2 = new THREE.Object3D();
+            o1.add(o2);
+            o2.position.set(1, 2, 3);
+            // console.log(JSON.stringify(o1.toJSON()));
+
             let geom = new THREE.Geometry();
             geom.vertices.push(new THREE.Vector3(0, 0, 0));
             geom.vertices.push(new THREE.Vector3(0, 0.2, 0));
@@ -105,6 +112,8 @@
 			var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
 			scene.add(ambient_light);
 
+            // console.log(JSON.stringify(scene.toJSON()));
+
 
 
 			function add_pointcloud(command) {
@@ -123,6 +132,7 @@
 				}));
 
 				root.object.add(object);
+				// console.log(JSON.stringify(object.toJSON()));
 			}
 
 			function add_mesh_data(command) {
@@ -171,12 +181,21 @@
 			}
 
 			function handle_command(message) {
-				console.log(message);
+				// console.log(message);
 				let data = msgpack.decode(new Uint8Array(message.data));
+                console.log(data);
 
-				for (let cmd of data.setgeometry) {
-					handle_setgeometry(cmd);
-				}
+                let loader = new THREE.ObjectLoader();
+                loader.parse(data, function (obj) {
+                    // console.log(JSON.stringify(obj.material.toJSON()));
+                    console.log(obj); 
+                    obj.geometry.computeVertexNormals();
+                    scene.add(obj);
+                });
+
+				// for (let cmd of data.setgeometry) {
+				// 	handle_setgeometry(cmd);
+				// }
 			};
 
 			let clients = {};
@@ -186,7 +205,7 @@
 				// let server_port = msgpack.decode(new Uint8Array(message.data));
 
 				// let url = 'ws://127.0.0.1:'.concat(server_port);
-				console.log(url);
+				// console.log(url);
 				if (clients[url] !== undefined) {
 					if (clients[url].readyState == 0 || clients[url].readyState == 1) {
 						return;
@@ -195,22 +214,20 @@
 				let connection = new WebSocket(url);
 				clients[url] = connection;
 				connection.binaryType = "arraybuffer";
-				connection.onopen = function () {
-					connection.send(msgpack.encode(100000));
-				};
 				connection.onmessage = handle_command;
 				connection.onclose = function (evt) {
 					delete clients[url];
 				}
-				console.log(connection);
+				// console.log(connection);
 			}
+
+            handle_name_server_message("ws://127.0.0.1:5005");
 
 			function listen_for_client() {
 				var request = new XMLHttpRequest();
 				request.onreadystatechange = function() {
 					if (request.readyState == 4) {
 						if (request.status == 200) {
-							console.log(request.response);
 							handle_name_server_message(request.response);
 						}
 						setTimeout(listen_for_client, 1000);
@@ -218,10 +235,13 @@
 				}
 				request.open("GET", "http://127.0.0.1:8765", true);
 				request.timeout = 1000;
-				request.send();
+                try {
+    				request.send();
+                } catch(error) {
+                }
 			}
 
-			listen_for_client();
+			// listen_for_client();
 
 			// particleLight = new THREE.Mesh( new THREE.SphereBufferGeometry( 0.05, 8, 8 ), new THREE.MeshBasicMaterial( { color: 0xffffff } ) );
 			// particleLight.position.set(2, 0, 0);
@@ -232,40 +252,45 @@
 			// scene.add(point_light);
 			// particleLight.add(point_light);
 
-			// var loader = new THREE.OBJLoader();
-			// loader.load('head_multisense.obj',
-			//             function(object) {
-			//             	scene.add(object);
-			//             },
-			//             function (xhr) {
-			//             	console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+            // var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+            // var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
+            // var cube = new THREE.Mesh( geometry, material );
+            // scene.add( cube );
 
-			// 			},
-			// 			// called when loading has errors
-			// 			function ( error ) {
+            // console.log(JSON.stringify(cube.toJSON()));
 
-			// 				console.log( 'An error happened' );
+   //          var data = msgpack.encode(cube.toJSON());
+   //          console.log(data);
+			// let loader = new THREE.ObjectLoader();
+   //          loader.parse(msgpack.decode(data), function(obj) {
+   //              console.log(obj);
+   //              console.log(JSON.stringify(obj.toJSON()));
+   //              scene.add(obj);
+   //          });
 
-			// 			}
-			// );
+            let texture = new THREE.TextureLoader().load("HeadTextureMultisense.png");
 
+            // var geometry = new THREE.BoxGeometry( 1, 1, 1 );
+            // var material = new THREE.MeshBasicMaterial( { color: 0x00ff00, map: texture} );
+            // var cube = new THREE.Mesh( geometry, material );
+            // scene.add( cube );
 
+            // console.log(JSON.stringify(scene.toJSON()));
 
+            let loader = new THREE.OBJLoader();
+            loader.load("head_multisense.obj",
+                function onload(obj) {
+                    console.log(obj);
+                    obj.children[0].material.map = texture;
+                    scene.add(obj);
+                });
 
             scene.add(new THREE.GridHelper(20, 40));
-            // let axes = new THREE.AxesHelper(1);
-            // axes.position.set(3, 0, 3);
-            // scene.add(axes);
-
 			camera.position.set(3, 1, 0);
-
-
 			var controls = new THREE.OrbitControls(camera);
 
 			function animate() {
 				requestAnimationFrame(animate);
-				// cube.rotation.x += 0.1;
-				// cube.rotation.y += 0.1;
 				controls.update();
 				renderer.render(scene, camera);
 			}
