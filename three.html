@@ -105,11 +105,7 @@
 			var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
 			scene.add(ambient_light);
 
-			var connection = new WebSocket('ws://127.0.0.1:8765');
-			connection.binaryType = "arraybuffer";
-			connection.onopen = function () {
-				connection.send(msgpack.encode(1000000));
-			};
+
 
 			function add_pointcloud(command) {
 				let geom = new THREE.BufferGeometry();
@@ -174,14 +170,58 @@
 				}
 			}
 
-			connection.onmessage = function (raw_data) {
-				let data = msgpack.decode(new Uint8Array(raw_data.data));
+			function handle_command(message) {
+				console.log(message);
+				let data = msgpack.decode(new Uint8Array(message.data));
 
 				for (let cmd of data.setgeometry) {
 					handle_setgeometry(cmd);
 				}
 			};
 
+			let clients = {};
+
+			function handle_name_server_message(message) {
+				let url = message;
+				// let server_port = msgpack.decode(new Uint8Array(message.data));
+
+				// let url = 'ws://127.0.0.1:'.concat(server_port);
+				console.log(url);
+				if (clients[url] !== undefined) {
+					if (clients[url].readyState == 0 || clients[url].readyState == 1) {
+						return;
+					}
+				}
+				let connection = new WebSocket(url);
+				clients[url] = connection;
+				connection.binaryType = "arraybuffer";
+				connection.onopen = function () {
+					connection.send(msgpack.encode(100000));
+				};
+				connection.onmessage = handle_command;
+				connection.onclose = function (evt) {
+					delete clients[url];
+				}
+				console.log(connection);
+			}
+
+			function listen_for_client() {
+				var request = new XMLHttpRequest();
+				request.onreadystatechange = function() {
+					if (request.readyState == 4) {
+						if (request.status == 200) {
+							console.log(request.response);
+							handle_name_server_message(request.response);
+						}
+						setTimeout(listen_for_client, 1000);
+					}
+				}
+				request.open("GET", "http://127.0.0.1:8765", true);
+				request.timeout = 1000;
+				request.send();
+			}
+
+			listen_for_client();
 
 			// particleLight = new THREE.Mesh( new THREE.SphereBufferGeometry( 0.05, 8, 8 ), new THREE.MeshBasicMaterial( { color: 0xffffff } ) );
 			// particleLight.position.set(2, 0, 0);
