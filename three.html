@@ -118,6 +118,7 @@
 
 			function handle_command_message(message) {
 				let data = msgpack.decode(new Uint8Array(message.data));
+                console.log(data)
                 for (let cmd of data.commands) {
                     handle_command(cmd);
                 }
@@ -141,7 +142,12 @@
 				}
 			}
 
-            handle_name_server_message("ws://127.0.0.1:5005");
+            let params = new URLSearchParams(location.search.slice(1));
+            let host = params.get('host') || "127.0.0.1";
+            let port = params.get('port') || "5005";
+            let url = `ws://${host}:${port}`;
+            console.log(url);
+            handle_name_server_message(url);
 
 			function listen_for_client() {
 				var request = new XMLHttpRequest();
@@ -161,7 +167,6 @@
                 }
 			}
 			// listen_for_client();
-
 
 
             var scene = new THREE.Scene();
