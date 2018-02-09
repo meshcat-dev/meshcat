@@ -60,147 +60,143 @@ function serve_geometry(i)
         texture_png = open(read, "HeadTextureMultisense.png", "r")
         num_points = 100000
         verts = [rand(Point3f0) for i in 1:num_points]
-		msg = MsgPack.pack(
-            Dict(
-                "setgeometry" => [
-                    Dict(
-                        "type" => "pointcloud",
-                        "points" => PackedVector(verts .+ [rand(Point3f0)]),
-                        "channels" => Dict(
-                            "rgb" => PackedVector(verts)
-                        )
-                    ),
-                    # Dict(
-                    #     "type" => "mesh_data",
-                    #     "vertices" => PackedVector(vertices(mesh) .+ [rand(Point3f0)]),
-                    #     "faces" => PackedVector(faces(mesh)),
-                    #     "texture" => Dict(
-                    #         "coordinates" => PackedVector(texturecoordinates(mesh)),
-                    #         "png" => PackedVector(texture_png)
-                    #     )
-                    # )
-                ]
-			)
-		)
-
-        geom_id = string(Base.Random.uuid1())
-        mat_id = string(Base.Random.uuid1())
-
-        msg = MsgPack.pack(
-            Dict(
-                "metadata" => Dict("version" => 4.5, "type" => "Object"),
-                "geometries" => [
-                    Dict(
-                        "uuid" => geom_id,
-                        "type" => "BufferGeometry",
-                        "data" => Dict(
-                            "attributes" => Dict(
-                                "position" => Dict(
-                                    "itemSize" => 3,
-                                    "type" => "Float32Array",
-                                    "array" => PackedVector(verts .+ [rand(Point3f0)]),
-                                    "normalized" => false
-                                ), 
-                                "color" => Dict(
-                                    "itemSize" => 3,
-                                    "type" => "Float32Array",
-                                    "array" => PackedVector(verts),
-                                    "normalized" => false,
-                                )
-                            )
-                        )
-                    )
-                ], 
-                "materials" => [
-                    Dict(
-                        "uuid" => mat_id,
-                        "type" => "PointsMaterial",
-                        "color" => 16777215,
-                        "size" => 0.001,
-                        "vertexColors" => 2,
-                    )
-                ],
-                "object" => Dict(
-                    "type" => "Points",
-                    "matrix" => [1, 0, 0, 0,
-                                 0, 1, 0, 0,
-                                 0, 0, 1, 0,
-                                 0, 0, 0, 1],
-                    "geometry" => geom_id,
-                    "material" => mat_id
-                )
-            )
-        )
-
-        img_id = string(Base.Random.uuid1())
-        texture_id = string(Base.Random.uuid1())
-
-        msg = MsgPack.pack(
-            Dict(
-                "metadata" => Dict("version" => 4.5, "type" => "Object"),
-                "geometries" => [
-                    Dict(
-                        "uuid" => geom_id,
-                        "type" => "BufferGeometry",
-                        "data" => Dict(
-                            "attributes" => Dict(
-                                "position" => Dict(
-                                    "itemSize" => 3,
-                                    "type" => "Float32Array",
-                                    "array" => PackedVector(vertices(mesh) .+ [rand(Point3f0)]),
-                                    "normalized" => false
-                                ),
-                                "uv" => Dict(
-                                    "itemSize" => 2,
-                                    "type" => "Float32Array",
-                                    "array" => PackedVector(texturecoordinates(mesh))
-                                )
-                            ),
-                            "index" => Dict(
-                                "itemSize" => 1,
-                                "type" => "Uint32Array",
-                                "array" => PackedVector(faces(mesh)),
+        pc_geom_id = string(Base.Random.uuid1())
+        pc_mat_id = string(Base.Random.uuid1())
+        pointcloud_data = Dict(
+            "metadata" => Dict("version" => 4.5, "type" => "Object"),
+            "geometries" => [
+                Dict(
+                    "uuid" => pc_geom_id,
+                    "type" => "BufferGeometry",
+                    "data" => Dict(
+                        "attributes" => Dict(
+                            "position" => Dict(
+                                "itemSize" => 3,
+                                "type" => "Float32Array",
+                                "array" => PackedVector(verts .+ [rand(Point3f0)]),
                                 "normalized" => false
+                            ), 
+                            "color" => Dict(
+                                "itemSize" => 3,
+                                "type" => "Float32Array",
+                                "array" => PackedVector(verts),
+                                "normalized" => false,
                             )
                         )
                     )
-                ],
-                "images" => [
-                    Dict(
-                        "uuid" => img_id,
-                        "url" => "data:image/png;base64,$(base64encode(texture_png))"
-                    )
-                ],
-                "textures" => [
-                    Dict(
-                        "uuid" => texture_id,
-                        "image" => img_id,
-                        "wrap" => [1001, 1001],
-                        "repeat" => [1, 1]
-                    )
-                ],
-                "materials" => [
-                    Dict(
-                        "uuid" => mat_id,
-                        "type" => "MeshPhongMaterial",
-                        "color" => 0xffffff,
-                        "shininess" => 30,
-                        "map" => texture_id
-                    )
-                ],
-                "object" => Dict(
-                    "type" => "Mesh",
-                    "matrix" => [1, 0, 0, 0,
-                                 0, 1, 0, 0,
-                                 0, 0, 1, 0,
-                                 0, 0, 0, 1],
-                    "geometry" => geom_id,
-                    "material" => mat_id
                 )
+            ], 
+            "materials" => [
+                Dict(
+                    "uuid" => pc_mat_id,
+                    "type" => "PointsMaterial",
+                    "color" => 16777215,
+                    "size" => 0.001,
+                    "vertexColors" => 2,
+                )
+            ],
+            "object" => Dict(
+                "type" => "Points",
+                "matrix" => [1, 0, 0, 0,
+                             0, 1, 0, 0,
+                             0, 0, 1, 0,
+                             0, 0, 0, 1],
+                "geometry" => pc_geom_id,
+                "material" => pc_mat_id
             )
         )
 
-		write(client, msg)
+        m_geom_id = string(Base.Random.uuid1())
+        m_mat_id = string(Base.Random.uuid1())
+        m_img_id = string(Base.Random.uuid1())
+        m_texture_id = string(Base.Random.uuid1())
+
+        mesh_data = Dict(
+            "metadata" => Dict("version" => 4.5, "type" => "Object"),
+            "geometries" => [
+                Dict(
+                    "uuid" => m_geom_id,
+                    "type" => "BufferGeometry",
+                    "data" => Dict(
+                        "attributes" => Dict(
+                            "position" => Dict(
+                                "itemSize" => 3,
+                                "type" => "Float32Array",
+                                "array" => PackedVector(vertices(mesh) .+ [rand(Point3f0)]),
+                                "normalized" => false
+                            ),
+                            "uv" => Dict(
+                                "itemSize" => 2,
+                                "type" => "Float32Array",
+                                "array" => PackedVector(texturecoordinates(mesh))
+                            )
+                        ),
+                        "index" => Dict(
+                            "itemSize" => 1,
+                            "type" => "Uint32Array",
+                            "array" => PackedVector(faces(mesh)),
+                            "normalized" => false
+                        )
+                    )
+                )
+            ],
+            "images" => [
+                Dict(
+                    "uuid" => m_img_id,
+                    "url" => "data:image/png;base64,$(base64encode(texture_png))"
+                )
+            ],
+            "textures" => [
+                Dict(
+                    "uuid" => m_texture_id,
+                    "image" => m_img_id,
+                    "wrap" => [1001, 1001],
+                    "repeat" => [1, 1]
+                )
+            ],
+            "materials" => [
+                Dict(
+                    "uuid" => m_mat_id,
+                    "type" => "MeshPhongMaterial",
+                    "color" => 0xffffff,
+                    "shininess" => 30,
+                    "map" => m_texture_id
+                )
+            ],
+            "object" => Dict(
+                "type" => "Mesh",
+                "matrix" => [1, 0, 0, 0,
+                             0, 1, 0, 0,
+                             0, 0, 1, 0,
+                             0, 0, 0, 1],
+                "geometry" => m_geom_id,
+                "material" => m_mat_id
+            )
+        )
+
+
+        msg_data = Dict(
+            "commands" => [
+                Dict(
+                    "type" => "add_object",
+                    "path" => ["robots", "valkyrie", "head"],
+                    "object" => mesh_data
+                ),
+                Dict(
+                     "type" => "add_object",
+                     "path" => ["sensors", "pc1"],
+                     "object" => pointcloud_data
+                ),
+                Dict(
+                    "type" => "set_transform",
+                    "path" => ["robots", "valkyrie"],
+                    "position" => [-1, 1, 0],
+                    "quaternion" => [0, 0, 0, 1],
+                )
+            ]
+        )
+
+		write(client, MsgPack.pack(msg_data))
         # close(server)
     end
 

@@ -24,188 +24,95 @@
 		<script src="js/msgpack.min.js"></script>
 		<script>
 			var scene = new THREE.Scene();
-            // scene.background = new THREE.Color('skyblue');
 			var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 100);
 			var renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
 			renderer.setSize(window.innerWidth, window.innerHeight);
 			document.body.appendChild(renderer.domElement);
 
+            function create_tree_viewer_root() {
+                let viewer_tree = new THREE.Object3D();
+                viewer_tree.name = "TreeViewer";
+                viewer_tree.rotateX(-Math.PI / 2);
+                scene.add(viewer_tree);
+                return viewer_tree;
+            }
 
+            var viewer_tree = create_tree_viewer_root();
+            viewer_tree.add(new THREE.AxesHelper(0.5));
 
-            class ViewerNode {
-                constructor(name) {
-                    this.name = name;
-                    this.children = {};
-                    this.geometry_objects = [];
-                    this.object = new THREE.Object3D;
+            function find_child(path, root) {
+                if (root === undefined) {
+                    root = viewer_tree;
                 }
-
-                addChild(name) {
-                    let child = new ViewerNode(name, this);
-                    this.object.add(child.object);
-                    this.children[name] = child;
-                    return child;
-                }
-
-                getChild(name) {
-                    let child = this.children[name]
+                if (path.length > 0) {
+                    let child = root.children.find(c => c.name == path[0]);
                     if (child === undefined) {
-                        return this.addChild(name);
-                    } else {
-                        return child;
+                        child = new THREE.Object3D();
+                        child.name = path[0];
+                        root.add(child);
                     }
-                }
-
-                setGeometryObjects(objs) {
-                    for (let obj of this.geometry_objects) {
-                        this.object.remove(obj);
-                    }
-                    for (let obj of objs) {
-                        this.object.add(obj);
-                    }
-                    this.geometry_objects = objs;
-                }
-
-                getPath(path) {
-                    if (path.length > 0) {
-                        let child = this.getChild(path[0]);
-                        return child.getPath(path.slice(1, path.length + 1));
-                    } else {
-                        return this;
-                    }
+                    return find_child(path.slice(1, path.length + 1), child);
+                } else {
+                    return root;
                 }
             }
 
-            let root = new ViewerNode("TreeViewer")
-            scene.add(root.object);
-            root.object.rotateX(-Math.PI/2);
+            function set_transform(path, position, quaternion) {
+                let child = find_child(path);
+                child.position.fromArray(position);
+                child.quaternion.fromArray(quaternion);
+            }
 
-            let o1 = new THREE.Object3D();
-            let o2 = new THREE.Object3D();
-            o1.add(o2);
-            o2.position.set(1, 2, 3);
-            // console.log(JSON.stringify(o1.toJSON()));
+            function set_property(path, property, value) {
+                let obj = find_child(path);
+                obj[property] = value;
+            }
 
-            let geom = new THREE.Geometry();
-            geom.vertices.push(new THREE.Vector3(0, 0, 0));
-            geom.vertices.push(new THREE.Vector3(0, 0.2, 0));
-            geom.vertices.push(new THREE.Vector3(0, 0.2, 0.2));
-            geom.faces.push(new THREE.Face3(0, 1, 2));
-            let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({color: 0xffffff, reflectivity: 0.5}));
+            function add_object(path, object) {
+                find_child(path).add(object);
+            }
 
-            root.getPath(["foo", "bar"]).setGeometryObjects([object]);
-            root.getPath(["foo"]).object.position.y = 1;
-            root.getPath(["foo", "bar"]).object.position.z = 1;
-
-			var geometry = new THREE.BoxGeometry(1, 1, 1);
-			var material = new THREE.MeshPhongMaterial({color: 0x00ff00,
-				reflectivity: 0.5,
-				shininess: Math.pow(2, 10)
-			});
-			var cube = new THREE.Mesh(geometry, material);
-			// scene.add(cube);
-
-			var light = new THREE.DirectionalLight(0xffffff, 0.5);
-			light.position.set(5, 5, 10);
-			scene.add(light);
-
-			var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
-			scene.add(ambient_light);
-
-            // console.log(JSON.stringify(scene.toJSON()));
-
-
-
-			function add_pointcloud(command) {
-				let geom = new THREE.BufferGeometry();
-				geom.addAttribute('position', new THREE.BufferAttribute(command.points, 3));
-
-				if (command.channels !== undefined) {
-					if (command.channels.rgb !== undefined) {
-						geom.addAttribute('color', new THREE.BufferAttribute(command.channels.rgb, 3));
-					}
-				}
-
-				let object = new THREE.Points(geom, new THREE.PointsMaterial({
-					size: 0.001,
-					vertexColors: THREE.VertexColors
-				}));
-
-				root.object.add(object);
-				// console.log(JSON.stringify(object.toJSON()));
-			}
-
-			function add_mesh_data(command) {
-				let geom = new THREE.BufferGeometry();
-				geom.addAttribute('position', new THREE.BufferAttribute(command.vertices, 3));
-				geom.setIndex(new THREE.BufferAttribute(command.faces, 1));
-				geom.computeVertexNormals();
-
-                if (command.texture !== undefined) {
-                    geom.addAttribute('uv', new THREE.BufferAttribute(command.texture.coordinates, 2));
-
-                    let png_bytes = command.texture.png;
-                    let blob = new Blob([png_bytes], {type: "image/png"});
-                    let pngUrl = URL.createObjectURL(blob);
-
-    				let loader = new THREE.TextureLoader();
-    				let texture = loader.load(pngUrl);
-    				let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({
-    					color: 0xffffff,
-    					reflectivity: 0.5,
-                        map: texture
-    				}));
-                    object.position.set(1.5, 0, 0.5);
-                    // object.rotation.set(-Math.PI / 2, 0, 0);
-    				root.object.add(object);
-                } else {
-                    let object = new THREE.Mesh(geom, new THREE.MeshPhongMaterial({
-                        color: 0xffffff,
-                        reflectivity: 0.5
-                    }));
-                    object.position.set(1.5, 0, 0.5);
-                    // object.rotation.set(-Math.PI / 2, 0, 0);
-                    root.object.add(object);
+            function delete_path(path) {
+                let parent = find_child(path.slice(0, path.length));
+                let child = parent.children.find(c => c.name == object.name);
+                if (child !== undefined) {
+                    parent.remove(child);
                 }
+            }
 
-			}
+            function handle_command(cmd) {
+                if (cmd.type == "set_property") {
+                    set_property(cmd.path, cmd.property, cmd.value);
+                } else if (cmd.type == "set_transform") {
+                    set_transform(cmd.path, cmd.position, cmd.quaternion);
+                } else if (cmd.type == "delete") {
+                    delete_path(path);
+                    if (path.length == 0) {
+                        viewer_tree = create_tree_viewer_root();
+                    }
+                } else if (cmd.type == "add_object") {
+                    let loader = new THREE.ObjectLoader();
+                    loader.parse(cmd.object, function (obj) {
+                        console.log(obj); 
+                        obj.geometry.computeVertexNormals();
+                        add_object(cmd.path, obj);
+                    });
+                }
+            }
 
-			function handle_setgeometry(command) {
-				if (command.type == "pointcloud") {
-					add_pointcloud(command);
-				} else if (command.type == "mesh_data") {
-					add_mesh_data(command);
-				} else {
-					console.warn("Unhandled geometry:", command.type);
-				}
-			}
-
-			function handle_command(message) {
-				// console.log(message);
+			function handle_command_message(message) {
 				let data = msgpack.decode(new Uint8Array(message.data));
                 console.log(data);
 
-                let loader = new THREE.ObjectLoader();
-                loader.parse(data, function (obj) {
-                    // console.log(JSON.stringify(obj.material.toJSON()));
-                    console.log(obj); 
-                    obj.geometry.computeVertexNormals();
-                    scene.add(obj);
-                });
-
-				// for (let cmd of data.setgeometry) {
-				// 	handle_setgeometry(cmd);
-				// }
+                for (let cmd of data.commands) {
+                    handle_command(cmd);
+                }
 			};
 
 			let clients = {};
 
 			function handle_name_server_message(message) {
 				let url = message;
-				// let server_port = msgpack.decode(new Uint8Array(message.data));
-
-				// let url = 'ws://127.0.0.1:'.concat(server_port);
-				// console.log(url);
 				if (clients[url] !== undefined) {
 					if (clients[url].readyState == 0 || clients[url].readyState == 1) {
 						return;
@@ -214,11 +121,10 @@
 				let connection = new WebSocket(url);
 				clients[url] = connection;
 				connection.binaryType = "arraybuffer";
-				connection.onmessage = handle_command;
+				connection.onmessage = handle_command_message;
 				connection.onclose = function (evt) {
 					delete clients[url];
 				}
-				// console.log(connection);
 			}
 
             handle_name_server_message("ws://127.0.0.1:5005");
@@ -243,49 +149,15 @@
 
 			// listen_for_client();
 
-			// particleLight = new THREE.Mesh( new THREE.SphereBufferGeometry( 0.05, 8, 8 ), new THREE.MeshBasicMaterial( { color: 0xffffff } ) );
-			// particleLight.position.set(2, 0, 0);
-			// scene.add( particleLight );
+            var light = new THREE.DirectionalLight(0xffffff, 0.5);
+            light.position.set(5, 5, 10);
+            scene.add(light);
 
-			// var point_light = new THREE.PointLight(0xffffff, 2, 800);
-			// point_light.position.set(2, 1, 1);
-			// scene.add(point_light);
-			// particleLight.add(point_light);
-
-            // var geometry = new THREE.BoxGeometry( 1, 1, 1 );
-            // var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-            // var cube = new THREE.Mesh( geometry, material );
-            // scene.add( cube );
-
-            // console.log(JSON.stringify(cube.toJSON()));
-
-   //          var data = msgpack.encode(cube.toJSON());
-   //          console.log(data);
-			// let loader = new THREE.ObjectLoader();
-   //          loader.parse(msgpack.decode(data), function(obj) {
-   //              console.log(obj);
-   //              console.log(JSON.stringify(obj.toJSON()));
-   //              scene.add(obj);
-   //          });
-
-            let texture = new THREE.TextureLoader().load("HeadTextureMultisense.png");
-
-            // var geometry = new THREE.BoxGeometry( 1, 1, 1 );
-            // var material = new THREE.MeshBasicMaterial( { color: 0x00ff00, map: texture} );
-            // var cube = new THREE.Mesh( geometry, material );
-            // scene.add( cube );
-
-            // console.log(JSON.stringify(scene.toJSON()));
-
-            let loader = new THREE.OBJLoader();
-            loader.load("head_multisense.obj",
-                function onload(obj) {
-                    console.log(obj);
-                    obj.children[0].material.map = texture;
-                    scene.add(obj);
-                });
+            var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambient_light);
 
             scene.add(new THREE.GridHelper(20, 40));
+
 			camera.position.set(3, 1, 0);
 			var controls = new THREE.OrbitControls(camera);
 
