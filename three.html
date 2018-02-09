@@ -20,14 +20,32 @@
 	<body>
 		<script src="js/three.js"></script>
 		<script src="js/OrbitControls.js"></script>
-        <script src="js/OBJLoader.js"></script>
+        <!-- <script src="js/OBJLoader.js"></script> -->
+        <script src="js/dat.gui.min.js"></script>
 		<script src="js/msgpack.min.js"></script>
 		<script>
-			var scene = new THREE.Scene();
-			var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 100);
-			var renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
-			renderer.setSize(window.innerWidth, window.innerHeight);
-			document.body.appendChild(renderer.domElement);
+            function build_gui(root_object) {
+                let gui = new dat.GUI();
+                let folder = gui.addFolder("Scene");
+                folder.open();
+                traverse_gui(folder, root_object);
+                return gui;
+            }
+
+            function traverse_gui(folder, object) {
+                folder.add(object, "visible");
+                for (let child_object of object.children) {
+                    let child_folder = folder.addFolder(child_object.name);
+                    child_folder.open();
+                    traverse_gui(child_folder, child_object);
+                }
+            }
+
+
+            function update_gui() {
+                gui.destroy();
+                gui = build_gui(scene);
+            }
 
             function create_tree_viewer_root() {
                 let viewer_tree = new THREE.Object3D();
@@ -36,9 +54,6 @@
                 scene.add(viewer_tree);
                 return viewer_tree;
             }
-
-            var viewer_tree = create_tree_viewer_root();
-            viewer_tree.add(new THREE.AxesHelper(0.5));
 
             function find_child(path, root) {
                 if (root === undefined) {
@@ -70,6 +85,7 @@
 
             function add_object(path, object) {
                 find_child(path).add(object);
+                update_gui();
             }
 
             function delete_path(path) {
@@ -77,6 +93,7 @@
                 let child = parent.children.find(c => c.name == object.name);
                 if (child !== undefined) {
                     parent.remove(child);
+                    update_gui();
                 }
             }
 
@@ -93,7 +110,6 @@
                 } else if (cmd.type == "add_object") {
                     let loader = new THREE.ObjectLoader();
                     loader.parse(cmd.object, function (obj) {
-                        console.log(obj); 
                         obj.geometry.computeVertexNormals();
                         add_object(cmd.path, obj);
                     });
@@ -102,8 +118,6 @@
 
 			function handle_command_message(message) {
 				let data = msgpack.decode(new Uint8Array(message.data));
-                console.log(data);
-
                 for (let cmd of data.commands) {
                     handle_command(cmd);
                 }
@@ -146,20 +160,42 @@
                 } catch(error) {
                 }
 			}
-
 			// listen_for_client();
 
+
+
+            var scene = new THREE.Scene();
+            var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 100);
+            var renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            var lights = new THREE.Group();
+            lights.name = "Lights";
+            scene.add(lights);
+
             var light = new THREE.DirectionalLight(0xffffff, 0.5);
+            light.name = "DirectionalLight";
             light.position.set(5, 5, 10);
-            scene.add(light);
+            lights.add(light);
 
             var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
-            scene.add(ambient_light);
+            ambient_light.name = "AmbientLight";
+            lights.add(ambient_light);
 
-            scene.add(new THREE.GridHelper(20, 40));
+            var grid = new THREE.GridHelper(20, 40);
+            grid.name = "Grid";
+            scene.add(grid);
 
 			camera.position.set(3, 1, 0);
 			var controls = new THREE.OrbitControls(camera);
+
+            var viewer_tree = create_tree_viewer_root();
+            var axes = new THREE.AxesHelper(0.5);
+            axes.name = "Axes";
+            viewer_tree.add(axes);
+            var gui = build_gui(scene);
+
 
 			function animate() {
 				requestAnimationFrame(animate);
