@@ -2,47 +2,26 @@
 <html>
 	<head>
 		<meta charset=utf-8>
-		<title>My first three.js app</title>
-		<style>
-			body { margin: 0;
-            }
-			canvas {
-                width: 100%;
-                height: 100%;
-                background: -moz-linear-gradient(top,  lightskyblue 0%, midnightblue 100%); /* FF3.6-15 */
-                background: -webkit-linear-gradient(top,  lightskyblue 0%,midnightblue 100%); /* Chrome10-25,Safari5.1-6 */
-                background: linear-gradient(to bottom,  lightskyblue 0%,midnightblue 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
-            }
-
-
-		</style>
+		<title>Interaction</title>
 	</head>
 	<body>
-		<script src="js/three.js"></script>
-		<script src="js/OrbitControls.js"></script>
-        <!-- <script src="js/OBJLoader.js"></script> -->
-        <script src="js/dat.gui.min.js"></script>
-		<script src="js/msgpack.min.js"></script>
-
         <div class="wrapper">
             <div class="box">
-                <div class="tree-controls">
+        		<div class="tree-controls">
                     <ul id="scene-controls">
                     </ul>
-                </div>
+        		</div>
             </div>
             <div class="drag-handler"></div>
             <div class="box">
-                <div id="threejs-pane"></div>
+                Everything else
             </div>
         </div>
-
-        <script src="js/viewertree.js"></script>
-        <script>
-            var tree = {visible: true, name: "scene"};
-            tree.children = [{visible: true, name: "c1"}, {visible: true, name: "c2"}];
-            tree.children[0].children = [{visible: true, name: "foo"}]
-            tree.children[1].children = [];
+		<script>
+			var tree = {visible: true, name: "scene"};
+			tree.children = [{visible: true, name: "c1"}, {visible: true, name: "c2"}];
+			tree.children[0].children = [{visible: true, name: "foo"}]
+			tree.children[1].children = [];
 
             function create_element(type, parent, attrs) {
                 let element = document.createElement(type);
@@ -66,7 +45,7 @@
             }
 
 
-            function create_options(node, element) {
+			function create_options(node, element) {
                 let li = create_element("li", element, {class: "accordion expanded"});
                 let expander = create_element("div", li, {class: "expansion-control"});
                 expander.addEventListener("click", function() {
@@ -89,16 +68,12 @@
             // containing wrapper and left box
             var drag_handler = document.querySelector(".drag-handler");
             var wrapper = drag_handler.closest(".wrapper");
-            var boxes = wrapper.querySelectorAll(".box");
-            var left_box = boxes[0];
-            var right_box = boxes[1];
+            var left_box = wrapper.querySelector(".box");
             var is_handler_dragging = false;
 
-            document.addEventListener("mousedown", function(e) {
-                if (e.target == drag_handler) {
-                    is_handler_dragging = true;
-                    e.preventDefault();
-                }
+            drag_handler.addEventListener("mousedown", function(e) {
+                is_handler_dragging = true;
+                e.preventDefault();
             });
 
             document.addEventListener("mousemove", function(e) {
@@ -110,42 +85,29 @@
                 let container_offset_left = wrapper.offsetLeft;
                 let pointer_relative_x_pos = e.clientX - container_offset_left;
                 left_box.style.width = (pointer_relative_x_pos - 3) + 'px';
+                // flexGrow = 0 prevents the box from growing
                 left_box.style.flexGrow = 0;
-                let threejs_width = wrapper.offsetWidth - pointer_relative_x_pos + 3;
-                right_box.style.width = threejs_width
-                set_3d_pane_size(threejs_width, wrapper.offsetHeight);
-                // set_3d_pane_size();
-                // set_3d_pane_size(threejs_pane.offsetWidth, threejs_pane.offsetHeight);
             });
 
             document.addEventListener("mouseup", function(e) {
                 is_handler_dragging = false;
             });
 
-            // set_3d_pane_size(wrapper.offsetWidth - right_box.offsetLeft, wrapper.offsetHeight);
 
-
-        </script>
-
-         <style>
+		</script>
+        <style>
             body {
                 margin: 0;
-            }
-
-            #threejs-pane {
-                height: 100%;
             }
 
             .wrapper {
                 background-color: #444;
                 display: flex;
-                height: 100vh;
-                width: 100%;
             }
 
             .box {
                 background-color: #fff;
-                /*padding: 20px;*/
+                padding: 20px;
                 box-sizing: border-box;
                 flex: 1 1 auto;
             }
