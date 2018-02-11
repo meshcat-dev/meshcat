@@ -22,20 +22,14 @@
 		<script src="js/OrbitControls.js"></script>
         <!-- <script src="js/OBJLoader.js"></script> -->
         <script src="js/dat.gui.min.js"></script>
+        <script src="js/split.min.js"></script>
 		<script src="js/msgpack.min.js"></script>
 
-        <div class="wrapper">
-            <div class="box">
-                <div class="tree-controls">
-                    <ul id="scene-controls">
-                    </ul>
-                </div>
-            </div>
-            <div class="drag-handler"></div>
-            <div class="box">
-                <div id="threejs-pane"></div>
-            </div>
+        <div id="scene-controls-container" class="split split-horizontal">
+            <ul id="scene-controls">
+            </ul>
         </div>
+        <div id="threejs-pane" class="split split-horizontal"></div>
 
         <script src="js/viewertree.js"></script>
         <script>
@@ -85,46 +79,15 @@
             }
             create_options(tree, document.getElementById("scene-controls"));
 
-            // Find the divider bar and then use that to locate its
-            // containing wrapper and left box
-            var drag_handler = document.querySelector(".drag-handler");
-            var wrapper = drag_handler.closest(".wrapper");
-            var boxes = wrapper.querySelectorAll(".box");
-            var left_box = boxes[0];
-            var right_box = boxes[1];
-            var is_handler_dragging = false;
-
-            document.addEventListener("mousedown", function(e) {
-                if (e.target == drag_handler) {
-                    is_handler_dragging = true;
-                    e.preventDefault();
+            Split(['#scene-controls-container', '#threejs-pane'], {
+                sizes: [25, 75],
+                onDrag: function() {
+                    set_3d_pane_size(threejs_pane.offsetWidth, threejs_pane.offsetHeight);
+                },
+                onDragEnd: function () {
+                    set_3d_pane_size(threejs_pane.offsetWidth, threejs_pane.offsetHeight);
                 }
             });
-
-            document.addEventListener("mousemove", function(e) {
-                if (!is_handler_dragging) {
-                    return false;
-                }
-
-                e.preventDefault();
-                let container_offset_left = wrapper.offsetLeft;
-                let pointer_relative_x_pos = e.clientX - container_offset_left;
-                left_box.style.width = (pointer_relative_x_pos - 3) + 'px';
-                left_box.style.flexGrow = 0;
-                let threejs_width = wrapper.offsetWidth - pointer_relative_x_pos + 3;
-                right_box.style.width = threejs_width
-                set_3d_pane_size(threejs_width, wrapper.offsetHeight);
-                // set_3d_pane_size();
-                // set_3d_pane_size(threejs_pane.offsetWidth, threejs_pane.offsetHeight);
-            });
-
-            document.addEventListener("mouseup", function(e) {
-                is_handler_dragging = false;
-            });
-
-            // set_3d_pane_size(wrapper.offsetWidth - right_box.offsetLeft, wrapper.offsetHeight);
-
-
         </script>
 
          <style>
@@ -132,38 +95,43 @@
                 margin: 0;
             }
 
-            #threejs-pane {
-                height: 100%;
-            }
+              html, body {
+            height: 100%;
+          }
 
-            .wrapper {
-                background-color: #444;
-                display: flex;
-                height: 100vh;
-                width: 100%;
-            }
+          body {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+          }
 
-            .box {
-                background-color: #fff;
-                /*padding: 20px;*/
-                box-sizing: border-box;
-                flex: 1 1 auto;
-            }
+          .split {
+            -webkit-box-sizing: border-box;
+               -moz-box-sizing: border-box;
+                    box-sizing: border-box;
 
-            .drag-handler {
-                width: 10px;
-                padding: 0;
-                cursor: ew-resize;
-                flex: 0 0 auto;
-            }
+            overflow-y: auto;
+            overflow-x: hidden;
+          }
 
-            .drag-handler::before {
-                content: '';
-                display: block;
-                width: 4px;
-                height: 100%;
-                margin: 0 auto;
-            }
+          .content {
+            background-color: #fff;
+          }
+
+          .gutter {
+            background-color: #ccc;
+            background-repeat: no-repeat;
+            background-position: 50%;
+          }
+
+          .gutter.gutter-horizontal {
+            cursor: col-resize;
+          }
+
+          .split.split-horizontal, .gutter.gutter-horizontal {
+            height: 100%;
+            float: left;
+          }
 
             .tree-controls ul {
                 list-style: none;
