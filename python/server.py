@@ -51,7 +51,6 @@ class WebsocketManager():
     def send_to_all(self, msg, wait=True):
         if wait:
             self.wait_for_connection()
-        print("sending:", msg)
         asyncio.get_event_loop().run_until_complete(self._send_to_all(msg))
 
 

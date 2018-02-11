@@ -74,6 +74,7 @@
 
             function set_transform(path, position, quaternion) {
                 let child = find_child(path);
+                console.log(child);
                 child.position.fromArray(position);
                 child.quaternion.fromArray(quaternion);
             }
@@ -83,8 +84,14 @@
                 obj[property] = value;
             }
 
-            function add_object(path, object) {
-                find_child(path).add(object);
+            function set_object(path, object) {
+                let parent = find_child(path);
+                let child = parent.children.find(c => c.name == object.name);
+                console.log(parent, child);
+                if (child !== undefined) {
+                    parent.remove(child);
+                }
+                parent.add(object);
                 update_gui();
             }
 
@@ -98,20 +105,25 @@
             }
 
             function handle_command(cmd) {
+                console.log(cmd);
                 if (cmd.type == "set_property") {
+                    console.log("set property");
                     set_property(cmd.path, cmd.property, cmd.value);
                 } else if (cmd.type == "set_transform") {
+                    console.log("set transform");
                     set_transform(cmd.path, cmd.position, cmd.quaternion);
                 } else if (cmd.type == "delete") {
+                    console.log("delete");
                     delete_path(path);
                     if (path.length == 0) {
                         viewer_tree = create_tree_viewer_root();
                     }
-                } else if (cmd.type == "add_object") {
+                } else if (cmd.type == "set_object") {
+                    console.log("set object");
                     let loader = new THREE.ObjectLoader();
                     loader.parse(cmd.object, function (obj) {
                         obj.geometry.computeVertexNormals();
-                        add_object(cmd.path, obj);
+                        set_object(cmd.path, obj);
                     });
                 }
             }
