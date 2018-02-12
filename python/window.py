@@ -73,9 +73,7 @@ def launch_local(websocket_port):
     if _iscommand("xdg-open"):
         try:
             desktop_file = subprocess.check_output(["xdg-mime", "query", "default", "text/html"]).decode('utf-8')
-            print(desktop_file, type(desktop_file))
             execname = desktop_file.split(".")[0]
-            print(url)
             subprocess.Popen([execname, url])
         except Exception as e:
             print(e)
