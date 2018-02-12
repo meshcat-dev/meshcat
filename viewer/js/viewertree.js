@@ -279,12 +279,12 @@ function create_options(node, element) {
     let name = create_text(node.name || "<anonymous>", create_element("div", row, {class: "scene-tree-label"}));
     let visibility = create_element("div", row, {class: "scene-tree-visibility"});
     create_text("👁", visibility);
-    if (node.visible) {
-        visibility.classList.add("visible");
+    if (!node.visible) {
+        container.classList.add("hidden");
     }
     visibility.addEventListener("click", function() {
-        visibility.classList.toggle("visible");
-        node.visible = visibility.classList.contains("visible");
+        container.classList.toggle("hidden");
+        node.visible = !container.classList.contains("hidden");
     });
     let children = create_element("div", container, {class: "scene-tree-children"})
     if ("children" in node) {
@@ -293,11 +293,6 @@ function create_options(node, element) {
         }
     }
 }
-
-// function rebuild_options(path) {
-//     path = path.slice(0, path.length);
-//     let node = find_child(path);
-//     let dom_element = find_scene_tree_item(path);
 
 create_options(scene, document.getElementById("scene-controls"));
 
