@@ -33,20 +33,27 @@ if __name__ == '__main__':
                 path.split("/") + ["box"]
             ),
             SetObject(
+                Mesh(
+                    Box([0.2, 0.1, 0.2]),
+                    MeshBasicMaterial(0xff00ff)
+                ),
+                []
+            ),
+            SetObject(
                 Points(
                     PointsGeometry(verts, verts),
                     PointsMaterial()
                 ),
                 path.split("/") + ["points"]
             ),
-            # SetTransform(
-            #     [random.random() for i in range(3)],
-            #     [0, 0, 0, 1],
-            #     path.split("/")
-            # )
+            SetTransform(
+                [random.random() for i in range(3)],
+                [0, 0, 0, 1],
+                path.split("/")
+            )
         ])
         manager.send_to_all(msg.pack())
         # manager.send_to_all(umsgpack.packb(msg.serialize()))
 
         import time
-        time.sleep(0.1)
+        time.sleep(1)

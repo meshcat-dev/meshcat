@@ -1,3 +1,5 @@
+'use strict';
+
 function build_gui(root_object) {
     let gui = new dat.GUI();
     let folder = gui.addFolder("Scene");
@@ -17,21 +19,17 @@ function traverse_gui(folder, object) {
 
 
 function update_gui() {
-    // gui.destroy();
-    // gui = build_gui(scene);
+    let root = document.getElementById("scene-controls");
+    while (root.lastChild) {
+        root.removeChild(root.lastChild);
+    }
+    create_options(scene, root);
 }
 
-function create_tree_viewer_root() {
-    let viewer_tree = new THREE.Object3D();
-    viewer_tree.name = "TreeViewer";
-    viewer_tree.rotateX(-Math.PI / 2);
-    scene.add(viewer_tree);
-    return viewer_tree;
-}
 
 function find_child(path, root) {
     if (root === undefined) {
-        root = viewer_tree;
+        root = scene;
     }
     if (path.length > 0) {
         let child = root.children.find(c => c.name == path[0]);
@@ -87,13 +85,13 @@ function handle_command(cmd) {
         set_transform(cmd.path, cmd.position, cmd.quaternion);
     } else if (cmd.type == "delete") {
         delete_path(path);
-        if (path.length == 0) {
-            viewer_tree = create_tree_viewer_root();
-        }
     } else if (cmd.type == "set_object") {
         let loader = new THREE.ObjectLoader();
         loader.parse(cmd.object, function (obj) {
             obj.geometry.computeVertexNormals();
+            if (obj.name === "") {
+                obj.name = "<object>";
+            }
             set_object(cmd.path, obj);
         });
     }
@@ -150,12 +148,6 @@ function listen_for_client() {
 }
 // listen_for_client();
 
-
-var scene = new THREE.Scene();
-scene.name = "Scene";
-var threejs_pane = document.querySelector("#threejs-pane");
-var camera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
-var renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
 function set_3d_pane_size(w, h) {
     if (w === undefined) {
         w = threejs_pane.offsetWidth;
@@ -168,40 +160,118 @@ function set_3d_pane_size(w, h) {
     renderer.setSize(w, h);
 }
 
+
+// function create_tree_viewer_root() {
+//     let viewer_tree = new THREE.Object3D();
+//     viewer_tree.name = "TreeViewer";
+//     viewer_tree.rotateX(-Math.PI / 2);
+//     scene.add(viewer_tree);
+//     return viewer_tree;
+// }
+
+var camera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
+var renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+var threejs_pane = document.querySelector("#threejs-pane");
+threejs_pane.appendChild(renderer.domElement);
+camera.position.set(3, 1, 0);
+var controls = new THREE.OrbitControls(camera, threejs_pane);
+
+function create_default_scene() {
+    var scene = new THREE.Scene();
+    scene.name = "Scene";
+    scene.rotateX(-Math.PI / 2);
+    var lights = new THREE.Group();
+    lights.name = "Lights";
+    scene.add(lights);
+
+    var light = new THREE.DirectionalLight(0xffffff, 0.5);
+    light.name = "DirectionalLight";
+    light.position.set(5, 5, 10);
+    lights.add(light);
+
+    var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
+    ambient_light.name = "AmbientLight";
+    lights.add(ambient_light);
+
+    var grid = new THREE.GridHelper(20, 40);
+    grid.name = "Grid";
+    grid.rotateX(Math.PI / 2);
+    scene.add(grid);
+
+    var axes = new THREE.AxesHelper(0.5);
+    axes.name = "Axes";
+    scene.add(axes);
+
+    return scene;
+}
+
+var scene = create_default_scene();
+
 window.onload = function (evt) {
     set_3d_pane_size();
 }
 window.addEventListener('resize', evt => set_3d_pane_size(), false);
-// set_3d_pane_size();
 
-threejs_pane.appendChild(renderer.domElement);
 
-var lights = new THREE.Group();
-lights.name = "Lights";
-scene.add(lights);
+function create_element(type, parent, attrs) {
+    let element = document.createElement(type);
+    if (attrs !== undefined) {
+        for (let attr of Object.keys(attrs)) {
+            element.setAttribute(attr, attrs[attr]);
+        }
+    }
+    if (parent !== undefined && parent !== null) {
+        parent.append(element);
+    }
+    return element;
+}
 
-var light = new THREE.DirectionalLight(0xffffff, 0.5);
-light.name = "DirectionalLight";
-light.position.set(5, 5, 10);
-lights.add(light);
+function create_text(text, parent) {
+    let element = document.createTextNode(text);
+    if (parent !== undefined) {
+        parent.append(element);
+    }
+    return element;
+}
 
-var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
-ambient_light.name = "AmbientLight";
-lights.add(ambient_light);
 
-var grid = new THREE.GridHelper(20, 40);
-grid.name = "Grid";
-scene.add(grid);
+function create_options(node, element) {
+    console.log(node);
 
-camera.position.set(3, 1, 0);
-var controls = new THREE.OrbitControls(camera, threejs_pane);
+    let container = create_element("div", element, {class: "scene-tree-item"});
+    let row = create_element("div", container, {class: "scene-tree-header"});
+    let expander = create_element("div", row, {class: "expansion-control"});
+    if (node.children.length) {
+        expander.addEventListener("click", function() {
+            container.classList.toggle("expanded");
+            container.classList.toggle("collapsed");
+        });
+        container.classList.add("expanded");
+    }
+    let name = create_text(node.name || "<anonymous>", create_element("div", row, {class: "scene-tree-label"}));
+    let visibility = create_element("div", row, {class: "scene-tree-visibility"});
+    create_text("👁", visibility);
+    if (node.visible) {
+        visibility.classList.add("visible");
+    }
+    visibility.addEventListener("click", function() {
+        visibility.classList.toggle("visible");
+        node.visible = visibility.classList.contains("visible");
+    });
+    let children = create_element("div", container, {class: "scene-tree-children"})
+    if ("children" in node) {
+        for (let child of node.children) {
+            create_options(child, children);
+        }
+    }
+}
 
-var viewer_tree = create_tree_viewer_root();
-var axes = new THREE.AxesHelper(0.5);
-axes.name = "Axes";
-viewer_tree.add(axes);
-// var gui = build_gui(scene);
+// function rebuild_options(path) {
+//     path = path.slice(0, path.length);
+//     let node = find_child(path);
+//     let dom_element = find_scene_tree_item(path);
 
+create_options(scene, document.getElementById("scene-controls"));
 
 
 function animate() {

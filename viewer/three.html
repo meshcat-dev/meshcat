@@ -33,54 +33,6 @@
         <script src="js/viewertree.js"></script>
         <script>
 
-            function create_element(type, parent, attrs) {
-                let element = document.createElement(type);
-                if (attrs !== undefined) {
-                    for (let attr of Object.keys(attrs)) {
-                        element.setAttribute(attr, attrs[attr]);
-                    }
-                }
-                if (parent !== undefined && parent !== null) {
-                    parent.append(element);
-                }
-                return element;
-            }
-
-            function create_text(text, parent) {
-                let element = document.createTextNode(text);
-                if (parent !== undefined) {
-                    parent.append(element);
-                }
-                return element;
-            }
-
-
-            function create_options(node, element) {
-                let container = create_element("div", element, {class: "scene-tree-item expanded"});
-                let row = create_element("div", container, {class: "scene-tree-header"});
-                let expander = create_element("div", row, {class: "expansion-control"});
-                expander.addEventListener("click", function() {
-                    container.classList.toggle("expanded");
-                });
-                let name = create_text(node.name, create_element("div", row, {class: "scene-tree-label"}));
-                let visibility = create_element("div", row, {class: "scene-tree-visibility"});
-                create_text("👁", visibility);
-                if (node.visible) {
-                    visibility.classList.add("visible");
-                }
-                visibility.addEventListener("click", function() {
-                    visibility.classList.toggle("visible");
-                    node.visible = visibility.classList.contains("visible");
-
-                });
-                let children = create_element("div", container, {class: "scene-tree-children"})
-                if ("children" in node) {
-                    for (let child of node.children) {
-                        create_options(child, children);
-                    }
-                }
-            }
-            create_options(scene, document.getElementById("scene-controls"));
 
             Split(['#scene-controls-container', '#threejs-pane'], {
                 sizes: [25, 75],
@@ -153,9 +105,10 @@
 
             .expansion-control {
                 flex: none;
+                width: 20px;
             }
 
-            .scene-tree-item > .scene-tree-header > .expansion-control::after {
+            .collapsed > .scene-tree-header > .expansion-control::after {
                 content: '\25b6';
             }
 
