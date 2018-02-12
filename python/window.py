@@ -74,7 +74,13 @@ def launch_local(websocket_port):
         try:
             desktop_file = subprocess.check_output(["xdg-mime", "query", "default", "text/html"]).decode('utf-8')
             execname = desktop_file.split(".")[0]
-            subprocess.Popen([execname, url])
+            if _iscommand(execname):
+                os.system
+            setsid = getattr(os, 'setsid', None)
+            if not setsid:
+                setsid = getattr(os, 'setpgrp', None)
+            cmdline = [execname, url]
+            p = subprocess.Popen(cmdline, close_fds=True, preexec_fn=setsid)
         except Exception as e:
             print(e)
             print("xdg-open workaround failed, falling back to webbrowser.open")
