@@ -78,7 +78,35 @@ function delete_path(path) {
     }
 }
 
+function handle_special_geometry(geom) {
+    if (geom.type == "_meshfile") {
+        if (geom.format == "obj") {
+            let loader = new THREE.OBJLoader2();
+            let obj = loader.parse("data:text/plain," + geom.data);
+            let loaded_geom = obj.children[0].geometry;
+            loaded_geom.uuid = geom.uuid;
+            return loaded_geom.toJSON();
+        }
+    }
+    return geom;
+}
+
+function handle_set_object(path, object_data) {
+    object_data.geometries = object_data.geometries.map(handle_special_geometry);
+    console.log(object_data);
+    let loader = new THREE.ObjectLoader();
+    loader.parse(object_data, function (obj) {
+        obj.geometry.computeVertexNormals();
+        if (obj.name === "") {
+            obj.name = "<object>";
+        }
+        set_object(path, obj);
+    });
+}
+
+
 function handle_command(cmd) {
+    console.log("cmd:", cmd);
     if (cmd.type == "set_property") {
         set_property(cmd.path, cmd.property, cmd.value);
     } else if (cmd.type == "set_transform") {
@@ -86,14 +114,7 @@ function handle_command(cmd) {
     } else if (cmd.type == "delete") {
         delete_path(path);
     } else if (cmd.type == "set_object") {
-        let loader = new THREE.ObjectLoader();
-        loader.parse(cmd.object, function (obj) {
-            obj.geometry.computeVertexNormals();
-            if (obj.name === "") {
-                obj.name = "<object>";
-            }
-            set_object(cmd.path, obj);
-        });
+        handle_set_object(cmd.path, cmd.object);
     }
 }
 
@@ -186,7 +207,7 @@ function create_default_scene() {
 
     var light = new THREE.DirectionalLight(0xffffff, 0.5);
     light.name = "DirectionalLight";
-    light.position.set(5, 5, 10);
+    light.position.set(1, 5, 10);
     lights.add(light);
 
     var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
@@ -236,8 +257,6 @@ function create_text(text, parent) {
 
 
 function create_options(node, element) {
-    console.log(node);
-
     let container = create_element("div", element, {class: "scene-tree-item"});
     let row = create_element("div", container, {class: "scene-tree-header"});
     let expander = create_element("div", row, {class: "expansion-control"});

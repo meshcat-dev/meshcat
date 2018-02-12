@@ -1,15 +1,43 @@
+import base64
 import uuid
 
 import umsgpack
 import numpy as np
 
 
-class Box:
-    def __init__(self, lengths):
-        self.lengths = lengths
+class SceneElement:
+    def __init__(self):
         self.uuid = str(uuid.uuid1())
 
-    def serialize(self):
+
+class ReferenceSceneElement(SceneElement):
+    def serialize_in_object(self, object_data):
+        object_data.setdefault(self.field, []).append(self.serialize(object_data))
+        return self.uuid
+
+
+class Geometry(ReferenceSceneElement):
+    field = "geometries"
+
+
+class Material(ReferenceSceneElement):
+    field = "materials"
+
+
+class Texture(ReferenceSceneElement):
+    field = "textures"
+
+
+class Image(ReferenceSceneElement):
+    field = "images"
+
+
+class Box(Geometry):
+    def __init__(self, lengths):
+        super().__init__()
+        self.lengths = lengths
+
+    def serialize(self, object_data):
         return {
             "uuid": self.uuid,
             "type": "BoxGeometry",
@@ -19,72 +47,135 @@ class Box:
         }
 
 
-class MeshBasicMaterial:
-    def __init__(self, color):
-        self.uuid = str(uuid.uuid1())
+class MeshMaterial(Material):
+    def __init__(self, color=0xffffff, reflectivity=0.5, map=None, **kwargs):
+        super().__init__()
         self.color = color
+        self.reflectivity = reflectivity
+        self.map = map
+        self.properties = kwargs
 
-    def serialize(self):
+    def serialize(self, object_data):
+        data = {
+            "uuid": self.uuid,
+            "type": self._type,
+            "color": self.color,
+            "reflectivity": self.reflectivity,
+        }
+        data.update(self.properties)
+        if self.map is not None:
+            data["map"] = self.map.serialize_in_object(object_data)
+        return data
+
+
+class MeshBasicMaterial(MeshMaterial):
+    _type="MeshBasicMaterial"
+
+
+class MeshPhongMaterial(MeshMaterial):
+    _type="MeshPhongMaterial"
+
+
+class MeshLambertMaterial(MeshMaterial):
+    _type="MeshLambertMaterial"
+
+
+class MeshToonMaterial(MeshMaterial):
+    _type="MeshToonMaterial"
+
+
+class PngImage(Image):
+    def __init__(self, data):
+        super().__init__()
+        self.data = data
+
+    @staticmethod
+    def from_file(fname):
+        with open(fname, "rb") as f:
+            return PngImage(f.read())
+
+    def serialize(self, object_data):
         return {
             "uuid": self.uuid,
-            "type": "MeshBasicMaterial"
+            "url": "data:image/png;base64," + base64.b64encode(self.data).decode('ascii')
         }
 
 
-class Mesh:
-    def __init__(self, geometry, material):
-        self.geometry = geometry
-        self.material = material
+class GenericTexture(Texture):
+    def __init__(self, properties):
+        super().__init__()
+        self.properties = properties
+
+    def serialize(self, object_data):
+        data = {"uuid": self.uuid}
+        data.update(self.properties)
+        if "image" in data:
+            image = data["image"]
+            data["image"] = image.serialize_in_object(object_data)
+        return data
+
+
+class ImageTexture(Texture):
+    def __init__(self, image, wrap=[1001, 1001], repeat=[1, 1], **kwargs):
+        super().__init__()
+        self.image = image
+        self.wrap = wrap
+        self.repeat = repeat
+        self.properties = kwargs
+
+    def serialize(self, object_data):
+        data = {
+            "uuid": self.uuid,
+            "wrap": self.wrap,
+            "repeat": self.repeat,
+            "image": self.image.serialize_in_object(object_data)
+        }
+        data.update(self.properties)
+        return data
+
+
+class GenericMaterial(Material):
+    def __init__(self, properties):
+        self.properties = properties
         self.uuid = str(uuid.uuid1())
 
+    def serialize(self, object_data):
+        data = {"uuid": self.uuid}
+        data.update(self.properties)
+        if "map" in data:
+            texture = data["map"]
+            data["map"] = texture.serialize_in_object(object_data)
+        return data
+
+
+class Object(SceneElement):
+    def __init__(self, geometry, material):
+        super().__init__()
+        self.geometry = geometry
+        self.material = material
+
     def serialize(self):
-        return {
+        data = {
             "metadata": {
                 "version": 4.5,
                 "type": "Object",
             },
-            "geometries": [
-                self.geometry.serialize()
-            ],
-            "materials": [
-                self.material.serialize()
-            ],
+            "geometries": [],
+            "materials": [],
             "object": {
                 "uuid": self.uuid,
-                "type": "Mesh",
-                "matrix": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+                "type": self._type,
                 "geometry": self.geometry.uuid,
                 "material": self.material.uuid
             }
         }
+        self.geometry.serialize_in_object(data)
+        self.material.serialize_in_object(data)
+        return data
 
 
-class SetObject:
-    def __init__(self, object, path=[]):
-        self.object = object
-        self.path = path
-
-    def serialize(self):
-        return {
-            "type": "set_object",
-            "object": self.object.serialize(),
-            "path": self.path
-        }
-
-
-class SetTransform:
-    def __init__(self, position, quaternion, path=[]):
-        self.position = position
-        self.quaternion = quaternion
-        self.path = path
-
-    def serialize(self):
-        return {
-            "type": "set_transform",
-            "path": self.path,
-            "position": self.position,
-            "quaternion": self.quaternion
-        }
+class Mesh(Object):
+    _type = "Mesh"
 
 
 def item_size(array):
@@ -119,13 +210,32 @@ def pack_numpy_array(x):
     }
 
 
-class PointsGeometry:
+class ObjMeshGeometry(Geometry):
+    def __init__(self, contents):
+        super().__init__()
+        self.contents = contents
+
+    def serialize(self, object_data):
+        return {
+            "type": "_meshfile",
+            "uuid": self.uuid,
+            "format": "obj",
+            "data": self.contents
+        }
+
+    @staticmethod
+    def from_file(fname):
+        with open(fname, "r") as f:
+            return ObjMeshGeometry(f.read())
+
+
+class PointsGeometry(Geometry):
     def __init__(self, points, color=None):
+        super().__init__()
         self.points = points
         self.color = color
-        self.uuid = str(uuid.uuid1())
 
-    def serialize(self):
+    def serialize(self, object_data):
         attrs = {"position": pack_numpy_array(self.points)}
         if self.color is not None:
             attrs["color"] = pack_numpy_array(self.color)
@@ -138,13 +248,13 @@ class PointsGeometry:
         }
 
 
-class PointsMaterial:
+class PointsMaterial(Material):
     def __init__(self, size=0.001, color=0xffffff):
+        super().__init__()
         self.size = size
         self.color = color
-        self.uuid = str(uuid.uuid1())
 
-    def serialize(self):
+    def serialize(self, object_data):
         return {
             "uuid": self.uuid,
             "type": "PointsMaterial",
@@ -154,22 +264,37 @@ class PointsMaterial:
         }
 
 
-class Points:
-    def __init__(self, geometry, material):
-        self.geometry = geometry
-        self.material = material
+class Points(Object):
+    _type = "Points"
+
+
+class SetObject:
+    def __init__(self, object, path=[]):
+        self.object = object
+        self.path = path
 
     def serialize(self):
         return {
-            "metadata": {"version": 4.5, "type": "Object"},
-            "geometries": [self.geometry.serialize()],
-            "materials": [self.material.serialize()],
-            "object": {
-                "type": "Points",
-                "geometry": self.geometry.uuid,
-                "material": self.material.uuid
-            }
+            "type": "set_object",
+            "object": self.object.serialize(),
+            "path": self.path
         }
+
+
+class SetTransform:
+    def __init__(self, position, quaternion, path=[]):
+        self.position = position
+        self.quaternion = quaternion
+        self.path = path
+
+    def serialize(self):
+        return {
+            "type": "set_transform",
+            "path": self.path,
+            "position": self.position,
+            "quaternion": self.quaternion
+        }
+
 
 
 class ViewerMessage:
