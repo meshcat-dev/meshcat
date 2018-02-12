@@ -26,8 +26,7 @@
 		<script src="js/msgpack.min.js"></script>
 
         <div id="scene-controls-container" class="split split-horizontal">
-            <ul id="scene-controls">
-            </ul>
+            <div id="scene-controls"></div>
         </div>
         <div id="threejs-pane" class="split split-horizontal"></div>
 
@@ -36,7 +35,7 @@
             var tree = {visible: true, name: "scene"};
             tree.children = [{visible: true, name: "c1"}, {visible: true, name: "c2"}];
             tree.children[0].children = [{visible: true, name: "foo"}]
-            tree.children[1].children = [];
+            tree.children[1].children = [{visible: true, name: "fooooooooooo"}];
 
             function create_element(type, parent, attrs) {
                 let element = document.createElement(type);
@@ -61,23 +60,29 @@
 
 
             function create_options(node, element) {
-                let li = create_element("li", element, {class: "accordion expanded"});
-                let expander = create_element("div", li, {class: "expansion-control"});
+                let container = create_element("div", element, {class: "scene-tree-item expanded"});
+                let row = create_element("div", container, {class: "scene-tree-header"});
+                let expander = create_element("div", row, {class: "expansion-control"});
                 expander.addEventListener("click", function() {
-                    console.log(li);
-                    li.classList.toggle("expanded");
+                    container.classList.toggle("expanded");
                 });
-                let name = create_text(node.name, create_element("span", li));
-                let visible = create_element("input", li, {type: "checkbox"});
-                let ul = create_element("ul", li)
+                let name = create_text(node.name, create_element("div", row, {class: "scene-tree-label"}));
+                let visibility = create_element("div", row, {class: "scene-tree-visibility"});
+                create_text("👁", visibility);
+                if (node.visible) {
+                    visibility.classList.add("visible");
+                }
+                visibility.addEventListener("click", function() {
+                    visibility.classList.toggle("visible");
+                });
+                let children = create_element("div", container, {class: "scene-tree-children"})
                 if ("children" in node) {
                     for (let child of node.children) {
-                        let li = create_element("li", ul);
-                        create_options(child, li);
+                        create_options(child, children);
                     }
                 }
             }
-            create_options(tree, document.getElementById("scene-controls"));
+            create_options(scene, document.getElementById("scene-controls"));
 
             Split(['#scene-controls-container', '#threejs-pane'], {
                 sizes: [25, 75],
@@ -111,7 +116,7 @@
                     box-sizing: border-box;
 
             overflow-y: auto;
-            overflow-x: hidden;
+            overflow-x: auto;
           }
 
           .content {
@@ -133,29 +138,58 @@
             float: left;
           }
 
-            .tree-controls ul {
-                list-style: none;
-            }
+          .scene-tree-item {
+            width: 100%;
+            user-select: none;
+          }
+
+          .scene-tree-header {
+            display: flex;
+            width: 100%;
+            height: 20px;
+        }
 
             .expansion-control {
-                float: left;
+                flex: none;
             }
 
-            .accordion > .expansion-control::after {
+            .scene-tree-item > .scene-tree-header > .expansion-control::after {
                 content: '\25b6';
             }
 
-            .expanded > .expansion-control::after {
+            .expanded > .scene-tree-header > .expansion-control::after {
                 content: '\25bc';
             }
 
-            .accordion > ul {
+            .scene-tree-item > .scene-tree-children {
                 overflow: hidden;
                 max-height: 0;
             }
 
-            .expanded > ul {
+            .expanded > .scene-tree-children {
                 max-height: 100%;
+            }
+
+            .scene-tree-label {
+                flex: 1 1 auto;
+                min-width: 0;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .scene-tree-visibility {
+                flex: none;
+                color: #bbb;
+                cursor: pointer;
+            }
+
+            .scene-tree-visibility.visible {
+                color: #000;
+            }
+
+
+            .scene-tree-children {
+                margin-left: 20px;
             }
 
 

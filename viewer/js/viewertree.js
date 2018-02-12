@@ -152,6 +152,7 @@ function listen_for_client() {
 
 
 var scene = new THREE.Scene();
+scene.name = "Scene";
 var threejs_pane = document.querySelector("#threejs-pane");
 var camera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
 var renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
@@ -196,6 +197,7 @@ var axes = new THREE.AxesHelper(0.5);
 axes.name = "Axes";
 viewer_tree.add(axes);
 // var gui = build_gui(scene);
+
 
 
 function animate() {
