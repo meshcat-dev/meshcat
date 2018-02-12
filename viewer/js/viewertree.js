@@ -158,17 +158,21 @@ var camera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
 var renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
 function set_3d_pane_size(w, h) {
     if (w === undefined) {
-        w = 0.75 * window.innerWidth;
+        w = threejs_pane.offsetWidth;
     }
     if (h === undefined) {
         h = window.innerHeight;
     }
-    console.log(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
 }
-set_3d_pane_size();
+
+window.onload = function (evt) {
+    set_3d_pane_size();
+}
+window.addEventListener('resize', evt => set_3d_pane_size(), false);
+// set_3d_pane_size();
 
 threejs_pane.appendChild(renderer.domElement);
 

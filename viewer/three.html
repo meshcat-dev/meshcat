@@ -32,10 +32,6 @@
 
         <script src="js/viewertree.js"></script>
         <script>
-            var tree = {visible: true, name: "scene"};
-            tree.children = [{visible: true, name: "c1"}, {visible: true, name: "c2"}];
-            tree.children[0].children = [{visible: true, name: "foo"}]
-            tree.children[1].children = [{visible: true, name: "fooooooooooo"}];
 
             function create_element(type, parent, attrs) {
                 let element = document.createElement(type);
@@ -74,6 +70,8 @@
                 }
                 visibility.addEventListener("click", function() {
                     visibility.classList.toggle("visible");
+                    node.visible = visibility.classList.contains("visible");
+
                 });
                 let children = create_element("div", container, {class: "scene-tree-children"})
                 if ("children" in node) {
@@ -137,6 +135,10 @@
             height: 100%;
             float: left;
           }
+
+          #threejs-pane {
+            overflow: hidden;
+        }
 
           .scene-tree-item {
             width: 100%;
