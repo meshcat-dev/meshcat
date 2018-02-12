@@ -55,13 +55,21 @@ function set_property(path, property, value) {
     obj[property] = value;
 }
 
+function dispose(object) {
+    console.log(object);
+    object.geometry.dispose();
+    if (object.material.map) {
+        object.material.map.dispose();
+    }
+    object.material.dispose();
+}
+
 function set_object(path, object) {
     let parent = find_child(path);
     let child = parent.children.find(c => c.name == object.name);
     if (child !== undefined) {
         parent.remove(child);
-        child.geometry.dispose();
-        child.material.dispose();
+        dispose(child);
     }
     parent.add(object);
     update_gui();
@@ -72,8 +80,7 @@ function delete_path(path) {
     let child = parent.children.find(c => c.name == object.name);
     if (child !== undefined) {
         parent.remove(child);
-        child.geometry.dispose();
-        child.material.dispose();
+        dispose(child);
         update_gui();
     }
 }
@@ -85,7 +92,11 @@ function handle_special_geometry(geom) {
             let obj = loader.parse("data:text/plain," + geom.data);
             let loaded_geom = obj.children[0].geometry;
             loaded_geom.uuid = geom.uuid;
-            return loaded_geom.toJSON();
+            let json = loaded_geom.toJSON();
+            for (let child of obj.children) {
+                dispose(child);
+            }
+            return json;
         }
     }
     return geom;
@@ -93,7 +104,6 @@ function handle_special_geometry(geom) {
 
 function handle_set_object(path, object_data) {
     object_data.geometries = object_data.geometries.map(handle_special_geometry);
-    console.log(object_data);
     let loader = new THREE.ObjectLoader();
     loader.parse(object_data, function (obj) {
         obj.geometry.computeVertexNormals();
@@ -106,7 +116,6 @@ function handle_set_object(path, object_data) {
 
 
 function handle_command(cmd) {
-    console.log("cmd:", cmd);
     if (cmd.type == "set_property") {
         set_property(cmd.path, cmd.property, cmd.value);
     } else if (cmd.type == "set_transform") {
@@ -299,3 +308,4 @@ function animate() {
     renderer.render(scene, camera);
 }
 animate();
+

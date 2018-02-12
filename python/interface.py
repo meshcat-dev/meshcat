@@ -1,3 +1,4 @@
+import time
 import threading
 import random
 import uuid
@@ -64,9 +65,14 @@ if __name__ == '__main__':
             )
 
         ])
-        manager.send_to_all(msg.pack())
+        now = time.time()
+        packed = msg.pack()
+        print("pack:", time.time() - now)
+        # manager.send_to_all(msg.pack())
+        now = time.time()
+        manager.send_to_all(packed)
+        print("send:", time.time() - now)
         # manager.send_to_all(umsgpack.packb(msg.serialize()))
 
         # break
-        import time
-        time.sleep(1)
+        time.sleep(0.1)
