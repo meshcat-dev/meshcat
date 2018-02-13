@@ -37,7 +37,7 @@ if __name__ == '__main__':
             ),
             g.SetObject(
                 g.Points(
-                    g.PointsGeometry(verts, verts),
+                    g.PointsGeometry(verts, color=verts),
                     g.PointsMaterial()
                 ),
                 ["primitives", "points"]
