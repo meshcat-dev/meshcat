@@ -56,7 +56,6 @@ function set_property(path, property, value) {
 }
 
 function dispose(object) {
-    console.log(object);
     object.geometry.dispose();
     if (object.material.map) {
         object.material.map.dispose();
@@ -106,6 +105,7 @@ function handle_set_object(path, object_data) {
     object_data.geometries = object_data.geometries.map(handle_special_geometry);
     let loader = new THREE.ObjectLoader();
     loader.parse(object_data, function (obj) {
+        console.log(obj);
         obj.geometry.computeVertexNormals();
         if (obj.name === "") {
             obj.name = "<object>";
@@ -116,6 +116,7 @@ function handle_set_object(path, object_data) {
 
 
 function handle_command(cmd) {
+    console.log(cmd);
     if (cmd.type == "set_property") {
         set_property(cmd.path, cmd.property, cmd.value);
     } else if (cmd.type == "set_transform") {

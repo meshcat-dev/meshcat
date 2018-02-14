@@ -76,7 +76,7 @@ TODO: Either actually parse the .desktop file or find a better way to do this
 function work_around_xdg_open_issue(url)
 	desktop_file = readstring(`xdg-mime query default text/html`)
 	execname = split(desktop_file, '.')[1]
-	open(`$execname $url`)
+	open(`$execname --new-window $url`)
 end
 
 function open_url(url)
