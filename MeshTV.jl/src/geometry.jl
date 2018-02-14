@@ -76,6 +76,21 @@ function serialize(material::MeshMaterial, uuid=uuid1())
     )
 end
 
+abstract type AbstractCommand end
+
+struct SetObject{O <: AbstractObject} <: AbstractCommand
+    object::O
+    path::Vector{Symbol}
+end
+
+function serialize(cmd::SetObject)
+    Dict{String, Any}(
+        "type" => "set_object",
+        "object" => serialize(cmd.object)
+        "path" => cmd.path
+    )
+end
 
 
 
+end
