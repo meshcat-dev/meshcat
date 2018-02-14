@@ -7,7 +7,7 @@ struct WebSocketPool
 	sockets::Set{WebSocket}
 	new_connection_queue::Channel{WebSocket}
 
-	WebSocketPool(sockets=Set{WebSocket}(), new_connection_queue=Channel{WebSocket}(32)) = 
+	WebSocketPool(sockets=Set{WebSocket}(), new_connection_queue=Channel{WebSocket}(32)) =
 		new(sockets, new_connection_queue)
 end
 
@@ -20,7 +20,9 @@ function ensure_connection!(pool::WebSocketPool)
 	if isempty(pool.sockets)
 		# Block for at least one connection
 		println("Waiting for a websocket connection...")
-		wait(pool.new_connection_queue)
+		while !isready(pool.new_connection_queue)
+			sleep(0.1)
+		end
 		println("...client connected!")
 	end
 	# Get any new connections
@@ -60,7 +62,7 @@ end
 
 
 function url_with_query(address; params...)
-	string(address, 
+	string(address,
 	       "?",
 	       join([string(escape(string(k)), "=", escape(string(v))) for (k, v) in params], '&'))
 end
@@ -68,7 +70,7 @@ end
 """
 Work-around for https://bugs.freedesktop.org/show_bug.cgi?id=45857
 
-This is a terrible, terrible hack. 
+This is a terrible, terrible hack.
 TODO: Either actually parse the .desktop file or find a better way to do this
 """
 function work_around_xdg_open_issue(url)
@@ -115,8 +117,8 @@ function ViewerWindow(; host::AbstractString="127.0.0.1", port::Integer=5001)
 	window
 end
 
-# const viewer_html = joinpath(@__DIR__, "..", "..", "viewer", "three.html")
-const viewer_html = joinpath(@__DIR__, "..", "..", "simple_receiver.html")
+const viewer_html = joinpath(@__DIR__, "..", "..", "viewer", "three.html")
+# const viewer_html = joinpath(@__DIR__, "..", "..", "simple_receiver.html")
 
 function Base.open(window::ViewerWindow)
 	url = url_with_query(string("file://", abspath(viewer_html)),
@@ -125,12 +127,13 @@ function Base.open(window::ViewerWindow)
 	open_url(url)
 end
 
-window = ViewerWindow(port=8765)
-
 Base.send(window::ViewerWindow, msg) = send(window.pool, msg)
 
-for i in 1:100
-	send(window, "hello $i")
-	sleep(1)
-end
+# window = ViewerWindow(port=8765)
+
+
+# for i in 1:100
+# 	send(window, "hello $i")
+# 	sleep(1)
+# end
 
