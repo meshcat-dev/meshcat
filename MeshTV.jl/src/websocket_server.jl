@@ -80,6 +80,7 @@ function work_around_xdg_open_issue(url)
 end
 
 function open_url(url)
+	@show url
 	try
 		@static if is_windows()
 			run(`start $url`)
@@ -100,20 +101,22 @@ function open_url(url)
 end
 
 struct ViewerWindow
-	host::String
+	host::IPv4
 	port::Int
 	pool::WebSocketPool
 	server::Server
 end
 
-function ViewerWindow(; host::AbstractString="127.0.0.1", port::Integer=5001)
+function ViewerWindow(; host::IPv4=ip"127.0.0.1", port::Integer=5001, open=true)
 	pool = WebSocketPool()
 	server = Server(pool)
 	@async run(server, port)
 	# Yield once to let the server start
 	yield()
 	window = ViewerWindow(host, port, pool, server)
-	open(window)
+	if open
+		Base.open(window)
+	end
 	window
 end
 
@@ -129,11 +132,55 @@ end
 
 Base.send(window::ViewerWindow, msg) = send(window.pool, msg)
 
-# window = ViewerWindow(port=8765)
+struct IJuliaCell
+	window::ViewerWindow
+    embed::Bool
 
+    IJuliaCell(window, embed=false) = new(window, embed)
+end
 
-# for i in 1:100
-# 	send(window, "hello $i")
-# 	sleep(1)
-# end
+function Base.show(io::IO, ::MIME"text/html", frame::IJuliaCell)
+    if frame.embed
+        show_embed(io, frame)
+    else
+        show_inline(io, frame)
+    end
+end
 
+function show_inline(io::IO, frame::IJuliaCell)
+    # This is a bit more complicated than it really should be. The problem is
+    # that embedding an IFrame with a local file source causes the query 
+    # parameters to be stripped for some reason, so we have to generate a 
+    # full URL using the current location. 
+    id = Base.Random.uuid1()
+    print(io, """
+<iframe id="$id" src="" height=500 width=800></iframe>
+<script>
+let viewer = document.getElementById("$id");
+viewer.src = location.origin + "/files/viewer/three.html?host=$(frame.window.host)&port=$(frame.window.port)";
+</script>
+""")
+end
+
+srcdoc_escape(x) = replace(replace(x, "&", "&amp;"), "\"", "&quot;")
+
+function show_embed(io::IO, frame::IJuliaCell)
+    id = Base.Random.uuid1()
+    print(io, """
+    <iframe id="$id" srcdoc="$(srcdoc_escape(readstring(open(joinpath(@__DIR__, "..", "..", "viewer", "build", "inline.html")))))" height=500 width=800>
+    </iframe>
+    <script>
+    function try_to_connect() {
+        console.log("trying");
+        let frame = document.getElementById("$id");
+        if (frame && frame.contentWindow !== undefined && frame.contentWindow.connect !== undefined) {
+            frame.contentWindow.connect("$(frame.window.host)", $(frame.window.port));
+        } else {
+            console.log("could not connect");
+          setTimeout(try_to_connect, 100);
+        }
+    }
+    setTimeout(try_to_connect, 1);
+    </script>
+    """)
+end

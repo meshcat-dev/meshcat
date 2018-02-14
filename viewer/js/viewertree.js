@@ -153,12 +153,11 @@ function handle_name_server_message(message) {
     }
 }
 
-let params = new URLSearchParams(location.search.slice(1));
-let host = params.get('host') || "127.0.0.1";
-let port = params.get('port') || "5005";
-let url = `ws://${host}:${port}`;
-console.log(url);
-handle_name_server_message(url);
+function connect(host, port) {
+    let url = `ws://${host}:${port}`;
+    console.log(url);
+    handle_name_server_message(url);
+}
 
 function listen_for_client() {
     var request = new XMLHttpRequest();
@@ -296,6 +295,13 @@ function create_options(node, element) {
 }
 
 create_options(scene, document.getElementById("scene-controls"));
+
+let params = new URLSearchParams(location.search.slice(1));
+let host = params.get("host");
+let port = params.get("port");
+if (host !== null && port !== null) {
+    connect(host, port);
+}
 
 
 function animate() {

@@ -1,0 +1,17 @@
+
+<html>
+<head>
+  <title>embed</title>
+</head>
+<body>
+  Hello world
+  <script id="foo">
+    console.log("hello");
+    if (typeof params === "undefined") {
+      var params = new URLSearchParams(location.search.slice(1));
+    }
+    console.log(location);
+    console.log(params);
+  </script>
+</body>
+</html>
