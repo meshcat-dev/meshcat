@@ -11,8 +11,8 @@ class SceneElement:
 
 
 class ReferenceSceneElement(SceneElement):
-    def serialize_in_object(self, object_data):
-        object_data.setdefault(self.field, []).append(self.serialize(object_data))
+    def lower_in_object(self, object_data):
+        object_data.setdefault(self.field, []).append(self.lower(object_data))
         return self.uuid
 
 
@@ -37,7 +37,7 @@ class Box(Geometry):
         super().__init__()
         self.lengths = lengths
 
-    def serialize(self, object_data):
+    def lower(self, object_data):
         return {
             "uuid": self.uuid,
             "type": "BoxGeometry",
@@ -55,7 +55,7 @@ class MeshMaterial(Material):
         self.map = map
         self.properties = kwargs
 
-    def serialize(self, object_data):
+    def lower(self, object_data):
         data = {
             "uuid": self.uuid,
             "type": self._type,
@@ -64,7 +64,7 @@ class MeshMaterial(Material):
         }
         data.update(self.properties)
         if self.map is not None:
-            data["map"] = self.map.serialize_in_object(object_data)
+            data["map"] = self.map.lower_in_object(object_data)
         return data
 
 
@@ -94,7 +94,7 @@ class PngImage(Image):
         with open(fname, "rb") as f:
             return PngImage(f.read())
 
-    def serialize(self, object_data):
+    def lower(self, object_data):
         return {
             "uuid": self.uuid,
             "url": "data:image/png;base64," + base64.b64encode(self.data).decode('ascii')
@@ -106,12 +106,12 @@ class GenericTexture(Texture):
         super().__init__()
         self.properties = properties
 
-    def serialize(self, object_data):
+    def lower(self, object_data):
         data = {"uuid": self.uuid}
         data.update(self.properties)
         if "image" in data:
             image = data["image"]
-            data["image"] = image.serialize_in_object(object_data)
+            data["image"] = image.lower_in_object(object_data)
         return data
 
 
@@ -123,12 +123,12 @@ class ImageTexture(Texture):
         self.repeat = repeat
         self.properties = kwargs
 
-    def serialize(self, object_data):
+    def lower(self, object_data):
         data = {
             "uuid": self.uuid,
             "wrap": self.wrap,
             "repeat": self.repeat,
-            "image": self.image.serialize_in_object(object_data)
+            "image": self.image.lower_in_object(object_data)
         }
         data.update(self.properties)
         return data
@@ -139,12 +139,12 @@ class GenericMaterial(Material):
         self.properties = properties
         self.uuid = str(uuid.uuid1())
 
-    def serialize(self, object_data):
+    def lower(self, object_data):
         data = {"uuid": self.uuid}
         data.update(self.properties)
         if "map" in data:
             texture = data["map"]
-            data["map"] = texture.serialize_in_object(object_data)
+            data["map"] = texture.lower_in_object(object_data)
         return data
 
 
@@ -154,7 +154,7 @@ class Object(SceneElement):
         self.geometry = geometry
         self.material = material
 
-    def serialize(self):
+    def lower(self):
         data = {
             "metadata": {
                 "version": 4.5,
@@ -169,8 +169,8 @@ class Object(SceneElement):
                 "material": self.material.uuid
             }
         }
-        self.geometry.serialize_in_object(data)
-        self.material.serialize_in_object(data)
+        self.geometry.lower_in_object(data)
+        self.material.lower_in_object(data)
         return data
 
 
@@ -215,7 +215,7 @@ class ObjMeshGeometry(Geometry):
         super().__init__()
         self.contents = contents
 
-    def serialize(self, object_data):
+    def lower(self, object_data):
         return {
             "type": "_meshfile",
             "uuid": self.uuid,
@@ -235,7 +235,7 @@ class PointsGeometry(Geometry):
         self.points = points
         self.color = color
 
-    def serialize(self, object_data):
+    def lower(self, object_data):
         attrs = {"position": pack_numpy_array(self.points)}
         if self.color is not None:
             attrs["color"] = pack_numpy_array(self.color)
@@ -254,7 +254,7 @@ class PointsMaterial(Material):
         self.size = size
         self.color = color
 
-    def serialize(self, object_data):
+    def lower(self, object_data):
         return {
             "uuid": self.uuid,
             "type": "PointsMaterial",
@@ -268,43 +268,4 @@ class Points(Object):
     _type = "Points"
 
 
-class SetObject:
-    def __init__(self, object, path=[]):
-        self.object = object
-        self.path = path
 
-    def serialize(self):
-        return {
-            "type": "set_object",
-            "object": self.object.serialize(),
-            "path": self.path
-        }
-
-
-class SetTransform:
-    def __init__(self, position, quaternion, path=[]):
-        self.position = position
-        self.quaternion = quaternion
-        self.path = path
-
-    def serialize(self):
-        return {
-            "type": "set_transform",
-            "path": self.path,
-            "position": self.position,
-            "quaternion": self.quaternion
-        }
-
-
-
-class ViewerMessage:
-    def __init__(self, commands):
-        self.commands = commands
-
-    def serialize(self):
-        return {
-            "commands": [c.serialize() for c in self.commands]
-        }
-
-    def pack(self):
-        return umsgpack.packb(self.serialize())

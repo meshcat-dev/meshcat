@@ -1,53 +1,69 @@
-import time
-import threading
-import random
-import uuid
-
+import umsgpack
 import numpy as np
 
-import server
-import window
-import geometry as g
+from .servers.window import ViewerWindow
+from .commands import ViewerMessage
+
+
+class Visualizer:
+    def __init__(self, window=None, open=True):
+        if window is None:
+            window = ViewerWindow()
+        self.window = window
+        if open:
+            self.window.open()
+        else:
+            print("You can open the visualizer by visiting the following URL:")
+            print(self.window.url())
+
+    def send(self, commands):
+        self.window.send(
+            umsgpack.packb(ViewerMessage(commands).lower())
+        )
 
 
 if __name__ == '__main__':
-    socket_port = 5500
-    window.launch_local(socket_port)
-    manager = server.WebsocketManager(socket_port)
+    import time
+    import random
+
+    from . import geometry as g
+    from .commands import SetObject, SetTransform
+
+    vis = Visualizer()
 
     with open("../head_multisense.obj", "r") as f:
         mesh_data = f.read()
 
     while True:
         verts = np.random.random((3, 100000)).astype(np.float32)
-        msg = g.ViewerMessage([
-            g.SetObject(
+        vis.send([
+            SetObject(
                 g.Mesh(
                     g.Box([0.2, 0.1, 0.2]),
                     g.MeshLambertMaterial(0xffffff)
                 ),
                 ["primitives", "box"]
             ),
-            g.SetObject(
+            SetObject(
                 g.Mesh(
                     g.Box([0.2, 0.1, 0.2]),
                     g.MeshLambertMaterial(color=0xffffff)
                 ),
                 []
             ),
-            g.SetObject(
+            SetObject(
                 g.Points(
                     g.PointsGeometry(verts, color=verts),
                     g.PointsMaterial()
                 ),
                 ["primitives", "points"]
             ),
-            g.SetTransform(
+            SetTransform(
                 [random.random() for i in range(3)],
                 [0, 0, 0, 1],
                 ["primitives"]
             ),
-            g.SetObject(
+            SetObject(
                 g.Mesh(
                     g.ObjMeshGeometry.from_file("../head_multisense.obj"),
                     g.MeshLambertMaterial(
@@ -58,21 +74,17 @@ if __name__ == '__main__':
                 ),
                 ["robots", "valkryie", "head"]
             ),
-            g.SetTransform(
+            SetTransform(
                 [0, 0, 1],
                 [0, 0, 0, 1],
                 ["robots", "valkryie", "head"]
             )
 
         ])
-        now = time.time()
-        packed = msg.pack()
-        print("pack:", time.time() - now)
-        # manager.send_to_all(msg.pack())
-        now = time.time()
-        manager.send_to_all(packed)
-        print("send:", time.time() - now)
-        # manager.send_to_all(umsgpack.packb(msg.serialize()))
+        time.sleep(1)
 
-        # break
-        time.sleep(0.1)
+
+
+
+
+

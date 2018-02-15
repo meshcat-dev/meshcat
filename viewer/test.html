@@ -1,17 +1,29 @@
-
+<!DOCTYPE html>
 <html>
 <head>
-  <title>embed</title>
+	<meta charset="utf-8">
+	<title>hello</title>
 </head>
 <body>
-  Hello world
-  <script id="foo">
-    console.log("hello");
-    if (typeof params === "undefined") {
-      var params = new URLSearchParams(location.search.slice(1));
-    }
-    console.log(location);
-    console.log(params);
-  </script>
+	<ul id="messages">
+	</ul>
+
+	<script>
+let params = new URLSearchParams(location.search.slice(1));
+let host = params.get("host");
+let port = params.get("port");
+let url = `ws://${host}:${port}`;
+console.log(url);
+
+let ws = new WebSocket(url);
+ws.onmessage = function(msg) {
+	let ul = document.getElementById("messages");
+	let item = document.createElement("li");
+	item.appendChild(document.createTextNode(msg.data));
+	ul.appendChild(item);
+}
+</script>
+
+
 </body>
 </html>
