@@ -42,7 +42,9 @@ function Base.send(pool::WebSocketPool, msg)
 	ensure_connection!(pool)
 	@sync begin
 		for socket in pool.sockets
-			@async write(socket, msg)
+			if isopen(socket)
+				@async write(socket, msg)
+			end
 		end
 	end
 end

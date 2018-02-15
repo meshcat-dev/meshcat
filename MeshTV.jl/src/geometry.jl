@@ -40,6 +40,10 @@ end
 	_type::String
 	color::Colorant = RGB(1., 1., 1.)   # not a concrete type, but probably not a major performance problem
     map::Union{Texture, Void} = nothing
+    depthFunc::Int = 3
+    depthTest::Bool = true
+    depthWrite::Bool = true
+    emissive::Float32 = 0
 end
 
 MeshBasicMaterial(;kw...) = MeshMaterial(_type="MeshBasicMaterial"; kw...)
@@ -94,7 +98,7 @@ end
 
 function lower(obj::AbstractObject, uuid=uuid1())
 	data = Dict{String, Any}(
-	    "metadata" => Dict{String, Any}("version" => 4.5, "type" => "Object"),
+	    "metadata" => Dict{String, Any}("version" => 4.5, "type" => "Object", "generator" => "Object3D.toJSON"),
         "object" => Dict{String, Any}(
             "uuid" => string(uuid),
             "type" => threejs_type(obj),
@@ -183,6 +187,10 @@ function lower(material::MeshMaterial, uuid=uuid1())
         "color" => string("0x", hex(convert(RGB, material.color))),
         "transparent" => alpha(material.color) != 1,
         "opacity" => alpha(material.color),
+        "depthFunc" => material.depthFunc,
+        "depthTest" => material.depthTest,
+        "depthWrite" => material.depthWrite,
+        "emissive" => material.emissive
     )
     if material.map !== nothing
         uuid = uuid1()

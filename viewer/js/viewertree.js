@@ -105,8 +105,9 @@ function handle_set_object(path, object_data) {
     object_data.geometries = object_data.geometries.map(handle_special_geometry);
     let loader = new THREE.ObjectLoader();
     loader.parse(object_data, function (obj) {
-        console.log(obj);
-        obj.geometry.computeVertexNormals();
+        if (obj.geometry.type == "BufferGeometry") {
+            obj.geometry.computeVertexNormals();
+        }
         if (obj.name === "") {
             obj.name = "<object>";
         }
@@ -116,7 +117,6 @@ function handle_set_object(path, object_data) {
 
 
 function handle_command(cmd) {
-    console.log(cmd);
     if (cmd.type == "set_property") {
         set_property(cmd.path, cmd.property, cmd.value);
     } else if (cmd.type == "set_transform") {
@@ -292,6 +292,54 @@ function create_options(node, element) {
             create_options(child, children);
         }
     }
+}
+
+// https://stackoverflow.com/a/35251739
+function download_file(name, contents, mime) {
+    mime = mime || "text/plain";
+    let blob = new Blob([contents], {type: mime});
+    let link = document.createElement("a");
+    document.body.appendChild(link);
+    link.download = name;
+    link.href = window.URL.createObjectURL(blob);
+    link.onclick = function(e) {
+        let scope = this;
+        setTimeout(function() {
+            window.URL.revokeObjectURL(scope.href);
+        }, 1500);
+    };
+    link.click();
+    link.remove();
+}
+
+function save_scene() {
+    download_file("scene.json", JSON.stringify(scene.toJSON()));
+}
+
+function handle_load_file() {
+    let file = this.files[0];
+    if (!file) {
+        return
+    }
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        let contents = this.result;
+        let json = JSON.parse(contents);
+        let loader = new THREE.ObjectLoader();
+        scene = loader.parse(json);
+        update_gui();
+    };
+    reader.readAsText(file);
+}
+
+// https://stackoverflow.com/a/26298948
+function load_scene() {
+    let input = document.createElement("input");
+    input.type = "file";
+    document.body.appendChild(input);
+    input.addEventListener("change", handle_load_file, false);
+    input.click();
+    input.remove();
 }
 
 create_options(scene, document.getElementById("scene-controls"));
