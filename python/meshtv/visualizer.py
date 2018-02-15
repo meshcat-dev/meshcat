@@ -6,7 +6,7 @@ from .commands import ViewerMessage
 
 
 class Visualizer:
-    def __init__(self, window=None, open=True):
+    def __init__(self, window=None, open=False):
         if window is None:
             window = ViewerWindow()
         self.window = window
@@ -16,10 +16,17 @@ class Visualizer:
             print("You can open the visualizer by visiting the following URL:")
             print(self.window.url())
 
+    def open(self):
+        self.window.open()
+
     def send(self, commands):
         self.window.send(
             umsgpack.packb(ViewerMessage(commands).lower())
         )
+
+    def jupyter_cell(self, height=500, width=800):
+        from IPython.display import IFrame
+        return IFrame(self.window.url(), height=height, width=width)
 
 
 if __name__ == '__main__':
@@ -29,7 +36,7 @@ if __name__ == '__main__':
     from . import geometry as g
     from .commands import SetObject, SetTransform
 
-    vis = Visualizer()
+    vis = Visualizer().open()
 
     with open("../head_multisense.obj", "r") as f:
         mesh_data = f.read()

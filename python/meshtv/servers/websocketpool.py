@@ -14,7 +14,7 @@ class WebSocketPool():
 
     def start(self, host="127.0.0.1", default_port=5000, max_attempts=1000):
         self.host = host
-        self.loop = asyncio.get_event_loop()
+        self.loop = asyncio.new_event_loop()
         for i in range(max_attempts):
             self.port = default_port + i
             start_server = websockets.serve(self.handle_new_connection,
