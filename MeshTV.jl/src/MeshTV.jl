@@ -1,10 +1,11 @@
 module MeshTV
 
-include("websocket_server.jl")
-using .Servers
-
+include("servers.jl")
+include("ijulia.jl")
 include("geometry.jl")
+include("objects.jl")
 include("commands.jl")
+include("lowering.jl")
 include("msgpack.jl")
 
 end

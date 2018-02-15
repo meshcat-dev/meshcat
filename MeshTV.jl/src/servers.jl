@@ -1,14 +1,6 @@
-module Servers
-
-export ViewerWindow,
-    IJuliaCell
-
 using HttpServer
 using WebSockets
 using URIParser: escape
-
-include("file_server.jl")
-
 
 struct WebSocketPool
 	sockets::Set{WebSocket}
@@ -98,6 +90,56 @@ struct ViewerWindow
 	port::Int
 end
 
+const viewer_root = joinpath(@__DIR__, "..", "..", "viewer")
+const viewer_html = joinpath(viewer_root, "three.html")
+
+function handle_viewer_file_request(req, res)
+    parts = split(req.resource, '/')
+    if parts[1] != ""
+        return Response(404)
+    end
+    if length(parts) == 2
+        path = joinpath(viewer_root, parts[2])
+    else
+        if length(parts) != 3
+            return Response(404)
+        end
+        if parts[2] != "js"
+            return Response(404)
+        end
+        path = joinpath(viewer_root, parts[2], parts[3])
+    end
+    path = split(path, "?")[1]
+    if isfile(path)
+        open(path) do file
+            return Response(read(file))
+        end
+    else
+        return Response(404)
+    end
+end
+
+function find_available_port(get_handlers::Function, host=IPv4(127,0,0,1); default=8000, max_attempts=1000)
+    HttpServer.initcbs()
+    for i in 1:max_attempts
+        port = default + i - 1
+        try
+            server = Server(get_handlers()...)
+            listen(server, host, port)
+            @async HttpServer.handle_http_request(server)
+            return server, port
+        catch e
+            if e isa Base.UVError
+                println("Port $(host):$(port) in use, trying another")
+            else
+                rethrow(e)
+            end
+        end
+    end
+    error("Could not find a port to use")
+end
+
+
 function ViewerWindow(; host::IPv4=ip"127.0.0.1", open=true)
 	pool = WebSocketPool()
 
@@ -116,7 +158,6 @@ function ViewerWindow(; host::IPv4=ip"127.0.0.1", open=true)
 	window
 end
 
-const viewer_html = joinpath(@__DIR__, "..", "..", "viewer", "three.html")
 
 function geturl(window::ViewerWindow)
     url = url_with_query(string("http://", window.host, ":", window.port, "/three.html"),
@@ -127,73 +168,3 @@ end
 Base.open(window::ViewerWindow) = open_url(geturl(window))
 
 Base.send(window::ViewerWindow, msg) = send(window.pool, msg)
-
-struct IJuliaCell
-	window::ViewerWindow
-    embed::Bool
-
-    IJuliaCell(window, embed=false) = new(window, embed)
-end
-
-function Base.show(io::IO, ::MIME"text/html", frame::IJuliaCell)
-    if frame.embed
-        show_embed(io, frame)
-    else
-        show_inline(io, frame)
-    end
-end
-
-function show_inline(io::IO, frame::IJuliaCell)
-    print(io, """
-<iframe src="$(geturl(frame.window))" height=500 width=800></iframe>
-""")
-end
-
-srcdoc_escape(x) = replace(replace(x, "&", "&amp;"), "\"", "&quot;")
-
-function show_embed(io::IO, frame::IJuliaCell)
-    id = Base.Random.uuid1()
-    print(io, """
-    <iframe id="$id" srcdoc="$(srcdoc_escape(readstring(open(joinpath(@__DIR__, "..", "..", "viewer", "build", "inline.html")))))" height=500 width=800>
-    </iframe>
-    <script>
-    function try_to_connect() {
-        console.log("trying");
-        let frame = document.getElementById("$id");
-        if (frame && frame.contentWindow !== undefined && frame.contentWindow.connect !== undefined) {
-            frame.contentWindow.connect("$(frame.window.host)", $(frame.window.port));
-        } else {
-            console.log("could not connect");
-          setTimeout(try_to_connect, 100);
-        }
-    }
-    setTimeout(try_to_connect, 1);
-    </script>
-    """)
-end
-
-struct Snapshot
-	json::String
-end
-
-Snapshot(io::IO) = Snapshot(readstring(io))
-
-function Base.show(io::IO, ::MIME"text/html", snap::Snapshot)
-	content = readstring(open(joinpath(@__DIR__, "..", "..", "viewer", "build", "inline.html")))
-	# TODO: there has to be a better way than doing a replace() on the html.
-	script = """
-	<script>
-	scene = new THREE.ObjectLoader().parse(JSON.parse(`$(snap.json)`));
-	update_gui();
-	</script>
-	</body>
-	"""
-	html = replace(content, "</body>", script)
-	print(io, """
-	<iframe srcdoc="$(srcdoc_escape(html))" height=500 width=800>
-	</iframe>
-	""")
-end
-
-
-end
