@@ -45,12 +45,13 @@ end
 
 struct Snapshot
 	json::String
+
+    Snapshot(fname::AbstractString) = new(open(readstring, fname))
+    Snapshot(io::IO) = new(readstring(io))
 end
 
-Snapshot(io::IO) = Snapshot(readstring(io))
-
 function Base.show(io::IO, ::MIME"text/html", snap::Snapshot)
-	content = readstring(open(joinpath(@__DIR__, "..", "..", "viewer", "build", "inline.html")))
+	content = readstring(open(joinpath(viewer_root, "build", "inline.html")))
 	# TODO: there has to be a better way than doing a replace() on the html.
 	script = """
 	<script>
