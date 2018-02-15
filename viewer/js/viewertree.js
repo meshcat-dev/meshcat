@@ -72,6 +72,7 @@ function set_object(path, object) {
     }
     parent.add(object);
     update_gui();
+    update_embed();
 }
 
 function delete_path(path) {
@@ -81,6 +82,7 @@ function delete_path(path) {
         parent.remove(child);
         dispose(child);
         update_gui();
+        update_embed();
     }
 }
 
@@ -328,6 +330,7 @@ function handle_load_file() {
         let loader = new THREE.ObjectLoader();
         scene = loader.parse(json);
         update_gui();
+        update_embed();
     };
     reader.readAsText(file);
 }
@@ -349,6 +352,22 @@ let host = params.get("host");
 let port = params.get("port");
 if (host !== null && port !== null) {
     connect(host, port);
+}
+
+var embed_pending = false;
+var embed_enabled = false;
+
+function embed() {
+    embed_pending = false;
+    let script = document.getElementById("embedded-json");
+    script.text = `scene = new THREE.ObjectLoader().parse(JSON.parse(\`${JSON.stringify(scene.toJSON())}\`)); update_gui();`;
+}
+
+function update_embed() {
+    if (embed_pending || !embed_enabled) {
+        return;
+    }
+    setTimeout(embed, 1000);
 }
 
 
