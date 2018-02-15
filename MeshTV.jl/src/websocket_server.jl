@@ -66,27 +66,10 @@ function WebSockets.WebSocketHandler(pool::WebSocketPool)
 	end
 end
 
-# function HttpServer.Server(pool::WebSocketPool)
-# 	Server(handler)
-# end
-
-
 function url_with_query(address; params...)
 	string(address,
 	       "?",
 	       join([string(escape(string(k)), "=", escape(string(v))) for (k, v) in params], '&'))
-end
-
-"""
-Work-around for https://bugs.freedesktop.org/show_bug.cgi?id=45857
-
-This is a terrible, terrible hack.
-TODO: Either actually parse the .desktop file or find a better way to do this
-"""
-function work_around_xdg_open_issue(url)
-	desktop_file = readstring(`xdg-mime query default text/html`)
-	execname = split(desktop_file, '.')[1]
-	open(`$execname --new-window $url`)
 end
 
 function open_url(url)
@@ -97,11 +80,7 @@ function open_url(url)
 		elseif is_apple()
 			run(`open $url`)
 		elseif is_linux()
-			if startswith(url, "file://")
-				work_around_xdg_open_issue(url)
-			else
-				run(`xdg-open $url`)
-			end
+			run(`xdg-open $url`)
 		end
 	catch e
 		println("Could not open browser automatically: $e")
@@ -113,26 +92,22 @@ end
 struct ViewerWindow
 	host::IPv4
 	pool::WebSocketPool
-	websocket_server::Tuple{Server, Int}
-    file_server::Tuple{Server, Int}
+	server::Server
+	port::Int
 end
 
 function ViewerWindow(; host::IPv4=ip"127.0.0.1", open=true)
 	pool = WebSocketPool()
 
-    websocket_server, websocket_port = find_available_port(host; default=5000) do
-        WebSocketHandler(pool)
-    end
-
-    file_server, file_port = find_available_port(host; default=8000) do
-        HttpHandler(handle_viewer_file_request)
-    end
+	# The server handles both HTTP requests (for the viewer html and js)
+	# and the websocket requests from the viewer itself.
+	server, port = find_available_port(host; default=5000) do
+		HttpHandler(handle_viewer_file_request), WebSocketHandler(pool)
+	end
 
 	# Yield once to let the servers start
 	yield()
-	window = ViewerWindow(host, pool, 
-                          (websocket_server, websocket_port),
-                          (file_server, file_port))
+	window = ViewerWindow(host, pool, server, port)
 	if open
 		Base.open(window)
 	end
@@ -140,21 +115,14 @@ function ViewerWindow(; host::IPv4=ip"127.0.0.1", open=true)
 end
 
 const viewer_html = joinpath(@__DIR__, "..", "..", "viewer", "three.html")
-# const viewer_html = joinpath(@__DIR__, "..", "..", "simple_receiver.html")
 
 function geturl(window::ViewerWindow)
-    url = url_with_query(string("http://", window.host, ":", window.file_server[2], "/three.html"),
+    url = url_with_query(string("http://", window.host, ":", window.port, "/three.html"),
                          host=window.host,
-                         port=window.websocket_server[2])
+                         port=window.port)
 end
 
-function Base.open(window::ViewerWindow)
-    url = geturl(window)
-	# url = url_with_query(string("file://", abspath(viewer_html)),
-	#                      host=window.host,
-	#                      port=window.port)
-	open_url(url)
-end
+Base.open(window::ViewerWindow) = open_url(geturl(window))
 
 Base.send(window::ViewerWindow, msg) = send(window.pool, msg)
 
@@ -191,7 +159,7 @@ function show_embed(io::IO, frame::IJuliaCell)
         console.log("trying");
         let frame = document.getElementById("$id");
         if (frame && frame.contentWindow !== undefined && frame.contentWindow.connect !== undefined) {
-            frame.contentWindow.connect("$(frame.window.host)", $(frame.window.websocket_server[2]));
+            frame.contentWindow.connect("$(frame.window.host)", $(frame.window.port));
         } else {
             console.log("could not connect");
           setTimeout(try_to_connect, 100);
@@ -201,43 +169,5 @@ function show_embed(io::IO, frame::IJuliaCell)
     </script>
     """)
 end
-
-# function show_inline(io::IO, frame::IJuliaCell)
-#     # This is a bit more complicated than it really should be. The problem is
-#     # that embedding an IFrame with a local file source causes the query 
-#     # parameters to be stripped for some reason, so we have to generate a 
-#     # full URL using the current location. 
-#     id = Base.Random.uuid1()
-#     print(io, """
-# <iframe id="$id" src="" height=500 width=800></iframe>
-# <script>
-# let viewer = document.getElementById("$id");
-# viewer.src = location.origin + "/files/viewer/three.html?host=$(frame.window.host)&port=$(frame.window.port)";
-# </script>
-# """)
-# end
-
-# srcdoc_escape(x) = replace(replace(x, "&", "&amp;"), "\"", "&quot;")
-
-# function show_embed(io::IO, frame::IJuliaCell)
-#     id = Base.Random.uuid1()
-#     print(io, """
-#     <iframe id="$id" srcdoc="$(srcdoc_escape(readstring(open(joinpath(@__DIR__, "..", "..", "viewer", "build", "inline.html")))))" height=500 width=800>
-#     </iframe>
-#     <script>
-#     function try_to_connect() {
-#         console.log("trying");
-#         let frame = document.getElementById("$id");
-#         if (frame && frame.contentWindow !== undefined && frame.contentWindow.connect !== undefined) {
-#             frame.contentWindow.connect("$(frame.window.host)", $(frame.window.port));
-#         } else {
-#             console.log("could not connect");
-#           setTimeout(try_to_connect, 100);
-#         }
-#     }
-#     setTimeout(try_to_connect, 1);
-#     </script>
-#     """)
-# end
 
 end

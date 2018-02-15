@@ -1,5 +1,3 @@
-module Geometry
-
 using GeometryTypes
 using CoordinateTransformations
 
@@ -10,15 +8,6 @@ using Parameters: @with_kw
 using Base.Random: UUID, uuid1
 
 import Base: length
-
-export Mesh,
-       MeshBasicMaterial,
-       MeshLambertMaterial,
-       MeshPhongMaterial,
-       PngImage,
-       Texture,
-       lower,
-       SetObject
 
 const GeometryLike = Union{AbstractGeometry, AbstractMesh}
 abstract type AbstractObject end
@@ -218,22 +207,11 @@ function lower(img::PngImage, uuid=uuid1())
     )
 end
 
-abstract type AbstractCommand end
 
-struct SetObject{O <: AbstractObject} <: AbstractCommand
-    object::O
-    path::Vector{Symbol}
-end
+quaternion_xyzw(::IdentityTransformation) = SVector(0., 0, 0, 1)
+quaternion_xyzw(tform::AbstractAffineMap) = quaternion_xyzw(transform_deriv(tform, SVector(0., 0, 0)))
+quaternion_xyzw(matrix::UniformScaling) = quaternion_xyzw(IdentityTransformation())
+quaternion_xyzw(matrix::AbstractMatrix) = quaternion_xyzw(Quat(matrix))
+quaternion_xyzw(quat::Quat) = SVector(quat.x, quat.y, quat.z, quat.w)
 
-function lower(cmd::SetObject)
-    Dict{String, Any}(
-        "type" => "set_object",
-        "object" => lower(cmd.object),
-        "path" => string.(cmd.path)
-    )
-end
-
-
-
-
-end
+translation(tform::Transformation) = tform(SVector(0., 0, 0))

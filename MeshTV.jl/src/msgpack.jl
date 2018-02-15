@@ -1,5 +1,4 @@
 import MsgPack: pack, Ext
-using .Geometry: PackedVector
 
 extcode(v::PackedVector) = extcode(eltype(v.data))
 extcode(::Type{UInt8}) = 0x12
@@ -9,4 +8,4 @@ extcode(::Type{Float32}) = 0x17
 
 pack(io::IO, v::PackedVector) = pack(io, Ext(extcode(v), reinterpret(UInt8, v.data, (sizeof(v.data),))))
 
-pack(s::IO, cmd::SetObject) = pack(s, lower(cmd))
+pack(s::IO, cmd::AbstractCommand) = pack(s, lower(cmd))

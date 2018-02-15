@@ -4,8 +4,7 @@ include("websocket_server.jl")
 using .Servers
 
 include("geometry.jl")
-using .Geometry
-
+include("commands.jl")
 include("msgpack.jl")
 
 end

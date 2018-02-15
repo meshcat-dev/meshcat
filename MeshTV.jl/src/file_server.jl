@@ -28,12 +28,12 @@ function handle_viewer_file_request(req, res)
 	end
 end
 
-function find_available_port(get_handler::Function, host=IPv4(127,0,0,1); default=8000, max_attempts=1000)
+function find_available_port(get_handlers::Function, host=IPv4(127,0,0,1); default=8000, max_attempts=1000)
 	HttpServer.initcbs()
 	for i in 1:max_attempts
 		port = default + i - 1
 		try
-			server = Server(get_handler())
+			server = Server(get_handlers()...)
 			listen(server, host, port)
 			@async HttpServer.handle_http_request(server)
 			return server, port
@@ -49,13 +49,13 @@ function find_available_port(get_handler::Function, host=IPv4(127,0,0,1); defaul
 end
 
 # @sync begin
-# 	port = find_available_port() do 
+# 	port = find_available_port() do
 # 		HttpHandler(handle_viewer_file_request)
 # 	end
 # end
 
-function serve_viewer_files()
-	find_available_port() do
-		HttpHandler(handle_viewer_file_request)
-	end
-end
+# function serve_viewer_files()
+# 	find_available_port() do
+# 		HttpHandler(handle_viewer_file_request)
+# 	end
+# end
