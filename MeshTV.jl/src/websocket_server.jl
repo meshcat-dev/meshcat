@@ -1,6 +1,13 @@
+module Servers
+
+export ViewerWindow,
+    IJuliaCell
+
 using HttpServer
 using WebSockets
 using URIParser: escape
+
+include("file_server.jl")
 
 
 struct WebSocketPool
@@ -40,7 +47,7 @@ function Base.send(pool::WebSocketPool, msg)
 	end
 end
 
-function HttpServer.Server(pool::WebSocketPool)
+function WebSockets.WebSocketHandler(pool::WebSocketPool)
 	handler = WebSocketHandler() do req, client
 		put!(pool.new_connection_queue, client)
 		try
@@ -57,8 +64,11 @@ function HttpServer.Server(pool::WebSocketPool)
 			end
 		end
 	end
-	Server(handler)
 end
+
+# function HttpServer.Server(pool::WebSocketPool)
+# 	Server(handler)
+# end
 
 
 function url_with_query(address; params...)
@@ -102,18 +112,27 @@ end
 
 struct ViewerWindow
 	host::IPv4
-	port::Int
 	pool::WebSocketPool
-	server::Server
+	websocket_server::Tuple{Server, Int}
+    file_server::Tuple{Server, Int}
 end
 
-function ViewerWindow(; host::IPv4=ip"127.0.0.1", port::Integer=5001, open=true)
+function ViewerWindow(; host::IPv4=ip"127.0.0.1", open=true)
 	pool = WebSocketPool()
-	server = Server(pool)
-	@async run(server, port)
-	# Yield once to let the server start
+
+    websocket_server, websocket_port = find_available_port(host; default=5000) do
+        WebSocketHandler(pool)
+    end
+
+    file_server, file_port = find_available_port(host; default=8000) do
+        HttpHandler(handle_viewer_file_request)
+    end
+
+	# Yield once to let the servers start
 	yield()
-	window = ViewerWindow(host, port, pool, server)
+	window = ViewerWindow(host, pool, 
+                          (websocket_server, websocket_port),
+                          (file_server, file_port))
 	if open
 		Base.open(window)
 	end
@@ -123,10 +142,17 @@ end
 const viewer_html = joinpath(@__DIR__, "..", "..", "viewer", "three.html")
 # const viewer_html = joinpath(@__DIR__, "..", "..", "simple_receiver.html")
 
+function geturl(window::ViewerWindow)
+    url = url_with_query(string("http://", window.host, ":", window.file_server[2], "/three.html"),
+                         host=window.host,
+                         port=window.websocket_server[2])
+end
+
 function Base.open(window::ViewerWindow)
-	url = url_with_query(string("file://", abspath(viewer_html)),
-	                     host=window.host,
-	                     port=window.port)
+    url = geturl(window)
+	# url = url_with_query(string("file://", abspath(viewer_html)),
+	#                      host=window.host,
+	#                      port=window.port)
 	open_url(url)
 end
 
@@ -148,17 +174,8 @@ function Base.show(io::IO, ::MIME"text/html", frame::IJuliaCell)
 end
 
 function show_inline(io::IO, frame::IJuliaCell)
-    # This is a bit more complicated than it really should be. The problem is
-    # that embedding an IFrame with a local file source causes the query 
-    # parameters to be stripped for some reason, so we have to generate a 
-    # full URL using the current location. 
-    id = Base.Random.uuid1()
     print(io, """
-<iframe id="$id" src="" height=500 width=800></iframe>
-<script>
-let viewer = document.getElementById("$id");
-viewer.src = location.origin + "/files/viewer/three.html?host=$(frame.window.host)&port=$(frame.window.port)";
-</script>
+<iframe src="$(geturl(frame.window))" height=500 width=800></iframe>
 """)
 end
 
@@ -174,7 +191,7 @@ function show_embed(io::IO, frame::IJuliaCell)
         console.log("trying");
         let frame = document.getElementById("$id");
         if (frame && frame.contentWindow !== undefined && frame.contentWindow.connect !== undefined) {
-            frame.contentWindow.connect("$(frame.window.host)", $(frame.window.port));
+            frame.contentWindow.connect("$(frame.window.host)", $(frame.window.websocket_server[2]));
         } else {
             console.log("could not connect");
           setTimeout(try_to_connect, 100);
@@ -183,4 +200,44 @@ function show_embed(io::IO, frame::IJuliaCell)
     setTimeout(try_to_connect, 1);
     </script>
     """)
+end
+
+# function show_inline(io::IO, frame::IJuliaCell)
+#     # This is a bit more complicated than it really should be. The problem is
+#     # that embedding an IFrame with a local file source causes the query 
+#     # parameters to be stripped for some reason, so we have to generate a 
+#     # full URL using the current location. 
+#     id = Base.Random.uuid1()
+#     print(io, """
+# <iframe id="$id" src="" height=500 width=800></iframe>
+# <script>
+# let viewer = document.getElementById("$id");
+# viewer.src = location.origin + "/files/viewer/three.html?host=$(frame.window.host)&port=$(frame.window.port)";
+# </script>
+# """)
+# end
+
+# srcdoc_escape(x) = replace(replace(x, "&", "&amp;"), "\"", "&quot;")
+
+# function show_embed(io::IO, frame::IJuliaCell)
+#     id = Base.Random.uuid1()
+#     print(io, """
+#     <iframe id="$id" srcdoc="$(srcdoc_escape(readstring(open(joinpath(@__DIR__, "..", "..", "viewer", "build", "inline.html")))))" height=500 width=800>
+#     </iframe>
+#     <script>
+#     function try_to_connect() {
+#         console.log("trying");
+#         let frame = document.getElementById("$id");
+#         if (frame && frame.contentWindow !== undefined && frame.contentWindow.connect !== undefined) {
+#             frame.contentWindow.connect("$(frame.window.host)", $(frame.window.port));
+#         } else {
+#             console.log("could not connect");
+#           setTimeout(try_to_connect, 100);
+#         }
+#     }
+#     setTimeout(try_to_connect, 1);
+#     </script>
+#     """)
+# end
+
 end
