@@ -22,133 +22,45 @@
 		<script src="js/OrbitControls.js"></script>
         <script src="js/LoaderSupport.js"></script>
         <script src="js/OBJLoader2.js"></script>
-        <script src="js/dat.gui.min.js"></script>
-        <script src="js/split.min.js"></script>
+        <script src="js/dat.gui.js"></script>
 		<script src="js/msgpack.min.js"></script>
 
-        <div id="scene-controls-container" class="split split-horizontal">
-            <div id="scene-controls"></div>
-            <button onclick="save_scene()">Save</button>
-            <button onclick="load_scene()">Load</button>
-        </div>
-        <div id="threejs-pane" class="split split-horizontal"></div>
+        <div id="threejs-pane"</div>
 
-        <script src="js/viewertree.js"></script>
-        <script>
+        <script src="js/meshtv.js"></script>
 
-
-            Split(['#scene-controls-container', '#threejs-pane'], {
-                sizes: [25, 75],
-                onDrag: function() {
-                    set_3d_pane_size(threejs_pane.offsetWidth, threejs_pane.offsetHeight);
-                },
-                onDragEnd: function () {
-                    set_3d_pane_size(threejs_pane.offsetWidth, threejs_pane.offsetHeight);
-                }
-            });
-        </script>
 
          <style>
             body {
                 margin: 0;
-            }
-
-              html, body {
-            height: 100%;
-          }
-
-          body {
-            padding: 0;
-            margin: 0;
-            box-sizing: border-box;
-          }
-
-          .split {
-            -webkit-box-sizing: border-box;
-               -moz-box-sizing: border-box;
-                    box-sizing: border-box;
-
-            overflow-y: auto;
-            overflow-x: auto;
-          }
-
-          .content {
-            background-color: #fff;
-          }
-
-          .gutter {
-            background-color: #ccc;
-            background-repeat: no-repeat;
-            background-position: 50%;
-          }
-
-          .gutter.gutter-horizontal {
-            cursor: col-resize;
-          }
-
-          .split.split-horizontal, .gutter.gutter-horizontal {
-            height: 100%;
-            float: left;
-          }
-
-          #threejs-pane {
-            overflow: hidden;
-        }
-
-          .scene-tree-item {
-            width: 100%;
-            user-select: none;
-          }
-
-          .scene-tree-header {
-            display: flex;
-            width: 100%;
-            height: 20px;
-        }
-
-            .expansion-control {
-                flex: none;
-                width: 20px;
-            }
-
-            .collapsed > .scene-tree-header > .expansion-control::after {
-                content: '\25b6';
-            }
-
-            .expanded > .scene-tree-header > .expansion-control::after {
-                content: '\25bc';
-            }
-
-            .scene-tree-item > .scene-tree-children {
                 overflow: hidden;
-                max-height: 0;
             }
 
-            .expanded > .scene-tree-children {
-                max-height: 100%;
+            #threejs-pane {
+                width: 100%;
+                height: 100%;
             }
 
-            .scene-tree-label {
-                flex: 1 1 auto;
-                min-width: 0;
-                overflow: hidden;
-                text-overflow: ellipsis;
+            .visibility-checkbox {
+                float: right;
             }
 
-            .scene-tree-visibility {
-                flex: none;
-                color: rgba(0, 0, 0, 1);
-                cursor: pointer;
+            .visibility-checkbox > input {
+                float: right;
             }
 
-            .hidden .scene-tree-visibility {
-                color: rgba(0, 0, 0, 0.25);
+            .visibility-checkbox > input[type=checkbox] {
+            height: 16px;
+            width: 16px;
+            display:inline-block;
+            padding: 0 0 0 0px;
             }
 
-            .scene-tree-children {
-                margin-left: 20px;
+            .hidden-scene-element ~ li .visibility-checkbox {
+                /*display: none;*/
+                opacity: 0.25;
+                pointer-events: none;
             }
-
 
         </style>
         <script id="embedded-json"></script>

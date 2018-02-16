@@ -1,30 +1,104 @@
 'use strict';
 
+var gui;
+
 function build_gui(root_object) {
-    let gui = new dat.GUI();
+    if (gui !== undefined) {
+        remove_folders(gui);
+    } else {
+        gui = new dat.GUI();
+    }
     let folder = gui.addFolder("Scene");
     folder.open();
     traverse_gui(folder, root_object);
     return gui;
 }
 
+function material_gui(gui, material) {
+    gui.addColor(material, "color");
+    "reflectivity" in material && gui.add(material, "reflectivity");
+    "transparent" in material && gui.add(material, "transparent");
+    "opacity" in material && gui.add(material, "opacity", 0, 1, 0.01);
+    "emissive" in material && gui.addColor(material, "emissive");
+}
+
 function traverse_gui(folder, object) {
-    folder.add(object, "visible");
-    for (let child_object of object.children) {
-        let child_folder = folder.addFolder(child_object.name);
-        child_folder.open();
-        traverse_gui(child_folder, child_object);
+    let v = folder.add(object, "visible");
+    v.domElement.classList.add("visibility-checkbox");
+    v.domElement.style.float = "right";
+    let parent = v.domElement.parentNode.parentNode;
+    parent.style.display = "none";
+    let title = parent.previousSibling;
+    title.appendChild(v.domElement);
+    console.log(object.children.length);
+    v.domElement.children[0].addEventListener("change", function(evt) {
+        console.log(evt);
+        if (evt.target.checked) {
+            title.classList.remove("hidden-scene-element");
+        } else {
+            title.classList.add("hidden-scene-element");
+        }
+    });
+    if (object.children.length > 0) {
+        folder.open();
+        for (let child_object of object.children) {
+            let child_folder = folder.addFolder(child_object.name);
+            // child_folder.open();
+            traverse_gui(child_folder, child_object);
+        }
+    }
+    if (object.material !== undefined) {
+        let f = folder.addFolder("material");
+        material_gui(f, object.material);
     }
 }
 
+function remove_folders(gui) {
+    for (let name of Object.keys(gui.__folders)) {
+        let folder = gui.__folders[name];
+        remove_folders(folder);
+        dat.dom.dom.unbind(window, 'resize', folder.__resizeHandler);
+        gui.removeFolder(folder);
+    }
+}
 
 function update_gui() {
-    let root = document.getElementById("scene-controls");
-    while (root.lastChild) {
-        root.removeChild(root.lastChild);
-    }
-    create_options(scene, root);
+    build_gui(scene);
+    // let root = document.getElementById("scene-controls");
+    // while (root.lastChild) {
+    //     root.removeChild(root.lastChild);
+    // }
+    // create_options(scene, root);
 }
+
+// function create_options(node, element) {
+//     let container = create_element("div", element, {class: "scene-tree-item"});
+//     let row = create_element("div", container, {class: "scene-tree-header"});
+//     let expander = create_element("div", row, {class: "expansion-control"});
+//     if (node.children.length) {
+//         expander.addEventListener("click", function() {
+//             container.classList.toggle("expanded");
+//             container.classList.toggle("collapsed");
+//         });
+//         container.classList.add("expanded");
+//     }
+//     let name = create_text(node.name || "<anonymous>", create_element("div", row, {class: "scene-tree-label"}));
+//     let visibility = create_element("div", row, {class: "scene-tree-visibility"});
+//     create_text("👁", visibility);
+//     if (!node.visible) {
+//         container.classList.add("hidden");
+//     }
+//     visibility.addEventListener("click", function() {
+//         container.classList.toggle("hidden");
+//         node.visible = !container.classList.contains("hidden");
+//     });
+//     let children = create_element("div", container, {class: "scene-tree-children"})
+//     if ("children" in node) {
+//         for (let child of node.children) {
+//             create_options(child, children);
+//         }
+//     }
+// }
 
 
 function find_child(path, root) {
@@ -182,6 +256,7 @@ function listen_for_client() {
 
 function set_3d_pane_size(w, h) {
     if (w === undefined) {
+        // w = window.innerWidth;
         w = threejs_pane.offsetWidth;
     }
     if (h === undefined) {
@@ -267,35 +342,6 @@ function create_text(text, parent) {
 }
 
 
-function create_options(node, element) {
-    let container = create_element("div", element, {class: "scene-tree-item"});
-    let row = create_element("div", container, {class: "scene-tree-header"});
-    let expander = create_element("div", row, {class: "expansion-control"});
-    if (node.children.length) {
-        expander.addEventListener("click", function() {
-            container.classList.toggle("expanded");
-            container.classList.toggle("collapsed");
-        });
-        container.classList.add("expanded");
-    }
-    let name = create_text(node.name || "<anonymous>", create_element("div", row, {class: "scene-tree-label"}));
-    let visibility = create_element("div", row, {class: "scene-tree-visibility"});
-    create_text("👁", visibility);
-    if (!node.visible) {
-        container.classList.add("hidden");
-    }
-    visibility.addEventListener("click", function() {
-        container.classList.toggle("hidden");
-        node.visible = !container.classList.contains("hidden");
-    });
-    let children = create_element("div", container, {class: "scene-tree-children"})
-    if ("children" in node) {
-        for (let child of node.children) {
-            create_options(child, children);
-        }
-    }
-}
-
 // https://stackoverflow.com/a/35251739
 function download_file(name, contents, mime) {
     mime = mime || "text/plain";
@@ -345,7 +391,8 @@ function load_scene() {
     input.remove();
 }
 
-create_options(scene, document.getElementById("scene-controls"));
+// create_options(scene, document.getElementById("scene-controls"));
+update_gui();
 
 let params = new URLSearchParams(location.search.slice(1));
 let host = params.get("host");
