@@ -23,6 +23,13 @@ function material_gui(gui, material) {
 }
 
 function traverse_gui(folder, object) {
+    // TODO: This is kind of horrifying. Rather than fix the way
+    // dat.gui renders the visibility attribute, I just grab its
+    // dom element, then stick that element inside the title of
+    // the containing folder. I can then hide the original
+    // control. Finally, I add a hook that adds the
+    // hidden-scene-element class to the parent so that all
+    // nested visibility checkboxes will be disabled.
     let v = folder.add(object, "visible");
     v.domElement.classList.add("visibility-checkbox");
     v.domElement.style.float = "right";
@@ -30,9 +37,7 @@ function traverse_gui(folder, object) {
     parent.style.display = "none";
     let title = parent.previousSibling;
     title.appendChild(v.domElement);
-    console.log(object.children.length);
     v.domElement.children[0].addEventListener("change", function(evt) {
-        console.log(evt);
         if (evt.target.checked) {
             title.classList.remove("hidden-scene-element");
         } else {
