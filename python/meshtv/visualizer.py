@@ -2,10 +2,10 @@ import umsgpack
 import numpy as np
 
 from .servers.window import ViewerWindow
-from .commands import ViewerMessage
+from .commands import ViewerMessage, SetObject, SetTransform, Delete
 
 
-class Visualizer:
+class CoreVisualizer:
     def __init__(self, window=None, open=False):
         if window is None:
             window = ViewerWindow()
@@ -19,14 +19,53 @@ class Visualizer:
     def open(self):
         self.window.open()
 
+    def url(self):
+        return self.window.url()
+
     def send(self, commands):
         self.window.send(
             umsgpack.packb(ViewerMessage(commands).lower())
         )
 
+
+class Visualizer:
+    __slots__ = ["core", "path"]
+
+    def __init__(self, window=None, core=None, open=False):
+        if core is not None:
+            self.core = core
+        else:
+            self.core = CoreVisualizer(window=window, open=open)
+        self.path = ["meshtv"]
+
+    @staticmethod
+    def view_into(core, path):
+        vis = Visualizer(core=core)
+        vis.path = path
+        return vis
+
+    def open(self):
+        self.core.open()
+
+    def url(self):
+        return self.core.url()
+
     def jupyter_cell(self, height=500, width=800):
         from IPython.display import IFrame
-        return IFrame(self.window.url(), height=height, width=width)
+        return IFrame(self.url(), height=height, width=width)
+
+    def __getitem__(self, path):
+        return Visualizer.view_into(self.core, self.path + path.split("/"))
+
+    def set_object(self, object):
+        return self.core.send([SetObject(object, self.path)])
+
+    def set_transform(self, position=[0, 0, 0], quaternion=[0,0,0,1]):
+        # three.js uses xyzw quaternion format
+        return self.core.send([SetTransform(position, quaternion, self.path)])
+
+    def delete(self):
+        return self.core.send([Delete(self.path)])
 
 
 if __name__ == '__main__':
@@ -34,7 +73,6 @@ if __name__ == '__main__':
     import random
 
     from . import geometry as g
-    from .commands import SetObject, SetTransform
 
     vis = Visualizer().open()
 

@@ -33,6 +33,7 @@ function traverse_gui(folder, object) {
     let v = folder.add(object, "visible");
     v.domElement.classList.add("visibility-checkbox");
     v.domElement.style.float = "right";
+    v.domElement.style.width = 0;
     let parent = v.domElement.parentNode.parentNode;
     parent.style.display = "none";
     let title = parent.previousSibling;
@@ -135,11 +136,22 @@ function set_property(path, property, value) {
 }
 
 function dispose(object) {
-    object.geometry.dispose();
-    if (object.material.map) {
-        object.material.map.dispose();
+    if (object.geometry) {
+        object.geometry.dispose();
     }
-    object.material.dispose();
+    if (object.material) {
+        if (object.material.map) {
+            object.material.map.dispose();
+        }
+        object.material.dispose();
+    }
+}
+
+function dispose_recursive(object) {
+    dispose(object);
+    for (let child of object.children) {
+        dispose_recursive(child);
+    }
 }
 
 function set_object(path, object) {
@@ -155,11 +167,11 @@ function set_object(path, object) {
 }
 
 function delete_path(path) {
-    let parent = find_child(path.slice(0, path.length));
-    let child = parent.children.find(c => c.name == object.name);
+    let parent = find_child(path.slice(0, path.length - 1));
+    let child = parent.children.find(c => c.name == path[path.length - 1]);
     if (child !== undefined) {
         parent.remove(child);
-        dispose(child);
+        dispose_recursive(child);
         update_gui();
         update_embed();
     }
@@ -203,7 +215,7 @@ function handle_command(cmd) {
     } else if (cmd.type == "set_transform") {
         set_transform(cmd.path, cmd.position, cmd.quaternion);
     } else if (cmd.type == "delete") {
-        delete_path(path);
+        delete_path(cmd.path);
     } else if (cmd.type == "set_object") {
         handle_set_object(cmd.path, cmd.object);
     }

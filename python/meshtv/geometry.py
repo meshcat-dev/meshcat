@@ -149,7 +149,7 @@ class GenericMaterial(Material):
 
 
 class Object(SceneElement):
-    def __init__(self, geometry, material):
+    def __init__(self, geometry, material=MeshPhongMaterial()):
         super().__init__()
         self.geometry = geometry
         self.material = material
@@ -201,6 +201,8 @@ def threejs_type(dtype):
 
 
 def pack_numpy_array(x):
+    if x.dtype == np.float64:
+        x = x.astype(np.float32)
     typename, extcode = threejs_type(x.dtype)
     return {
         "itemSize": item_size(x),
@@ -230,13 +232,13 @@ class ObjMeshGeometry(Geometry):
 
 
 class PointsGeometry(Geometry):
-    def __init__(self, points, color=None):
+    def __init__(self, position, color=None):
         super().__init__()
-        self.points = points
+        self.position = position
         self.color = color
 
     def lower(self, object_data):
-        attrs = {"position": pack_numpy_array(self.points)}
+        attrs = {"position": pack_numpy_array(self.position)}
         if self.color is not None:
             attrs["color"] = pack_numpy_array(self.color)
         return {
@@ -266,6 +268,13 @@ class PointsMaterial(Material):
 
 class Points(Object):
     _type = "Points"
+
+
+def PointCloud(position, color, **kwargs):
+    return Points(
+        PointsGeometry(position, color),
+        PointsMaterial(**kwargs)
+    )
 
 
 
