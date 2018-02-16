@@ -83,11 +83,21 @@ function open_url(url)
 	end
 end
 
-struct ViewerWindow
+mutable struct ViewerWindow  # mutable so it can be finalized
 	host::IPv4
 	pool::WebSocketPool
 	server::Server
 	port::Int
+
+	function ViewerWindow(host::IPv4, pool::WebSocketPool, server::Server, port::Int)
+		w = new(host, pool, server, port)
+		finalizer(w, shutdown)
+		w
+	end
+end
+
+function shutdown(w::ViewerWindow)
+	close(w.server)
 end
 
 const viewer_root = joinpath(@__DIR__, "..", "..", "viewer")
@@ -140,7 +150,7 @@ function find_available_port(get_handlers::Function, host=IPv4(127,0,0,1); defau
 end
 
 
-function ViewerWindow(; host::IPv4=ip"127.0.0.1", open=true)
+function ViewerWindow(; host::IPv4=ip"127.0.0.1", open=false)
 	pool = WebSocketPool()
 
 	# The server handles both HTTP requests (for the viewer html and js)

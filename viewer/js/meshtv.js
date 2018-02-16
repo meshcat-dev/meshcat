@@ -228,21 +228,22 @@ function handle_command_message(message) {
     }
 };
 
-let clients = {};
+let websocket_server_connections = {};
 
 function handle_name_server_message(message) {
     let url = message;
-    if (clients[url] !== undefined) {
-        if (clients[url].readyState == 0 || clients[url].readyState == 1) {
+    let existing_connection = websocket_server_connections[url];
+    if (existing_connection !== undefined) {
+        if (existing_connection.readyState == 0 || existing_connection.readyState == 1) {
             return;
         }
     }
     let connection = new WebSocket(url);
-    clients[url] = connection;
+    websocket_server_connections[url] = connection;
     connection.binaryType = "arraybuffer";
     connection.onmessage = handle_command_message;
     connection.onclose = function (evt) {
-        delete clients[url];
+        delete websocket_server_connections[url];
     }
 }
 

@@ -10,6 +10,10 @@ struct SetTransform{T <: Transformation} <: AbstractCommand
     path::Vector{Symbol}
 end
 
+struct Delete <: AbstractCommand
+    path::Vector{Symbol}
+end
+
 function lower(cmd::SetObject)
     Dict{String, Any}(
         "type" => "set_object",
@@ -24,5 +28,12 @@ function lower(cmd::SetTransform)
         "path" => string.(cmd.path),
         "position" => convert(Vector, translation(cmd.tform)),
         "quaternion" => convert(Vector, quaternion_xyzw(cmd.tform))
+    )
+end
+
+function lower(cmd::Delete)
+    Dict{String, Any}(
+        "type" => "delete",
+        "path" => string.(cmd.path)
     )
 end

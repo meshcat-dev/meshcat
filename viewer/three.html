@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset=utf-8>
-		<title>My first three.js app</title>
+		<title>MeshTV</title>
 		<style>
 			body { margin: 0;
             }
@@ -25,7 +25,12 @@
         <script src="js/dat.gui.js"></script>
 		<script src="js/msgpack.min.js"></script>
 
-        <div id="threejs-pane"</div>
+        <div id="threejs-pane">
+            <div class="save-controls">
+                <button onclick="save_scene();">Save</button>
+                <button onclick="load_scene();">Load</button>
+            </div>
+        </div>
 
         <script src="js/meshtv.js"></script>
 
@@ -56,6 +61,12 @@
                 /*display: none;*/
                 opacity: 0.25;
                 pointer-events: none;
+            }
+
+            .save-controls {
+                position: absolute;
+                right: 20px;
+                bottom: 20px;
             }
 
         </style>
