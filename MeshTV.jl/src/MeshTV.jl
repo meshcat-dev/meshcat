@@ -1,5 +1,14 @@
 module MeshTV
 
+import Base: delete!
+
+export Visualizer,
+	   setobject!,
+	   settransform!,
+	   delete!,
+	   url
+
+
 include("servers.jl")
 include("ijulia.jl")
 include("geometry.jl")

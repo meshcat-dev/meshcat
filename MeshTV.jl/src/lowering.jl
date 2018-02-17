@@ -141,3 +141,10 @@ function lower(cmd::SetTransform)
         "quaternion" => convert(Vector, quaternion_xyzw(cmd.tform))
     )
 end
+
+function lower(cmd::Delete)
+    Dict{String, Any}(
+        "type" => "delete",
+        "path" => string.(cmd.path)
+    )
+end
