@@ -66,3 +66,19 @@ function Base.show(io::IO, ::MIME"text/html", snap::Snapshot)
 	</iframe>
 	""")
 end
+
+function save(fname::String, snap::Snapshot)
+    content = readstring(open(joinpath(viewer_root, "build", "inline.html")))
+    # TODO: there has to be a better way than doing a replace() on the html.
+    script = """
+    <script>
+    scene = new THREE.ObjectLoader().parse(JSON.parse(`$(snap.json)`));
+    update_gui();
+    </script>
+    </body>
+    """
+    html = replace(content, "</body>", script)
+    open(fname, "w") do file
+        write(file, html)
+    end
+end
