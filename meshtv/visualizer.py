@@ -28,6 +28,9 @@ class CoreVisualizer:
             umsgpack.packb(ViewerMessage(commands).lower())
         )
 
+    def close(self):
+        self.window.close()
+
 
 class Visualizer:
     __slots__ = ["core", "path"]
@@ -68,6 +71,9 @@ class Visualizer:
 
     def delete(self):
         return self.core.send([Delete(self.path)])
+
+    def close(self):
+        self.core.close()
 
 
 if __name__ == '__main__':
