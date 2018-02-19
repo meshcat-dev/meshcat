@@ -4,7 +4,7 @@ import socketserver
 import os
 import threading
 
-viewer_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "viewer"))
+viewer_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "viewer"))
 
 # https://stackoverflow.com/a/46332163
 class ViewerFileRequestHandler(SimpleHTTPRequestHandler):

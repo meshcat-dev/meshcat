@@ -100,7 +100,7 @@ function shutdown(w::ViewerWindow)
 	close(w.server)
 end
 
-const viewer_root = joinpath(@__DIR__, "..", "..", "viewer")
+const viewer_root = joinpath(@__DIR__, "..", "viewer")
 const viewer_html = joinpath(viewer_root, "meshtv.html")
 
 function handle_viewer_file_request(req, res)

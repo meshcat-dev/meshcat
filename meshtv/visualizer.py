@@ -18,6 +18,7 @@ class CoreVisualizer:
 
     def open(self):
         self.window.open()
+        return self
 
     def url(self):
         return self.window.url()
@@ -46,6 +47,7 @@ class Visualizer:
 
     def open(self):
         self.core.open()
+        return self
 
     def url(self):
         return self.core.url()

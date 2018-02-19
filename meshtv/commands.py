@@ -1,7 +1,12 @@
+from .geometry import Geometry, Mesh
+
 class SetObject:
     __slots__ = ["object", "path"]
     def __init__(self, object, path=[]):
-        self.object = object
+        if isinstance(object, Geometry):
+            self.object = Mesh(object)
+        else:
+            self.object = object
         self.path = path
 
     def lower(self):
