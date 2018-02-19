@@ -101,7 +101,7 @@ function shutdown(w::ViewerWindow)
 end
 
 const viewer_root = joinpath(@__DIR__, "..", "..", "viewer")
-const viewer_html = joinpath(viewer_root, "three.html")
+const viewer_html = joinpath(viewer_root, "meshtv.html")
 
 function handle_viewer_file_request(req, res)
     parts = split(req.resource, '/')
@@ -170,7 +170,7 @@ end
 
 
 function geturl(window::ViewerWindow)
-    url = url_with_query(string("http://", window.host, ":", window.port, "/three.html"),
+    url = url_with_query(string("http://", window.host, ":", window.port, "/meshtv.html"),
                          host=window.host,
                          port=window.port)
 end

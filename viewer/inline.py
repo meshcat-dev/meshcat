@@ -2,7 +2,7 @@ import os
 
 from bs4 import BeautifulSoup
 
-soup = BeautifulSoup(open("three.html", "r"), "html.parser")
+soup = BeautifulSoup(open("meshtv.html", "r"), "html.parser")
 scripts = soup.find_all("script")
 for script in scripts:
     if "src" in script.attrs:

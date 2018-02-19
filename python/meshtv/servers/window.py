@@ -12,7 +12,7 @@ class ViewerWindow:
         self.file_thread, self.file_port = fileserver.run_threaded(host=host)
 
     def url(self):
-        return "http://{:s}:{:d}/three.html?host={:s}&port={:d}".format(
+        return "http://{:s}:{:d}/meshtv.html?host={:s}&port={:d}".format(
             self.host,
             self.file_port,
             self.host,
