@@ -2,7 +2,7 @@ import os
 
 from bs4 import BeautifulSoup
 
-soup = BeautifulSoup(open("meshtv.html", "r"), "html.parser")
+soup = BeautifulSoup(open("static/meshtv.html", "r"), "html.parser")
 scripts = soup.find_all("script")
 for script in scripts:
     if "src" in script.attrs:
@@ -11,6 +11,6 @@ for script in scripts:
         del script["src"]
 
 
-os.makedirs("build", exist_ok=True)
-with open("build/inline.html", "w") as file:
+os.makedirs("static/build", exist_ok=True)
+with open("static/build/inline.html", "w") as file:
     file.write(soup.prettify())
