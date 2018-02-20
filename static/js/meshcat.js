@@ -124,10 +124,11 @@ function find_child(path, root) {
     }
 }
 
-function set_transform(path, position, quaternion) {
+function set_transform(path, matrix) {
     let child = find_child(path);
-    child.position.fromArray(position);
-    child.quaternion.fromArray(quaternion);
+    let mat = new THREE.Matrix4();
+    mat.fromArray(matrix);
+    mat.decompose(child.position, child.quaternion, child.scale);
 }
 
 function set_property(path, property, value) {
@@ -213,7 +214,7 @@ function handle_command(cmd) {
     if (cmd.type == "set_property") {
         set_property(cmd.path, cmd.property, cmd.value);
     } else if (cmd.type == "set_transform") {
-        set_transform(cmd.path, cmd.position, cmd.quaternion);
+        set_transform(cmd.path, cmd.matrix);
     } else if (cmd.type == "delete") {
         delete_path(cmd.path);
     } else if (cmd.type == "set_object") {
