@@ -69,12 +69,7 @@ function remove_folders(gui) {
 }
 
 function update_gui() {
-    build_gui(scene);
-    // let root = document.getElementById("scene-controls");
-    // while (root.lastChild) {
-    //     root.removeChild(root.lastChild);
-    // }
-    // create_options(scene, root);
+    // build_gui(scene);
 }
 
 // function create_options(node, element) {
