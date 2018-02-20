@@ -4,5 +4,5 @@ MeshCat is a remotely-controllable 3D viewer, built on top of [three.js](https:/
 
 The MeshCat viewer is meant to be combined with an interface in the language of your choice. Current interfaces are:
 
-    * [meshcat-python (Python 3)](https://github.com/rdeits/meshcat-python)
-    * [MeshCat.jl (Julia)](https://github.com/rdeits/MeshCat.jl)
+* [meshcat-python (Python 3)](https://github.com/rdeits/meshcat-python)
+* [MeshCat.jl (Julia)](https://github.com/rdeits/MeshCat.jl)
