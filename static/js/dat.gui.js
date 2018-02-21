@@ -1891,7 +1891,7 @@ var GUI = function GUI(pars) {
   dom.bind(this.__ul, 'webkitTransitionEnd', this.__resizeHandler);
   dom.bind(this.__ul, 'transitionend', this.__resizeHandler);
   dom.bind(this.__ul, 'oTransitionEnd', this.__resizeHandler);
-  this.onResize();
+  // this.onResize();
   if (params.resizable) {
     addResizeHandle(this);
   }
@@ -1954,7 +1954,7 @@ Common.extend(GUI.prototype,
     this.__controllers.splice(this.__controllers.indexOf(controller), 1);
     var _this = this;
     Common.defer(function () {
-      _this.onResize();
+      // _this.onResize();
     });
   },
   destroy: function destroy() {
@@ -1995,7 +1995,7 @@ Common.extend(GUI.prototype,
     }
     var _this = this;
     Common.defer(function () {
-      _this.onResize();
+      // _this.onResize();
     });
   },
   open: function open() {
@@ -2140,7 +2140,7 @@ function addRow(gui, newDom, liBefore) {
   } else {
     gui.__ul.appendChild(li);
   }
-  gui.onResize();
+  // gui.onResize();
   return li;
 }
 function markPresetModified(gui, modified) {

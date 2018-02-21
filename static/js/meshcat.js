@@ -11,6 +11,7 @@ function build_gui(root_object) {
     let folder = gui.addFolder("Scene");
     folder.open();
     traverse_gui(folder, root_object);
+    gui.onResize();
     return gui;
 }
 
@@ -48,9 +49,16 @@ function traverse_gui(folder, object) {
     if (object.children.length > 0) {
         folder.open();
         for (let child_object of object.children) {
-            let child_folder = folder.addFolder(child_object.name);
-            // child_folder.open();
-            traverse_gui(child_folder, child_object);
+            name = child_object.name;
+            while (!child_object.geometry && child_object.children.length == 1) {
+                child_object = child_object.children[0];
+                name = name + "/" + child_object.name;
+            }
+            if (child_object.geometry || child_object.children.length) {
+                let child_folder = folder.addFolder(name);
+                // child_folder.open();
+                traverse_gui(child_folder, child_object);
+            }
         }
     }
     if (object.material !== undefined) {
