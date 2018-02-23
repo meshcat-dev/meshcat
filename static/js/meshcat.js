@@ -224,49 +224,15 @@ function handle_command_message(message) {
     }
 };
 
-let websocket_server_connections = {};
-
-function handle_name_server_message(message) {
-    let url = message;
-    let existing_connection = websocket_server_connections[url];
-    if (existing_connection !== undefined) {
-        if (existing_connection.readyState == 0 || existing_connection.readyState == 1) {
-            return;
-        }
-    }
+function connect(url) {
+    console.log(url);
     let connection = new WebSocket(url);
-    websocket_server_connections[url] = connection;
     connection.binaryType = "arraybuffer";
     connection.onmessage = handle_command_message;
     connection.onclose = function (evt) {
-        delete websocket_server_connections[url];
+        // TODO: start trying to reconnect
     }
 }
-
-function connect(host, port) {
-    let url = `ws://${host}:${port}`;
-    console.log(url);
-    handle_name_server_message(url);
-}
-
-function listen_for_client() {
-    var request = new XMLHttpRequest();
-    request.onreadystatechange = function() {
-        if (request.readyState == 4) {
-            if (request.status == 200) {
-                handle_name_server_message(request.response);
-            }
-            setTimeout(listen_for_client, 1000);
-        }
-    }
-    request.open("GET", "http://127.0.0.1:8765", true);
-    request.timeout = 1000;
-    try {
-        request.send();
-    } catch(error) {
-    }
-}
-// listen_for_client();
 
 function set_3d_pane_size(w, h) {
     if (w === undefined) {
@@ -408,12 +374,8 @@ function load_scene() {
 // create_options(scene, document.getElementById("scene-controls"));
 update_gui();
 
-let params = new URLSearchParams(location.search.slice(1));
-let host = params.get("host");
-let port = params.get("port");
-if (host !== null && port !== null) {
-    connect(host, port);
-}
+let url = `ws://${location.host}`;
+connect(url);
 
 var embed_pending = false;
 var embed_enabled = false;
