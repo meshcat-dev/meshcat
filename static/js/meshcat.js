@@ -219,9 +219,7 @@ function handle_command(cmd) {
 
 function handle_command_message(message) {
 	let data = msgpack.decode(new Uint8Array(message.data));
-    for (let cmd of data.commands) {
-        handle_command(cmd);
-    }
+    handle_command(data);
 };
 
 function connect(url) {
