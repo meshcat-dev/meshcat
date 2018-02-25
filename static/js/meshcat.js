@@ -205,15 +205,15 @@ function handle_set_object(path, object_data) {
 }
 
 function handle_command(cmd) {
-    let path = cmd.path.split("/").filter(x => x.length > 0)
+    let path = cmd.path.split("/").filter(x => x.length > 0);
     if (cmd.type == "set_property") {
-        set_property(cmd.path, cmd.property, cmd.value);
+        set_property(path, cmd.property, cmd.value);
     } else if (cmd.type == "set_transform") {
-        set_transform(cmd.path, cmd.matrix);
+        set_transform(path, cmd.matrix);
     } else if (cmd.type == "delete") {
-        delete_path(cmd.path);
+        delete_path(path);
     } else if (cmd.type == "set_object") {
-        handle_set_object(cmd.path, cmd.object);
+        handle_set_object(path, cmd.object);
     }
 }
 
