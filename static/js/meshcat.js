@@ -1,18 +1,88 @@
 'use strict';
 
-var gui;
 
-function build_gui(root_object) {
-    if (gui !== undefined) {
-        remove_folders(gui);
-    } else {
-        gui = new dat.GUI();
+class SceneNode {
+    constructor(object, folder) {
+        this.object = object;
+        this.folder = folder;
+        this.children = {};
+        this.create_controls();
     }
-    let folder = gui.addFolder("Scene");
-    folder.open();
-    traverse_gui(folder, root_object);
-    return gui;
+
+    create_child(name) {
+        let obj = new THREE.Object3D();
+        let f = this.folder.addFolder(name);
+        f.add(obj, "visible");
+        let node = new SceneNode(obj, f);
+        this.children[name] = node;
+        return node;
+    }
+
+    find(path) {
+        if (path.length == 0) {
+            return this;
+        } else {
+            let name = path[0];
+            let child = this.children[name];
+            if (child === undefined) {
+                child = this.create_child(name);
+            }
+            return child.find(path.slice(1));
+        }
+    }
 }
+
+var gui = new dat.GUI();
+var scene_folder = gui.addFolder("Scene");
+scene_folder.open();
+
+function update_gui(path) {
+    if (path === undefined) {
+        path = [];
+    }
+    let object = find_scene_object(path);
+    let folder = find_gui_folder(path);
+    remove_folders(folder);
+    traverse_gui(folder, object);
+
+    // let v = folder.add(object, "visible");
+    // if (object.children.length == 0) {
+    //     remove_folders(folder);
+    // }
+}
+
+function find_gui_folder(path, root) {
+    if (root === undefined) {
+        root = scene_folder;
+    }
+    if (path.length == 0) {
+        return root;
+    } else {
+        let child_folder = root.__folders[path[0]];
+        if (child_folder === undefined) {
+            child_folder = root.addFolder(path[0]);
+        }
+        return find_gui_folder(path.slice(1), child_folder);
+    }
+
+}
+
+
+// function build_gui(root_object, path) {
+
+// }
+
+// function build_gui(root_object, path) {
+//     if (gui !== undefined) {
+//         remove_folders(gui);
+//     } else {
+//         gui = new dat.GUI();
+//     }
+//     let folder = gui.addFolder("Scene");
+//     folder.open();
+//     traverse_gui(folder, root_object);
+//     return gui;
+// }
 
 function material_gui(gui, material) {
     gui.addColor(material, "color");
@@ -68,10 +138,6 @@ function remove_folders(gui) {
     }
 }
 
-function update_gui() {
-    // build_gui(scene);
-}
-
 // function create_options(node, element) {
 //     let container = create_element("div", element, {class: "scene-tree-item"});
 //     let row = create_element("div", container, {class: "scene-tree-header"});
@@ -102,7 +168,7 @@ function update_gui() {
 // }
 
 
-function find_child(path, root) {
+function find_scene_object(path, root) {
     if (root === undefined) {
         root = scene;
     }
@@ -113,21 +179,21 @@ function find_child(path, root) {
             child.name = path[0];
             root.add(child);
         }
-        return find_child(path.slice(1, path.length + 1), child);
+        return find_scene_object(path.slice(1, path.length + 1), child);
     } else {
         return root;
     }
 }
 
 function set_transform(path, matrix) {
-    let child = find_child(path);
+    let child = find_scene_object(path);
     let mat = new THREE.Matrix4();
     mat.fromArray(matrix);
     mat.decompose(child.position, child.quaternion, child.scale);
 }
 
 function set_property(path, property, value) {
-    let obj = find_child(path);
+    let obj = find_scene_object(path);
     obj[property] = value;
 }
 
@@ -151,24 +217,24 @@ function dispose_recursive(object) {
 }
 
 function set_object(path, object) {
-    let parent = find_child(path);
+    let parent = find_scene_object(path);
     let child = parent.children.find(c => c.name == object.name);
     if (child !== undefined) {
         parent.remove(child);
         dispose(child);
     }
     parent.add(object);
-    update_gui();
+    update_gui(path);
     update_embed();
 }
 
 function delete_path(path) {
-    let parent = find_child(path.slice(0, path.length - 1));
+    let parent = find_scene_object(path.slice(0, path.length - 1));
     let child = parent.children.find(c => c.name == path[path.length - 1]);
     if (child !== undefined) {
         parent.remove(child);
         dispose_recursive(child);
-        update_gui();
+        update_gui(path);
         update_embed();
     }
 }
