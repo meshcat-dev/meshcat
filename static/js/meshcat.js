@@ -204,8 +204,8 @@ function handle_set_object(path, object_data) {
     });
 }
 
-
 function handle_command(cmd) {
+    let path = cmd.path.split("/").filter(x => x.length > 0)
     if (cmd.type == "set_property") {
         set_property(cmd.path, cmd.property, cmd.value);
     } else if (cmd.type == "set_transform") {
