@@ -314,20 +314,20 @@ var INTERPRETATIONS = [
         if (Common.isNumber(original.r) && Common.isNumber(original.g) && Common.isNumber(original.b) && Common.isNumber(original.a)) {
           return {
             space: 'RGB',
-            r: 255 * original.r,
-            g: 255 * original.g,
-            b: 255 * original.b,
-            a: 255 * original.a
+            r: original.r,
+            g: original.g,
+            b: original.b,
+            a: original.a
           };
         }
         return false;
       },
       write: function write(color) {
         return {
-          r: color.r / 255,
-          g: color.g / 255,
-          b: color.b / 255,
-          a: color.a / 255
+          r: color.r,
+          g: color.g,
+          b: color.b,
+          a: color.a
         };
       }
     },
@@ -336,18 +336,18 @@ var INTERPRETATIONS = [
         if (Common.isNumber(original.r) && Common.isNumber(original.g) && Common.isNumber(original.b)) {
           return {
             space: 'RGB',
-            r: 255 * original.r,
-            g: 255 * original.g,
-            b: 255 * original.b
+            r: original.r,
+            g: original.g,
+            b: original.b
           };
         }
         return false;
       },
       write: function write(color) {
         return {
-          r: color.r / 255,
-          g: color.g / 255,
-          b: color.b / 255
+          r: color.r,
+          g: color.g,
+          b: color.b
         };
       }
     },
@@ -1958,14 +1958,18 @@ Common.extend(GUI.prototype,
     });
   },
   destroy: function destroy() {
+    if (this.parent) {
+      throw new Error('Only the root GUI should be removed with .destroy(). ' + 'For subfolders, use gui.removeFolder(folder) instead.');
+    }
     if (this.autoPlace) {
       autoPlaceContainer.removeChild(this.domElement);
     }
+    var _this = this;
+    Common.each(this.__folders, function (subfolder) {
+      _this.removeFolder(subfolder);
+    });
     dom.unbind(window, 'keydown', GUI._keydownHandler, false);
-    dom.unbind(window, 'resize', this.__resizeHandler);
-    if (this.saveToLocalStorageIfPossible) {
-      dom.unbind(window, 'unload', this.saveToLocalStorageIfPossible);
-    }
+    removeListeners(this);
   },
   addFolder: function addFolder(name) {
     if (this.__folders[name] !== undefined) {
@@ -1993,7 +1997,11 @@ Common.extend(GUI.prototype,
     this.load.folders[folder.name]) {
       delete this.load.folders[folder.name];
     }
+    removeListeners(folder);
     var _this = this;
+    Common.each(folder.__folders, function (subfolder) {
+      folder.removeFolder(subfolder);
+    });
     Common.defer(function () {
       _this.onResize();
     });
@@ -2142,6 +2150,12 @@ function addRow(gui, newDom, liBefore) {
   }
   gui.onResize();
   return li;
+}
+function removeListeners(gui) {
+  dom.unbind(window, 'resize', gui.__resizeHandler);
+  if (gui.saveToLocalStorageIfPossible) {
+    dom.unbind(window, 'unload', gui.saveToLocalStorageIfPossible);
+  }
 }
 function markPresetModified(gui, modified) {
   var opt = gui.__preset_select[gui.__preset_select.selectedIndex];

@@ -1,63 +1,150 @@
 'use strict';
 
-var gui;
 
-function build_gui(root_object) {
-    if (gui !== undefined) {
-        remove_folders(gui);
-    } else {
-        gui = new dat.GUI();
+class SceneNode {
+    constructor(group, folder) {
+        this.group = group;
+        this.folder = folder;
+        this.object = null;
+        this.children = {};
+        this.controllers = [];
+        this.create_controls();
+        for (let c of this.group.children) {
+            this.add_child(c);
+        }
     }
-    let folder = gui.addFolder("Scene");
-    folder.open();
-    traverse_gui(folder, root_object);
-    return gui;
-}
 
-function material_gui(gui, material) {
-    gui.addColor(material, "color");
-    "reflectivity" in material && gui.add(material, "reflectivity");
-    "transparent" in material && gui.add(material, "transparent");
-    "opacity" in material && gui.add(material, "opacity", 0, 1, 0.01);
-    "emissive" in material && gui.addColor(material, "emissive");
-}
+    add_child(group) {
+        let f = this.folder.addFolder(group.name);
+        let node = new SceneNode(group, f);
+        this.children[group.name] = node;
+        return node;
+    }
 
-function traverse_gui(folder, object) {
-    // TODO: This is kind of horrifying. Rather than fix the way
-    // dat.gui renders the visibility attribute, I just grab its
-    // dom element, then stick that element inside the title of
-    // the containing folder. I can then hide the original
-    // control. Finally, I add a hook that adds the
-    // hidden-scene-element class to the parent so that all
-    // nested visibility checkboxes will be disabled.
-    let v = folder.add(object, "visible");
-    v.domElement.classList.add("visibility-checkbox");
-    v.domElement.style.float = "right";
-    v.domElement.style.width = 0;
-    let parent = v.domElement.parentNode.parentNode;
-    parent.style.display = "none";
-    let title = parent.previousSibling;
-    title.appendChild(v.domElement);
-    v.domElement.children[0].addEventListener("change", function(evt) {
-        if (evt.target.checked) {
-            title.classList.remove("hidden-scene-element");
+    create_child(name) {
+        let obj = new THREE.Group();
+        obj.name = name;
+        this.group.add(obj);
+        return this.add_child(obj);
+    }
+
+    find(path) {
+        if (path.length == 0) {
+            return this;
         } else {
-            title.classList.add("hidden-scene-element");
-        }
-    });
-    if (object.children.length > 0) {
-        folder.open();
-        for (let child_object of object.children) {
-            let child_folder = folder.addFolder(child_object.name);
-            // child_folder.open();
-            traverse_gui(child_folder, child_object);
+            let name = path[0];
+            let child = this.children[name];
+            if (child === undefined) {
+                child = this.create_child(name);
+            }
+            return child.find(path.slice(1));
         }
     }
-    if (object.material !== undefined) {
-        let f = folder.addFolder("material");
-        material_gui(f, object.material);
+
+    create_controls() {
+        for (let c of this.controllers) {
+            c.remove();
+        }
+        this.vis_controller = new dat.controllers.BooleanController(this.group, "visible");
+        this.folder.domElement.prepend(this.vis_controller.domElement);
+        this.vis_controller.domElement.style.height = "0";
+        this.vis_controller.domElement.style.float = "right";
+        this.vis_controller.domElement.classList.add("visibility-checkbox");
+        this.vis_controller.domElement.children[0].addEventListener("change", (evt) => {
+            if (evt.target.checked) {
+                this.folder.domElement.classList.remove("hidden-scene-element");
+            } else {
+                this.folder.domElement.classList.add("hidden-scene-element");
+            }
+        });
+    }
+
+    set_object(object) {
+        if (this.object) {
+            this.group.remove(this.object);
+            dispose(this.object);
+        }
+        this.object = object;
+        this.group.add(this.object);
+        this.create_controls();
+    }
+
+    set_transform(matrix) {
+        let mat = new THREE.Matrix4();
+        mat.fromArray(matrix);
+        mat.decompose(this.group.position, this.group.quaternion, this.group.scale);
+    }
+
+    dispose_recursive() {
+        for (let name of Object.keys(this.children)) {
+            this.children[name].dispose_recursive();
+        }
+        dispose(this.object);
+        dispose(this.group);
+    }
+
+    delete(path) {
+        if (path.length == 0) {
+            console.error("Can't delete an empty path");
+        } else {
+            let parent = this.find(path.slice(0, path.length - 1));
+            let name = path[path.length - 1];
+            let child = parent.children[name];
+            if (child !== undefined) {
+                child.dispose_recursive();
+                parent.group.remove(child.group);
+                remove_folders(child.folder);
+                parent.folder.removeFolder(child.folder);
+                delete parent.children[name];
+            }
+        }
     }
 }
+
+// function material_gui(gui, material) {
+//     gui.addColor(material, "color");
+//     "reflectivity" in material && gui.add(material, "reflectivity");
+//     "transparent" in material && gui.add(material, "transparent");
+//     "opacity" in material && gui.add(material, "opacity", 0, 1, 0.01);
+//     "emissive" in material && gui.addColor(material, "emissive");
+// }
+
+// function traverse_gui(folder, object) {
+//     // TODO: This is kind of horrifying. Rather than fix the way
+//     // dat.gui renders the visibility attribute, I just grab its
+//     // dom element, then stick that element inside the title of
+//     // the containing folder. I can then hide the original
+//     // control. Finally, I add a hook that adds the
+//     // hidden-scene-element class to the parent so that all
+//     // nested visibility checkboxes will be disabled.
+//     let v = folder.add(object, "visible");
+//     v.domElement.classList.add("visibility-checkbox");
+//     v.domElement.style.float = "right";
+//     v.domElement.style.width = 0;
+//     let parent = v.domElement.parentNode.parentNode;
+//     parent.style.display = "none";
+//     let title = parent.previousSibling;
+//     title.appendChild(v.domElement);
+//     v.domElement.children[0].addEventListener("change", function(evt) {
+//         if (evt.target.checked) {
+//             title.classList.remove("hidden-scene-element");
+//         } else {
+//             title.classList.add("hidden-scene-element");
+//         }
+//     });
+//     if (object.children.length > 0) {
+//         folder.open();
+//         for (let child_object of object.children) {
+//             let child_folder = folder.addFolder(child_object.name);
+//             // child_folder.open();
+//             traverse_gui(child_folder, child_object);
+//         }
+//     }
+//     if (object.material !== undefined) {
+//         let f = folder.addFolder("material");
+//         material_gui(f, object.material);
+//     }
+// }
 
 function remove_folders(gui) {
     for (let name of Object.keys(gui.__folders)) {
@@ -68,70 +155,14 @@ function remove_folders(gui) {
     }
 }
 
-function update_gui() {
-    // build_gui(scene);
-}
-
-// function create_options(node, element) {
-//     let container = create_element("div", element, {class: "scene-tree-item"});
-//     let row = create_element("div", container, {class: "scene-tree-header"});
-//     let expander = create_element("div", row, {class: "expansion-control"});
-//     if (node.children.length) {
-//         expander.addEventListener("click", function() {
-//             container.classList.toggle("expanded");
-//             container.classList.toggle("collapsed");
-//         });
-//         container.classList.add("expanded");
-//     }
-//     let name = create_text(node.name || "<anonymous>", create_element("div", row, {class: "scene-tree-label"}));
-//     let visibility = create_element("div", row, {class: "scene-tree-visibility"});
-//     create_text("👁", visibility);
-//     if (!node.visible) {
-//         container.classList.add("hidden");
-//     }
-//     visibility.addEventListener("click", function() {
-//         container.classList.toggle("hidden");
-//         node.visible = !container.classList.contains("hidden");
-//     });
-//     let children = create_element("div", container, {class: "scene-tree-children"})
-//     if ("children" in node) {
-//         for (let child of node.children) {
-//             create_options(child, children);
-//         }
-//     }
-// }
-
-
-function find_child(path, root) {
-    if (root === undefined) {
-        root = scene;
-    }
-    if (path.length > 0) {
-        let child = root.children.find(c => c.name == path[0]);
-        if (child === undefined) {
-            child = new THREE.Object3D();
-            child.name = path[0];
-            root.add(child);
-        }
-        return find_child(path.slice(1, path.length + 1), child);
-    } else {
-        return root;
-    }
-}
-
 function set_transform(path, matrix) {
-    let child = find_child(path);
-    let mat = new THREE.Matrix4();
-    mat.fromArray(matrix);
-    mat.decompose(child.position, child.quaternion, child.scale);
-}
-
-function set_property(path, property, value) {
-    let obj = find_child(path);
-    obj[property] = value;
+    scene_tree.find(path).set_transform(matrix);
 }
 
 function dispose(object) {
+    if (!object) {
+        return;
+    }
     if (object.geometry) {
         object.geometry.dispose();
     }
@@ -143,33 +174,15 @@ function dispose(object) {
     }
 }
 
-function dispose_recursive(object) {
-    dispose(object);
-    for (let child of object.children) {
-        dispose_recursive(child);
-    }
-}
-
 function set_object(path, object) {
-    let parent = find_child(path);
-    let child = parent.children.find(c => c.name == object.name);
-    if (child !== undefined) {
-        parent.remove(child);
-        dispose(child);
-    }
-    parent.add(object);
-    update_gui();
-    update_embed();
+    scene_tree.find(path).set_object(object);
 }
 
 function delete_path(path) {
-    let parent = find_child(path.slice(0, path.length - 1));
-    let child = parent.children.find(c => c.name == path[path.length - 1]);
-    if (child !== undefined) {
-        parent.remove(child);
-        dispose_recursive(child);
-        update_gui();
-        update_embed();
+    if (path.length == 0) {
+        console.error("Deleting the entire scene is not implemented")
+    } else {
+        scene_tree.delete(path);
     }
 }
 
@@ -234,7 +247,6 @@ function connect(url) {
 
 function set_3d_pane_size(w, h) {
     if (w === undefined) {
-        // w = window.innerWidth;
         w = threejs_pane.offsetWidth;
     }
     if (h === undefined) {
@@ -244,15 +256,6 @@ function set_3d_pane_size(w, h) {
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
 }
-
-
-// function create_tree_viewer_root() {
-//     let viewer_tree = new THREE.Object3D();
-//     viewer_tree.name = "TreeViewer";
-//     viewer_tree.rotateX(-Math.PI / 2);
-//     scene.add(viewer_tree);
-//     return viewer_tree;
-// }
 
 var camera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
 var renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
@@ -291,34 +294,27 @@ function create_default_scene() {
 }
 
 var scene = create_default_scene();
+var gui;
+var scene_tree;
+
+function create_scene_tree() {
+    if (gui) {
+        gui.destroy();
+    }
+    gui = new dat.GUI();
+    let scene_folder = gui.addFolder("Scene");
+    scene_folder.open();
+    scene_tree = new SceneNode(scene, scene_folder);
+}
+
+create_scene_tree();
+// gui.close();
+
 
 window.onload = function (evt) {
     set_3d_pane_size();
 }
 window.addEventListener('resize', evt => set_3d_pane_size(), false);
-
-
-function create_element(type, parent, attrs) {
-    let element = document.createElement(type);
-    if (attrs !== undefined) {
-        for (let attr of Object.keys(attrs)) {
-            element.setAttribute(attr, attrs[attr]);
-        }
-    }
-    if (parent !== undefined && parent !== null) {
-        parent.append(element);
-    }
-    return element;
-}
-
-function create_text(text, parent) {
-    let element = document.createTextNode(text);
-    if (parent !== undefined) {
-        parent.append(element);
-    }
-    return element;
-}
-
 
 // https://stackoverflow.com/a/35251739
 function download_file(name, contents, mime) {
@@ -352,9 +348,10 @@ function handle_load_file() {
         let contents = this.result;
         let json = JSON.parse(contents);
         let loader = new THREE.ObjectLoader();
+        
+        scene_tree.dispose_recursive();
         scene = loader.parse(json);
-        update_gui();
-        update_embed();
+        create_scene_tree();
     };
     reader.readAsText(file);
 }
@@ -369,28 +366,8 @@ function load_scene() {
     input.remove();
 }
 
-// create_options(scene, document.getElementById("scene-controls"));
-update_gui();
-
 let url = `ws://${location.host}`;
 connect(url);
-
-var embed_pending = false;
-var embed_enabled = false;
-
-function embed() {
-    embed_pending = false;
-    let script = document.getElementById("embedded-json");
-    script.text = `scene = new THREE.ObjectLoader().parse(JSON.parse(\`${JSON.stringify(scene.toJSON())}\`)); update_gui();`;
-}
-
-function update_embed() {
-    if (embed_pending || !embed_enabled) {
-        return;
-    }
-    setTimeout(embed, 1000);
-}
-
 
 function animate() {
     requestAnimationFrame(animate);
