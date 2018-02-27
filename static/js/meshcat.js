@@ -289,6 +289,7 @@ function create_default_scene() {
     var axes = new THREE.AxesHelper(0.5);
     axes.name = "Axes";
     scene.add(axes);
+    axes.visible = false;
 
     return scene;
 }
@@ -308,7 +309,7 @@ function create_scene_tree() {
 }
 
 create_scene_tree();
-// gui.close();
+gui.close();
 
 
 window.onload = function (evt) {
@@ -348,7 +349,7 @@ function handle_load_file() {
         let contents = this.result;
         let json = JSON.parse(contents);
         let loader = new THREE.ObjectLoader();
-        
+
         scene_tree.dispose_recursive();
         scene = loader.parse(json);
         create_scene_tree();
