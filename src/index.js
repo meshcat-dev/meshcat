@@ -240,6 +240,7 @@ class Viewer {
         window.onload = (evt) => this.set_3d_pane_size();
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
 
+        requestAnimationFrame(() => this.set_3d_pane_size());
         this.animate();
     }
 
@@ -247,7 +248,11 @@ class Viewer {
         if (this.gui) {
             this.gui.destroy();
         }
-        this.gui = new dat.GUI();
+        this.gui = new dat.GUI({autoPlace: false});
+        this.dom_element.appendChild(this.gui.domElement);
+        this.gui.domElement.style.position = "absolute";
+        this.gui.domElement.style.right = 0;
+        this.gui.domElement.style.top = 0;
         let scene_folder = this.gui.addFolder("Scene");
         scene_folder.open();
         this.scene_tree = new SceneNode(this.scene, scene_folder);
