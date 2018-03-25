@@ -16,7 +16,6 @@
     "three": "^0.91.0"
   },
   "scripts": {
-    "build": "webpack --mode=production",
-    "dev": "webpack --mode=development"
+    "build": "webpack"
   }
 }
