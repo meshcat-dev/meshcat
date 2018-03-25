@@ -3,5 +3,6 @@ module.exports = {
 	output: {
 		library: "MeshCat"
 	},
-	watch: true
+	watch: true,
+	devtool: "cheap-eval-source-map"
 };

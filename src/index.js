@@ -63,6 +63,12 @@ class SceneNode {
         });
     }
 
+    set_transform(matrix) {
+        let mat = new THREE.Matrix4();
+        mat.fromArray(matrix);
+        mat.decompose(this.group.position, this.group.quaternion, this.group.scale);
+    }
+
     set_object(object) {
         if (this.object) {
             this.group.remove(this.object);
@@ -71,12 +77,6 @@ class SceneNode {
         this.object = object;
         this.group.add(this.object);
         this.create_controls();
-    }
-
-    set_transform(matrix) {
-        let mat = new THREE.Matrix4();
-        mat.fromArray(matrix);
-        mat.decompose(this.group.position, this.group.quaternion, this.group.scale);
     }
 
     dispose_recursive() {
@@ -120,10 +120,6 @@ function remove_folders(gui) {
         dat.dom.dom.unbind(window, 'resize', folder.__resizeHandler);
         gui.removeFolder(folder);
     }
-}
-
-function set_transform(path, matrix) {
-    scene_tree.find(path).set_transform(matrix);
 }
 
 function dispose(object) {
@@ -278,6 +274,10 @@ class Viewer {
         this.renderer.render(this.scene, this.camera);
     }
 
+    set_transform(path, matrix) {
+        this.scene_tree.find(path).set_transform(matrix);
+    }
+
     set_object(path, object) {
         this.scene_tree.find(path).set_object(object);
     }
@@ -306,20 +306,18 @@ class Viewer {
 
     handle_command(cmd) {
         let path = cmd.path.split("/").filter(x => x.length > 0);
-        if (cmd.type == "set_property") {
-            set_property(path, cmd.property, cmd.value);
-        } else if (cmd.type == "set_transform") {
-            set_transform(path, cmd.matrix);
+        if (cmd.type == "set_transform") {
+            this.set_transform(path, cmd.matrix);
         } else if (cmd.type == "delete") {
-            delete_path(path);
+            this.delete_path(path);
         } else if (cmd.type == "set_object") {
-            handle_set_object(path, cmd.object);
+            this.set_object_from_json(path, cmd.object);
         }
     }
 
     handle_command_message(message) {
         let data = msgpack.decode(new Uint8Array(message.data));
-        handle_command(data);
+        this.handle_command(data);
     }
 
     connect(url) {
@@ -329,7 +327,7 @@ class Viewer {
         console.log(url);
         let connection = new WebSocket(url);
         connection.binaryType = "arraybuffer";
-        connection.onmessage = this.handle_command_message;
+        connection.onmessage = (msg) => this.handle_command_message(msg);
         connection.onclose = function (evt) {
             // TODO: start trying to reconnect
         }
