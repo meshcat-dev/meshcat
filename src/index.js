@@ -309,14 +309,30 @@ class Viewer {
         }
     }
 
+    set_control(name, callback, value, min, max, step) {
+        let handler = {};
+        if (value !== undefined) {
+            handler[name] = value;
+            let controller = this.gui.add(handler, name, min, max, step);
+            controller.onChange(eval(callback));
+        } else {
+            handler[name] = eval(callback);
+            this.gui.add(handler, name);
+        }
+    }
+
     handle_command(cmd) {
-        let path = cmd.path.split("/").filter(x => x.length > 0);
         if (cmd.type == "set_transform") {
+            let path = cmd.path.split("/").filter(x => x.length > 0);
             this.set_transform(path, cmd.matrix);
         } else if (cmd.type == "delete") {
+            let path = cmd.path.split("/").filter(x => x.length > 0);
             this.delete_path(path);
         } else if (cmd.type == "set_object") {
+            let path = cmd.path.split("/").filter(x => x.length > 0);
             this.set_object_from_json(path, cmd.object);
+        } else if (cmd.type == "set_control") {
+            this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
         }
     }
 
