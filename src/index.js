@@ -391,6 +391,11 @@ style.sheet.insertRule(`
         display:inline-block;
         padding: 0 0 0 0px;
     }`);
+style.sheet.insertRule(`
+    .meshcat-viewer .dg ul {
+        list-style: none;
+    }
+`);
 
 module.exports = {
 	Viewer: Viewer
