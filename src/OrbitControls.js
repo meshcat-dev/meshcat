@@ -659,41 +659,28 @@ THREE.OrbitControls = function ( object, domElement ) {
 	function onMouseDown( event ) {
 
 		if ( scope.enabled === false ) return;
+		console.log(event.button, event.shiftKey);
 
 		event.preventDefault();
 
-		switch ( event.button ) {
+		if (event.button === scope.mouseButtons.PAN || (event.button === scope.mouseButtons.ORBIT && event.shiftKey)) {
+			if ( scope.enablePan === false ) return;
 
-			case scope.mouseButtons.ORBIT:
+			handleMouseDownPan( event );
 
-				if ( scope.enableRotate === false ) return;
+			state = STATE.PAN;
+		} else if (event.button === scope.mouseButtons.ORBIT) {
+			if ( scope.enableRotate === false ) return;
 
-				handleMouseDownRotate( event );
+			handleMouseDownRotate( event );
 
-				state = STATE.ROTATE;
+			state = STATE.ROTATE;
+		} else if (event.button === scope.mouseButtons.ZOOM) {
+			if ( scope.enableZoom === false ) return;
 
-				break;
+			handleMouseDownDolly( event );
 
-			case scope.mouseButtons.ZOOM:
-
-				if ( scope.enableZoom === false ) return;
-
-				handleMouseDownDolly( event );
-
-				state = STATE.DOLLY;
-
-				break;
-
-			case scope.mouseButtons.PAN:
-
-				if ( scope.enablePan === false ) return;
-
-				handleMouseDownPan( event );
-
-				state = STATE.PAN;
-
-				break;
-
+			state = STATE.DOLLY;
 		}
 
 		if ( state !== STATE.NONE ) {

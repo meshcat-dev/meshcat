@@ -231,6 +231,7 @@ class Viewer {
         this.dom_element.appendChild(this.renderer.domElement);
         this.renderer.domElement.style.background = "linear-gradient(to bottom,  lightskyblue 0%,midnightblue 100%)"
         this.controls = new THREE.OrbitControls(this.camera, this.dom_element);
+        this.controls.enableKeys = false;
         this.scene = create_default_scene();
 
         this.create_scene_tree();
@@ -396,6 +397,7 @@ style.sheet.insertRule(`
         list-style: none;
     }
 `);
+
 
 module.exports = {
 	Viewer: Viewer
