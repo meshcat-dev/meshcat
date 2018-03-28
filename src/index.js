@@ -266,8 +266,7 @@ class Viewer {
             w = this.dom_element.offsetWidth;
         }
         if (h === undefined) {
-            // h = window.innerHeight; // TODO: definitely not correct anymore
-            h = this.dom_element.offsetHeight;
+            h = window.innerHeight;
         }
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
@@ -392,11 +391,6 @@ style.sheet.insertRule(`
         display:inline-block;
         padding: 0 0 0 0px;
     }`);
-style.sheet.insertRule(`
-    .meshcat-viewer .dg ul {
-        list-style: none;
-    }
-`);
 
 
 module.exports = {
