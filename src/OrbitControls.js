@@ -226,8 +226,8 @@ THREE.OrbitControls = function ( object, domElement ) {
 		scope.domElement.removeEventListener( 'touchend', onTouchEnd, false );
 		scope.domElement.removeEventListener( 'touchmove', onTouchMove, false );
 
-		scope.domElement.removeEventListener( 'mousemove', onMouseMove, false );
-		scope.domElement.removeEventListener( 'mouseup', onMouseUp, false );
+		document.removeEventListener( 'mousemove', onMouseMove, false );
+		document.removeEventListener( 'mouseup', onMouseUp, false );
 
 		window.removeEventListener( 'keydown', onKeyDown, false );
 
@@ -659,34 +659,47 @@ THREE.OrbitControls = function ( object, domElement ) {
 	function onMouseDown( event ) {
 
 		if ( scope.enabled === false ) return;
-		console.log(event.button, event.shiftKey);
 
 		event.preventDefault();
 
-		if (event.button === scope.mouseButtons.PAN || (event.button === scope.mouseButtons.ORBIT && event.shiftKey)) {
-			if ( scope.enablePan === false ) return;
+		switch ( event.button ) {
 
-			handleMouseDownPan( event );
+			case scope.mouseButtons.ORBIT:
 
-			state = STATE.PAN;
-		} else if (event.button === scope.mouseButtons.ORBIT) {
-			if ( scope.enableRotate === false ) return;
+				if ( scope.enableRotate === false ) return;
 
-			handleMouseDownRotate( event );
+				handleMouseDownRotate( event );
 
-			state = STATE.ROTATE;
-		} else if (event.button === scope.mouseButtons.ZOOM) {
-			if ( scope.enableZoom === false ) return;
+				state = STATE.ROTATE;
 
-			handleMouseDownDolly( event );
+				break;
 
-			state = STATE.DOLLY;
+			case scope.mouseButtons.ZOOM:
+
+				if ( scope.enableZoom === false ) return;
+
+				handleMouseDownDolly( event );
+
+				state = STATE.DOLLY;
+
+				break;
+
+			case scope.mouseButtons.PAN:
+
+				if ( scope.enablePan === false ) return;
+
+				handleMouseDownPan( event );
+
+				state = STATE.PAN;
+
+				break;
+
 		}
 
 		if ( state !== STATE.NONE ) {
 
-			scope.domElement.addEventListener( 'mousemove', onMouseMove, false );
-			scope.domElement.addEventListener( 'mouseup', onMouseUp, false );
+			document.addEventListener( 'mousemove', onMouseMove, false );
+			document.addEventListener( 'mouseup', onMouseUp, false );
 
 			scope.dispatchEvent( startEvent );
 
@@ -736,8 +749,8 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 		handleMouseUp( event );
 
-		scope.domElement.removeEventListener( 'mousemove', onMouseMove, false );
-		scope.domElement.removeEventListener( 'mouseup', onMouseUp, false );
+		document.removeEventListener( 'mousemove', onMouseMove, false );
+		document.removeEventListener( 'mouseup', onMouseUp, false );
 
 		scope.dispatchEvent( endEvent );
 
