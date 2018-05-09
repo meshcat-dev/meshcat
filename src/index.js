@@ -225,13 +225,11 @@ function handle_load_file(viewer) {
 class Viewer {
     constructor(dom_element) {
         this.dom_element = dom_element;
-        this.camera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
-        this.camera.position.set(3, 1, 0);
         this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
         this.dom_element.appendChild(this.renderer.domElement);
         this.renderer.domElement.style.background = "linear-gradient(to bottom,  lightskyblue 0%,midnightblue 100%)"
-        this.controls = new THREE.OrbitControls(this.camera, this.dom_element);
-        this.controls.enableKeys = false;
+        this.set_camera(new THREE.PerspectiveCamera(75, 1, 0.01, 100));
+        this.camera.position.set(3, 1, 0);
         this.scene = create_default_scene();
 
         this.create_scene_tree();
@@ -277,6 +275,23 @@ class Viewer {
         requestAnimationFrame(() => this.animate());
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
+    }
+
+    set_camera(obj) {
+        this.camera = obj;
+        this.controls = new THREE.OrbitControls(this.camera, this.dom_element);
+        this.controls.enableKeys = false;
+    }
+
+    set_camera_from_json(data) {
+        let loader = new THREE.ObjectLoader();
+        loader.parse(data, (obj) => {
+            console.log(obj);
+            this.set_camera(obj);
+        });
+            // this.camera = obj;
+            // this.controls =
+
     }
 
     set_transform(path, matrix) {
@@ -394,5 +409,6 @@ style.sheet.insertRule(`
 
 
 module.exports = {
-	Viewer: Viewer
+	Viewer: Viewer,
+    THREE: THREE
 };
