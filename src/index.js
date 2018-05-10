@@ -415,6 +415,6 @@ style.sheet.insertRule(`
 
 
 module.exports = {
-	Viewer: Viewer,
+    Viewer: Viewer,
     THREE: THREE
 };
