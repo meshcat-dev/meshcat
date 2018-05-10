@@ -296,9 +296,6 @@ class Viewer {
             console.log(obj);
             this.set_camera(obj);
         });
-            // this.camera = obj;
-            // this.controls =
-
     }
 
     set_transform(path, matrix) {
