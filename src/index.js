@@ -240,7 +240,7 @@ class Viewer {
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
 
         requestAnimationFrame(() => this.set_3d_pane_size());
-        this.animate();
+        requestAnimationFrame(() => this.controls.update());
     }
 
     create_scene_tree() {
@@ -269,18 +269,25 @@ class Viewer {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
+        requestAnimationFrame(() => this.render());
     }
 
-    animate() {
-        requestAnimationFrame(() => this.animate());
-        this.controls.update();
+    render() {
         this.renderer.render(this.scene, this.camera);
     }
+
+    // animate() {
+    //     requestAnimationFrame(() => this.animate());
+    //     this.controls.update();
+    //     this.render();
+    // }
 
     set_camera(obj) {
         this.camera = obj;
         this.controls = new THREE.OrbitControls(this.camera, this.dom_element);
         this.controls.enableKeys = false;
+        this.controls.addEventListener('start', () => this.render());
+        this.controls.addEventListener('change', () => this.render());
     }
 
     set_camera_from_json(data) {
@@ -313,6 +320,7 @@ class Viewer {
                 obj.name = "<object>";
             }
             this.set_object(path, obj);
+            this.render();
         });
     }
 
@@ -349,6 +357,7 @@ class Viewer {
         } else if (cmd.type == "set_control") {
             this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
         }
+        this.render();
     }
 
     handle_command_message(message) {
