@@ -204,24 +204,6 @@ function download_file(name, contents, mime) {
     link.remove();
 }
 
-function handle_load_file(viewer) {
-    let file = this.files[0];
-    if (!file) {
-        return
-    }
-    let reader = new FileReader();
-    reader.onload = function(e) {
-        let contents = this.result;
-        let json = JSON.parse(contents);
-        let loader = new THREE.ObjectLoader();
-
-        viewer.scene_tree.dispose_recursive();
-        viewer.scene = loader.parse(json);
-        viewer.create_scene_tree();
-    };
-    reader.readAsText(file);
-}
-
 class Viewer {
     constructor(dom_element) {
         this.dom_element = dom_element;
@@ -379,13 +361,39 @@ class Viewer {
         download_file("scene.json", JSON.stringify(this.scene.toJSON()));
     }
 
+    load_scene_from_json(json) {
+        let loader = new THREE.ObjectLoader();
+        this.scene_tree.dispose_recursive();
+        this.scene = loader.parse(json);
+        this.create_scene_tree();
+    }
+
+    handle_load_file(input) {
+        let file = input.files[0];
+        if (!file) {
+            return
+        }
+        let reader = new FileReader();
+        let viewer = this;
+        reader.onload = function(e) {
+            let contents = this.result;
+            let json = JSON.parse(contents);
+            viewer.load_scene_from_json(json);
+        };
+        reader.readAsText(file);
+    }
+
     // https://stackoverflow.com/a/26298948
     load_scene() {
         let input = document.createElement("input");
         input.type = "file";
         document.body.appendChild(input);
         let self = this;
-        input.addEventListener("change", function() {handle_load_file(self)}, false);
+        input.addEventListener("change", function() {
+            console.log(this, self);
+            self.handle_load_file(this);
+            // handle_load_file(self)
+        }, false);
         input.click();
         input.remove();
     }
@@ -415,6 +423,6 @@ style.sheet.insertRule(`
 
 
 module.exports = {
-    Viewer: Viewer,
+	Viewer: Viewer,
     THREE: THREE
 };
