@@ -204,34 +204,14 @@ function download_file(name, contents, mime) {
     link.remove();
 }
 
-function handle_load_file(viewer) {
-    let file = this.files[0];
-    if (!file) {
-        return
-    }
-    let reader = new FileReader();
-    reader.onload = function(e) {
-        let contents = this.result;
-        let json = JSON.parse(contents);
-        let loader = new THREE.ObjectLoader();
-
-        viewer.scene_tree.dispose_recursive();
-        viewer.scene = loader.parse(json);
-        viewer.create_scene_tree();
-    };
-    reader.readAsText(file);
-}
-
 class Viewer {
     constructor(dom_element) {
         this.dom_element = dom_element;
-        this.camera = new THREE.PerspectiveCamera(75, 1, 0.01, 100);
-        this.camera.position.set(3, 1, 0);
         this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
         this.dom_element.appendChild(this.renderer.domElement);
         this.renderer.domElement.style.background = "linear-gradient(to bottom,  lightskyblue 0%,midnightblue 100%)"
-        this.controls = new THREE.OrbitControls(this.camera, this.dom_element);
-        this.controls.enableKeys = false;
+        this.set_camera(new THREE.PerspectiveCamera(75, 1, 0.01, 100));
+        this.camera.position.set(3, 1, 0);
         this.scene = create_default_scene();
 
         this.create_scene_tree();
@@ -242,7 +222,7 @@ class Viewer {
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
 
         requestAnimationFrame(() => this.set_3d_pane_size());
-        this.animate();
+        requestAnimationFrame(() => this.controls.update());
     }
 
     create_scene_tree() {
@@ -271,12 +251,33 @@ class Viewer {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
+        requestAnimationFrame(() => this.render());
     }
 
-    animate() {
-        requestAnimationFrame(() => this.animate());
-        this.controls.update();
+    render() {
         this.renderer.render(this.scene, this.camera);
+    }
+
+    // animate() {
+    //     requestAnimationFrame(() => this.animate());
+    //     this.controls.update();
+    //     this.render();
+    // }
+
+    set_camera(obj) {
+        this.camera = obj;
+        this.controls = new THREE.OrbitControls(this.camera, this.dom_element);
+        this.controls.enableKeys = false;
+        this.controls.addEventListener('start', () => this.render());
+        this.controls.addEventListener('change', () => this.render());
+    }
+
+    set_camera_from_json(data) {
+        let loader = new THREE.ObjectLoader();
+        loader.parse(data, (obj) => {
+            console.log(obj);
+            this.set_camera(obj);
+        });
     }
 
     set_transform(path, matrix) {
@@ -298,6 +299,7 @@ class Viewer {
                 obj.name = "<object>";
             }
             this.set_object(path, obj);
+            this.render();
         });
     }
 
@@ -334,6 +336,7 @@ class Viewer {
         } else if (cmd.type == "set_control") {
             this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
         }
+        this.render();
     }
 
     handle_command_message(message) {
@@ -358,13 +361,39 @@ class Viewer {
         download_file("scene.json", JSON.stringify(this.scene.toJSON()));
     }
 
+    load_scene_from_json(json) {
+        let loader = new THREE.ObjectLoader();
+        this.scene_tree.dispose_recursive();
+        this.scene = loader.parse(json);
+        this.create_scene_tree();
+    }
+
+    handle_load_file(input) {
+        let file = input.files[0];
+        if (!file) {
+            return
+        }
+        let reader = new FileReader();
+        let viewer = this;
+        reader.onload = function(e) {
+            let contents = this.result;
+            let json = JSON.parse(contents);
+            viewer.load_scene_from_json(json);
+        };
+        reader.readAsText(file);
+    }
+
     // https://stackoverflow.com/a/26298948
     load_scene() {
         let input = document.createElement("input");
         input.type = "file";
         document.body.appendChild(input);
         let self = this;
-        input.addEventListener("change", function() {handle_load_file(self)}, false);
+        input.addEventListener("change", function() {
+            console.log(this, self);
+            self.handle_load_file(this);
+            // handle_load_file(self)
+        }, false);
         input.click();
         input.remove();
     }
@@ -394,5 +423,6 @@ style.sheet.insertRule(`
 
 
 module.exports = {
-	Viewer: Viewer
+	Viewer: Viewer,
+    THREE: THREE
 };
