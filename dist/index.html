@@ -47,21 +47,21 @@
                         "type": "vector3",
                         "keys": [{
                             "time": 0,
-                            "value": [-2e-06,-6.71175,3.01972]
+                            "value": [0,-.671175, .3]
                         },{
                             "time": 5,
-                            "value": [-2e-06,-6.71175,3.01972]
+                            "value": [0,-.671175, .3]
                         },{
                             "time": 70,
-                            "value": [-2e-06,-6.52962,-38.1906]
+                            "value": [0,-.652962, 3.8]
                         },{
                             "time": 80,
-                            "value": [-2e-06,-6.52962,-38.1906]
+                            "value": [0,-.652962, 3.8]
                         },{
                             "time": 145,
-                            "value": [-2e-06,-6.71175,3.01972]
+                            "value": [0,-.671175, 3.0]
                         }],
-                        "name": "foo.position"
+                        "name": ".position"
                     }]
                 }];
 
@@ -70,11 +70,18 @@
 
 
             viewer.load_scene_from_json(scene_json);
-            var group = viewer.scene.children[3].children[0];
-            console.log(group);
 
-            var mixer = new MeshCat.THREE.AnimationMixer(viewer.scene);
-            mixer.clipAction(clips[0]).play();
+            var cameras = new MeshCat.THREE.Group();
+            cameras.name = "cameras";
+            cameras.rotateX(Math.PI / 2);
+            viewer.scene.add(cameras);
+
+            viewer.camera.name = "camera";
+            cameras.add(viewer.camera);
+
+            var mixer = new MeshCat.THREE.AnimationMixer(viewer.camera);
+            mixer.clipAction(clips[0], cameras).play();
+            var clock = new MeshCat.THREE.Clock();
 
             function animate() {
                 requestAnimationFrame( animate );
@@ -84,9 +91,9 @@
             function render() {
                 var delta = 0.75 * clock.getDelta();
                 mixer.update( delta );
-                stats.update();
-                renderer.render( scene, camera );
+                viewer.render();
             }
+            animate();
 
         </script>
 
