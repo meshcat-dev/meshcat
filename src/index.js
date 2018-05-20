@@ -216,13 +216,14 @@ class Viewer {
 
         this.create_scene_tree();
         this.gui.close();
+        this.needs_render = true;
 
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
 
         requestAnimationFrame(() => this.set_3d_pane_size());
-        requestAnimationFrame(() => this.controls.update());
+        this.animate();
     }
 
     create_scene_tree() {
@@ -251,25 +252,24 @@ class Viewer {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
-        requestAnimationFrame(() => this.render());
+        this.needs_render = true;
     }
 
-    render() {
-        this.renderer.render(this.scene, this.camera);
+    animate() {
+        requestAnimationFrame(() => this.animate());
+        if (this.needs_render) {
+            this.controls.update();
+            this.renderer.render(this.scene, this.camera);
+            this.needs_render = false;
+        }
     }
-
-    // animate() {
-    //     requestAnimationFrame(() => this.animate());
-    //     this.controls.update();
-    //     this.render();
-    // }
 
     set_camera(obj) {
         this.camera = obj;
         this.controls = new THREE.OrbitControls(this.camera, this.dom_element);
         this.controls.enableKeys = false;
-        this.controls.addEventListener('start', () => this.render());
-        this.controls.addEventListener('change', () => this.render());
+        this.controls.addEventListener('start', () => {this.needs_render = true});
+        this.controls.addEventListener('change', () => {this.needs_render = true});
     }
 
     set_camera_from_json(data) {
@@ -299,7 +299,7 @@ class Viewer {
                 obj.name = "<object>";
             }
             this.set_object(path, obj);
-            this.render();
+            this.needs_render = true;
         });
     }
 
@@ -336,7 +336,7 @@ class Viewer {
         } else if (cmd.type == "set_control") {
             this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
         }
-        this.render();
+        this.needs_render = true;
     }
 
     handle_command_message(message) {
