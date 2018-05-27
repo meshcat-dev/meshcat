@@ -154,6 +154,11 @@ function create_default_scene() {
     ambient_light.name = "AmbientLight";
     lights.add(ambient_light);
 
+    var cameras = new THREE.Group();
+    cameras.name = "Cameras";
+    cameras.rotateX(Math.PI / 2);  // rotate the cameras back to match their expected orientation
+    scene.add(cameras);
+
     var grid = new THREE.GridHelper(20, 40);
     grid.name = "Grid";
     grid.rotateX(Math.PI / 2);
@@ -210,13 +215,19 @@ class Viewer {
         this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
         this.dom_element.appendChild(this.renderer.domElement);
         this.renderer.domElement.style.background = "linear-gradient(to bottom,  lightskyblue 0%,midnightblue 100%)"
-        this.set_camera(new THREE.PerspectiveCamera(75, 1, 0.01, 100));
-        this.camera.position.set(3, 1, 0);
-        this.scene = create_default_scene();
 
+        this.scene = create_default_scene();
         this.create_scene_tree();
         this.gui.close();
         this.needs_render = true;
+
+        this.set_camera(new THREE.PerspectiveCamera(75, 1, 0.01, 100));
+        let mat = new THREE.Matrix4()
+        mat.makeTranslation(1, 1, 0);
+        this.set_transform(["Cameras", "default"], mat.toArray());
+        // this.camera.position.set(0, 0, 0);
+        // this.camera.position.set(1, 1, 0);
+
 
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
@@ -265,8 +276,13 @@ class Viewer {
     }
 
     set_camera(obj) {
+        let path = ["Cameras", "default"];
+        let node = this.scene_tree.find(path);
+        node.set_object(obj);
+        // this.set_object(path, obj);
         this.camera = obj;
-        this.controls = new THREE.OrbitControls(this.camera, this.dom_element);
+        console.log(node);
+        this.controls = new THREE.OrbitControls(node.object, this.dom_element);
         this.controls.enableKeys = false;
         this.controls.addEventListener('start', () => {this.needs_render = true});
         this.controls.addEventListener('change', () => {this.needs_render = true});
