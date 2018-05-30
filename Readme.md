@@ -4,7 +4,7 @@ MeshCat is a remotely-controllable 3D viewer, built on top of [three.js](https:/
 
 The MeshCat viewer is meant to be combined with an interface in the language of your choice. Current interfaces are:
 
-* [meshcat-pyton (Python 2.7 and 3.4+)](https://github.com/rdeits/meshcat-python)
+* [meshcat-python (Python 2.7 and 3.4+)](https://github.com/rdeits/meshcat-python)
 * [MeshCat.jl (Julia)](https://github.com/rdeits/MeshCat.jl)
 
 ## API
@@ -112,6 +112,17 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 </pre>
             </dd>
         </dl>
+    </dd>
+</dl>
+
+### WebSocket API
+
+<dl>
+    <dt><code>Viewer.connect(url)</code></dt>
+    <dd>
+        Set up a web socket connection to a server at the given URL. The viewer will listen for messages on the socket as binary MsgPack blobs. Each message will be decoded using <code>msgpack.decode()</code> from <a href="https://github.com/kawanet/msgpack-lite">msgpack-lite</a> and the resulting object will be passed directly to <code>Viewer.handle_command()</code> as documented above.
+        <p>
+        Note that we do support the MsgPack extension types listed in <a href="https://github.com/kawanet/msgpack-lite#extension-types">msgpack-lite#extension-types</a>, and the <code>Float32Array</code> type is particularly useful for efficiently sending point data.
     </dd>
 </dl>
 
