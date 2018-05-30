@@ -102,7 +102,11 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             <dt><code>delete</code></dt>
             <dd>
                 Delete the object at the given path as well as all of its children. 
-                <p>No additional fields.</p>
+                <p>Additional fields:</p>
+                <dl>
+                    <dt><code>path</code></dt>
+                    <dd>A <code>"/"</code>-separated string indicating the object's path in the scene tree. An object at path <code>"/foo/bar"</code> is a child of an object at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> will also affect its children. 
+                </dl>
                 Example:
                 <pre>
 {
@@ -125,8 +129,3 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
         Note that we do support the MsgPack extension types listed in <a href="https://github.com/kawanet/msgpack-lite#extension-types">msgpack-lite#extension-types</a>, and the <code>Float32Array</code> type is particularly useful for efficiently sending point data.
     </dd>
 </dl>
-
-
-
-
-
