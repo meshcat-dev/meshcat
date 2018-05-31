@@ -28,7 +28,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
         <dl>
             <dt><code>set_object</code></dt>
             <dd>
-                Set the 3D object at a given path in the scene tree from its JSON description. 
+                Set the 3D object at a given path in the scene tree from its JSON description. Any transforms previously applied to that path will be lost and any children of that path will be deleted.
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>path</code></dt>
