@@ -129,3 +129,38 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
         Note that we do support the MsgPack extension types listed in <a href="https://github.com/kawanet/msgpack-lite#extension-types">msgpack-lite#extension-types</a>, and the <code>Float32Array</code> type is particularly useful for efficiently sending point data.
     </dd>
 </dl>
+
+### Useful Paths
+
+The default MeshCat scene comes with a few objects at pre-set paths. You can replace, delete, or transform these objects just like anything else in the scene. 
+
+<dl>
+    <dt><code>/Lights/DirectionalLight</code></dt>
+    <dd>The single directional light in the scene.</dd>
+    <dt><code>/Lights/AmbientLight</code></dt>
+    <dd>The ambient light in the scene.</dd>
+    <dt><code>/Grid</code></dt>
+    <dd>The square grid in the x-y plane, with 0.5-unit spacing.</dd>
+    <dt><code>/Axes</code></dt>
+    <dd>The red, green, and blue XYZ triad at the origin of the scene (invisible by default, click on "open controls" in the upper right to toggle its visibility).</dd>
+    <dt><code>/Cameras</code></dt>
+    <dd>The camera from which the scene is rendered (see below for details)</dd>
+</dl>
+
+### Camera Control
+
+The camera is just another object in the MeshCat scene, so you can move it around with <code>set_transform</code> commands like any other object. Please note that replacing the camera with <code>set_object</code> is not currently supported (but we expect to implement this in the future). 
+
+Controlling the camera is slightly more complicated than moving a single object because the camera actually has two important poses: the origin about which the camera orbits when you click-and-drag with the mouse, and the position of the camera itself. In addition, cameras and controls in Three.js assume a coordinate system in which the Y axis is upward. In robotics, we typically have the Z axis pointing up, and that's what's done in MeshCat. To account for this, the actual camera lives inside a few path elements: 
+
+<code>/Cameras/default/rotated/camera</code>
+
+The <code>/rotated</code> path element exists to remind users that its transform has been rotated to a Y-up coordiante system for the camera inside. 
+
+There is one additional complication: the built-in orbit and pan controls (which allow the user to move the view with their mouse) use the translation of *only* the `/Cameras/default/rotated/camera` element with respect to its immediate parent to compute the radius of the orbit. That means that, in practice, you can allow the user to orbit by setting the transform of `/Cameras/default/rotated/camera` to a translation like `[1, 1, 1]`, or you can lock the orbit controls by setting that transform to the identity (a translation of `[0, 0, 0]`). Remember that whatever translation you choose is in the *rotated*, Y-up coordiante system that the Three.js camera expects. We're sorry. 
+
+#### Examples
+
+To move the camera's center of attention, while still allowing the user to orbit and pan manually, we suggest setting the transform of the `/Cameras/default` path to whatever center point you want and setting the transform of `/Cameras/default/rotated/camera` to a translation of `[2, 0, 0]`. 
+
+To move the camera itself and lock its controls, we suggest setting the transform of `/Cameras/default` to the exact camera pose and setting `/Cameras/default/rotated/camera` to a translation of `[0, 0, 0]` (the identity). 
