@@ -155,9 +155,9 @@ Controlling the camera is slightly more complicated than moving a single object 
 
 <code>/Cameras/default/rotated/camera</code>
 
-The <code>/rotated</code> path element exists to remind users that its transform has been rotated to a Y-up coordiante system for the camera inside. 
+The <code>/rotated</code> path element exists to remind users that its transform has been rotated to a Y-up coordinate system for the camera inside. 
 
-There is one additional complication: the built-in orbit and pan controls (which allow the user to move the view with their mouse) use the translation of *only* the `/Cameras/default/rotated/camera` element with respect to its immediate parent to compute the radius of the orbit. That means that, in practice, you can allow the user to orbit by setting the transform of `/Cameras/default/rotated/camera` to a translation like `[1, 1, 1]`, or you can lock the orbit controls by setting that transform to the identity (a translation of `[0, 0, 0]`). Remember that whatever translation you choose is in the *rotated*, Y-up coordiante system that the Three.js camera expects. We're sorry. 
+There is one additional complication: the built-in orbit and pan controls (which allow the user to move the view with their mouse) use the translation of *only* the `/Cameras/default/rotated/camera` element with respect to its immediate parent to compute the radius of the orbit. That means that, in practice, you can allow the user to orbit by setting the transform of `/Cameras/default/rotated/camera` to a translation like `[1, 1, 1]`, or you can lock the orbit controls by setting that transform to the identity (a translation of `[0, 0, 0]`). Remember that whatever translation you choose is in the *rotated*, Y-up coordinate system that the Three.js camera expects. We're sorry. 
 
 #### Examples
 
