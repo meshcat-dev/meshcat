@@ -63,11 +63,11 @@ class SceneNode {
             }
         });
         if (this.object.isLight) {
-            let controller = this.folder.add(this.object, "intensity");
+            let controller = this.folder.add(this.object, "intensity").min(0).step(0.01);
             controller.onChange(() => this.on_update());
         }
         if (this.object.isCamera) {
-            let controller = this.folder.add(this.object, "zoom");
+            let controller = this.folder.add(this.object, "zoom").min(0).step(0.1);
             controller.onChange(() => {
                 this.object.updateProjectionMatrix();
                 this.on_update()
@@ -219,6 +219,86 @@ function download_file(name, contents, mime) {
     link.remove();
 }
 
+class Animator {
+    constructor(viewer) {
+        this.viewer = viewer;
+        this.folder = this.viewer.gui.addFolder("Animations");
+        this.mixer = new THREE.AnimationMixer();
+        this.loader = new THREE.ObjectLoader();
+        this.clock = new THREE.Clock();
+        this.actions = [];
+        this.playing = false;
+    }
+
+    play() {
+        this.clock.start();
+        // this.mixer.timeScale = 1;
+        for (let action of this.actions) {
+            action.play();
+        }
+        this.playing = true;
+    }
+
+    pause() {
+        // this.mixer.timeScale = 0;
+        this.clock.stop();
+        this.playing = false;
+    }
+
+    reset() {
+        for (let action of this.actions) {
+            action.reset();
+        }
+        this.mixer.update(0);
+        this.viewer.set_dirty();
+    }
+
+    load(animations, options) {
+        remove_folders(this.folder);
+        this.folder.open();
+        let folder = this.folder.addFolder("default");
+        folder.open();
+        folder.add(this, "play");
+        folder.add(this, "pause");
+        folder.add(this, "reset");
+        folder.add(this.mixer, "timeScale").step(0.01).min(0);
+
+        if (options.play === undefined) {options.play = true}
+        if (options.loopMode === undefined) {options.loopMode = THREE.LoopRepeat}
+        if (options.repetitions === undefined) {options.repetitions = 1}
+        if (options.clampWhenFinished === undefined) {options.clampWhenFinished = true}
+
+        for (let animation of animations) {
+            console.log(animation.path);
+            let target = this.viewer.scene_tree.find(animation.path).object;
+            console.log(target);
+            let clip = this.loader.parseAnimations([animation.clip])[0];
+            let action = this.mixer.clipAction(clip, target);
+            action.clampWhenFinished = options.clampWhenFinished;
+            action.setLoop(options.loopMode, options.repetitions);
+            this.actions.push(action);
+        }
+        this.reset();
+        if (options.play) {
+            this.play();
+        }
+    }
+
+    update() {
+        if (this.playing) {
+            this.mixer.update(this.clock.getDelta());
+            this.viewer.set_dirty();
+            if (this.actions.every((action) => action.paused)) {
+                this.pause();
+                for (let action of this.actions) {
+                    action.reset();
+                }
+            }
+        }
+    }
+}
+
+
 class Viewer {
     constructor(dom_element, animate) {
         this.dom_element = dom_element;
@@ -231,6 +311,7 @@ class Viewer {
         this.set_dirty();
 
         this.create_camera();
+
 
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
@@ -273,6 +354,7 @@ class Viewer {
         this.scene_tree = new SceneNode(this.scene, scene_folder, () => this.set_dirty());
         this.scene_tree.folder.add(this, 'save_scene');
         this.scene_tree.folder.add(this, 'load_scene');
+        this.animator = new Animator(this);
         this.gui.close();
     }
 
@@ -297,6 +379,7 @@ class Viewer {
 
     animate() {
         requestAnimationFrame(() => this.animate());
+        this.animator.update();
         if (this.needs_render) {
             this.render();
         }
@@ -356,6 +439,11 @@ class Viewer {
         }
     }
 
+    set_animation(animations, options) {
+        options = options || {};
+        this.animator.load(animations, options);
+    }
+
     set_control(name, callback, value, min, max, step) {
         let handler = {};
         if (value !== undefined) {
@@ -370,17 +458,22 @@ class Viewer {
 
     handle_command(cmd) {
         if (cmd.type == "set_transform") {
-            let path = cmd.path.split("/").filter(x => x.length > 0);
+            let path = split_path(cmd.path);
             this.set_transform(path, cmd.matrix);
         } else if (cmd.type == "delete") {
-            let path = cmd.path.split("/").filter(x => x.length > 0);
+            let path = split_path(cmd.path);
             this.delete_path(path);
         } else if (cmd.type == "set_object") {
-            let path = cmd.path.split("/").filter(x => x.length > 0);
+            let path = split_path(cmd.path);
             this.set_object_from_json(path, cmd.object);
         } else if (cmd.type == "set_property") {
-            let path = cmd.path.split("/").filter(x => x.length > 0);
+            let path = split_path(cmd.path);
             this.set_property(path, cmd.property, cmd.value);
+        } else if (cmd.type == "set_animation") {
+            cmd.animations.forEach(animation => {
+                animation.path = split_path(animation.path);
+            });
+            this.set_animation(cmd.animations, cmd.options);
         } else if (cmd.type == "set_control") {
             this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
         }
@@ -451,6 +544,10 @@ class Viewer {
         input.click();
         input.remove();
     }
+}
+
+function split_path(path_str) {
+    return path_str.split("/").filter(x => x.length > 0);
 }
 
 // TODO: surely there's a better way to inject this style information
