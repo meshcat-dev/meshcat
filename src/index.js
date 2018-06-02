@@ -85,9 +85,15 @@ class SceneNode {
         let parent = this.object.parent;
         this.dispose_recursive();
         this.object.parent.remove(this.object);
-        this.object = object;
-        parent.add(object);
+        this.object = new THREE.Group();
+        parent.add(this.object);
+        this.inner_object = object;
+        this.object.add(this.inner_object);
         this.create_controls();
+    }
+
+    set_property(property, value) {
+        this.inner_object[property] = value;
     }
 
     dispose_recursive() {
@@ -433,7 +439,8 @@ class Viewer {
     }
 
     set_property(path, property, value) {
-        this.scene_tree.find(path).object[property] = value;
+        this.scene_tree.find(path).set_property(property, value);
+        // this.scene_tree.find(path).object[property] = value;
         if (path[0] === "Cameras") {
             this.camera.updateProjectionMatrix();
         }
