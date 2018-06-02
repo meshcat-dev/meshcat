@@ -115,6 +115,35 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
 }
                 </pre>
             </dd>
+            <dt><code>set_property</code></dt>
+            <dd>
+                Set a single named property of the object at the given path. If no object exists at that path, an empty one is automatically created. 
+                <p>Additional fields:</p>
+                <dl>
+                    <dt><code>property</code></dt>
+                    <dd>The name of the property to set, as a string.</dd>
+                    <dt><code>value</code></dt>
+                    <dd>The new value.</dd>
+                </dl>
+                Example 1:
+                <pre>
+{
+    type: "set_property",
+    path: "/Cameras/default/rotated/camera",
+    property: "zoom",
+    value: 2.0
+}
+                </pre>
+                Example 2:
+                <pre>
+{
+    type: "set_property",
+    path: "/Lights/DirectionalLight",
+    property: "intensity",
+    value: 1.0
+}
+                </pre>
+            </dd>
         </dl>
     </dd>
 </dl>
