@@ -8,13 +8,14 @@
         <div id="meshcat-pane">
         </div>
 
-        <script src="main.min.js"></script>
+        <script src="main.js"></script>
         <script>
             var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
             viewer.handle_command({
-                type: "set_transform",
+                type: "set_property",
                 path: "/Cameras/default/rotated/camera",
-                matrix: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
+                property: "position",
+                value: [1, 0, 0]
             });
 
             setInterval(() => {
@@ -28,7 +29,7 @@
                                              0, 0, 0.5, 1])
                 });
 
-            }, 10);            
+            }, 10);
             // viewer.connect();
         </script>
 
