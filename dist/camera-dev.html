@@ -13,7 +13,7 @@
             var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
             viewer.handle_command({
                 type: "set_property",
-                path: "/Cameras/default/rotated/camera",
+                path: "/Cameras/default/rotated/<object>",
                 property: "position",
                 value: [1, 0, 0]
             });

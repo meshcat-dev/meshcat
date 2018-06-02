@@ -29,6 +29,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             <dt><code>set_object</code></dt>
             <dd>
                 Set the 3D object at a given path in the scene tree from its JSON description. Any transforms previously applied to that path will be preserved and any children of that path will continue to exist. To remove transforms and delete all children from a given path, you should send a <code>delete</code> command first (see below).
+                <p>Internally, we append a final path segment, <code>&lt;object&gt;</code>, to the provided path before creating the object. This is done because clients may disagree about what the "intrinsic" transform of a particular geometry is (for example, is a "Box" centered on the origin, or does it have one corner at the origin?). Clients can use the <code>matrix</code> field of the JSON object to store that intrinsic transform, and that matrix will be preserved by attaching it to the <code>&lt;object&gt;</code> path. Generally, you shouldn't need to worry about this: if you set an object at the path <code>/meshcat/foo</code>, then you can set the transform at <code>/meshcat/foo</code> and everything will just work.
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>path</code></dt>
@@ -77,7 +78,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             </dd>
             <dt><code>set_transform</code></dt>
             <dd>
-                Set the homogeneous transform for a given path in the scene tree. An object's pose is the concatenation of all of the transforms along its path, so setting the transform of <code>"/foo"</code> will move the objects at <code>"/foo/box1"</code> and <code>"/foo/robots/hal9000"</code>.
+                Set the homogeneous transform for a given path in the scene tree. An object's pose is the concatenation of all of the transforms along its path, so setting the transform of <code>"/foo"</code> will move the objects at <code>"/foo/box1"</code> and <code>"/foo/robots/HAL9000"</code>.
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>path</code></dt>
@@ -118,6 +119,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             <dt><code>set_property</code></dt>
             <dd>
                 Set a single named property of the object at the given path. If no object exists at that path, an empty one is automatically created.
+                <p>Note: as we append an extra path element with the name <code>&lt;object&gt;</code> to every item created with <code>set_object</code>, if you want to modify a property of the object itself, rather than the group containing it, you should ensure that your path is of the form <code>/meshcat/foo/&lt;object&gt;</code></p>
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>property</code></dt>
@@ -129,7 +131,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 <pre>
 {
     type: "set_property",
-    path: "/Cameras/default/rotated/camera",
+    path: "/Cameras/default/rotated/&lt;object&gt;",
     property: "zoom",
     value: 2.0
 }
@@ -138,9 +140,114 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 <pre>
 {
     type: "set_property",
-    path: "/Lights/DirectionalLight",
+    path: "/Lights/DirectionalLight/&lt;object&gt;",
     property: "intensity",
     value: 1.0
+}
+                </pre>
+            </dd>
+            <dt><code>set_animation</code></dt>
+            <dd>
+                Create an animation of any number of properties on any number of objects in the scene tree, and optionally start playing that animation.
+                <p>Additional fields:</p>
+                <dl>
+                    <dt><code>animations</code></dt>
+                    <dd>
+                        A list of objects, each with two fields:
+                        <dl>
+                            <dt><code>path</code></dt>
+                            <dd>
+                                The path to the object whose property is begin animated. As with <code>set_property</code> above, you will need to append <code>&lt;object&gt;</code> to the path to set an object's intrinsic property.
+                            </dd>
+                            <dt><code>clip</code></dt>
+                            <dd>
+                                A Three.js <code>AnimationClip</code> in JSON form. The clip in turn has the following fields:
+                                <dl>
+                                    <dt><code>fps</code></dt>
+                                    <dd>
+                                        The frame rate of the clip
+                                    </dd>
+                                    <dt><code>name</code></dt>
+                                    <dd>
+                                        A name for this clip. Not currently used.
+                                    </dd>
+                                    <dt><code>tracks</code></dt>
+                                    <dd>
+                                        The tracks (i.e. the properties to animate for this particular object. In Three.js, it is possible for a track to specify the name of the object it is attached to, and Three.js will automatically perform a depth-first search for a child object with that name. We choose to ignore that feature, since MeshCat already has unambiguous paths. So each track should just specify a property in its <code>name</code> field, with a single <code>"."</code> before that property name to signify that it applies to exactly the object given by the <code>path</code> above.
+                                        <p>Each track has the following fields:</p>
+                                        <dl>
+                                            <dt><code>name</code></dt>
+                                            <dd>
+                                                The property to be animated, with a leading <code>"."</code> (e.g. <code>".position"</code>)
+                                            </dd>
+                                            <dt><code>type</code></dt>
+                                            <dd>
+                                                The Three.js data type of the property being animated (e.g. <code>"vector3"</code> for the <code>position</code> property)
+                                            </dd>
+                                            <dt><code>keys</code></dt>
+                                            <dd>
+                                                The keyframes of the animation. The format is a list of objects, each with a field <code>time</code> (in frames) and <code>value</code> indicating the value of the animated property at that time.
+                                            </dd>
+                                        </dl>
+                                    </dd>
+                                </dl>
+                            </dd>
+                        </dl>
+                    </dd>
+                    <dt><code>options</code></dt>
+                    <dd>
+                        Additional options controlling the animation. Currently supported values are:
+                        <dl>
+                            <dt><code>play</code></dt>
+                            <dd>Boolean [true]. Controls whether the animation should play immediately.</dd>
+                            <dt><code>repetitions</code></dt>
+                            <dd>Integer [1]. Controls the number of repetitions of the animation each time you play it.</dd>
+                        </dl>
+                    </dd>
+                </dl>
+                Example:
+                <pre>
+{
+    type: "set_animation",
+    animations: [{
+            path: "/Cameras/default",
+            clip: {
+                fps: 30,
+                name: "default",
+                tracks: [{
+                    name: ".position"
+                    type: "vector3",
+                    keys: [{
+                        time: 0,
+                        value: [0, 1, .3]
+                    },{
+                        time: 80,
+                        value: [0, 1, 2]
+                    }],
+                }]
+            }
+        },{
+            path: "/meshcat/boxes",
+            clip: {
+                fps: 30,
+                name: "default",
+                tracks: [{
+                    name: ".position"
+                    type: "vector3",
+                    keys: [{
+                        time: 0,
+                        value: [0, 1, 0]
+                    },{
+                        time: 80,
+                        value: [0, -1, 0]
+                    }],
+                }]
+            }
+        }],
+    options: {
+        play: true,
+        repetitions: 1
+    }
 }
                 </pre>
             </dd>
@@ -186,11 +293,11 @@ Controlling the camera is slightly more complicated than moving a single object 
 
 The <code>/rotated</code> path element exists to remind users that its transform has been rotated to a Y-up coordinate system for the camera inside.
 
-There is one additional complication: the built-in orbit and pan controls (which allow the user to move the view with their mouse) use the translation of *only* the intrinsic `position` property of the camera object itself to determine the radius of the orbit. That means that, in practice, you can allow the user to orbit by setting the `position` property at the path `/Cameras/default/rotated/camera` to a nonzero value like `[2, 0, 0]`, or you can lock the orbit controls by setting the `position` property at that path to `[0, 0, 0]`. Remember that whatever translation you choose is in the *rotated*, Y-up coordinate system that the Three.js camera expects. We're sorry.
+There is one additional complication: the built-in orbit and pan controls (which allow the user to move the view with their mouse) use the translation of *only* the intrinsic transform of the camera object itself to determine the radius of the orbit. That means that, in practice, you can allow the user to orbit by setting the `position` property at the path `/Cameras/default/rotated/<object>` to a nonzero value like `[2, 0, 0]`, or you can lock the orbit controls by setting the `position` property at that path to `[0, 0, 0]`. Remember that whatever translation you choose is in the *rotated*, Y-up coordinate system that the Three.js camera expects. We're sorry.
 
 #### Examples
 
-To move the camera's center of attention to the point `[1, 2, 3]`, while still allowing the user to orbit and pan manually, we suggest setting the transform of the `/Cameras/default` path to whatever center point you want and setting the `position` property of `/Cameras/default/rotated/camera` to `[2, 0, 0]`. That means sending two commands:
+To move the camera's center of attention to the point `[1, 2, 3]`, while still allowing the user to orbit and pan manually, we suggest setting the transform of the `/Cameras/default` path to whatever center point you want and setting the `position` property of `/Cameras/default/rotated/<object>` to `[2, 0, 0]`. That means sending two commands:
 
 ```js
 {
@@ -204,13 +311,13 @@ To move the camera's center of attention to the point `[1, 2, 3]`, while still a
 },
 {
     type: "set_property",
-    path: "/Cameras/default/rotated/camera",
+    path: "/Cameras/default/rotated/<object>",
     property: "position",
     value: [2, 0, 0] // the offset of the camera about its point of rotation
 }
 ```
 
-To move the camera itself to the point `[1, 2, 3]` and lock its controls, we suggest setting the transform of `/Cameras/default` to the exact camera pose and setting the `position` property of `/Cameras/default/rotated/camera` to `[0, 0, 0]`:
+To move the camera itself to the point `[1, 2, 3]` and lock its controls, we suggest setting the transform of `/Cameras/default` to the exact camera pose and setting the `position` property of `/Cameras/default/rotated/<object>` to `[0, 0, 0]`:
 
 ```js
 {
@@ -224,7 +331,7 @@ To move the camera itself to the point `[1, 2, 3]` and lock its controls, we sug
 },
 {
     type: "set_property",
-    path: "/Cameras/default/rotated/camera",
+    path: "/Cameras/default/rotated/<object>",
     property: "position",
     value: [0, 0, 0] // set to zero to lock the camera controls
 }
