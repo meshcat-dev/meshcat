@@ -425,7 +425,7 @@ class Viewer {
         this.scene = loader.parse(json);
         this.create_scene_tree();
         let cam_node = this.scene_tree.find(["Cameras", "default", "rotated", "camera"]);
-        if (cam_node.object.isCamera) {
+        if (cam_node.object && cam_node.object.isCamera) {
             this.set_camera(cam_node.object);
         } else {
             this.create_camera();
