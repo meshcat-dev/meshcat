@@ -47,7 +47,10 @@ class SceneNode {
 
     create_controls() {
         for (let c of this.controllers) {
-            c.remove();
+            this.folder.remove(c);
+        }
+        if (this.vis_controller !== undefined) {
+            this.folder.domElement.removeChild(this.vis_controller.domElement);
         }
         this.vis_controller = new dat.controllers.BooleanController(this.object, "visible");
         this.vis_controller.onChange(() => this.on_update());
@@ -65,6 +68,7 @@ class SceneNode {
         if (this.object.isLight) {
             let controller = this.folder.add(this.object, "intensity");
             controller.onChange(() => this.on_update());
+            this.controllers.push(controller);
         }
         if (this.object.isCamera) {
             let controller = this.folder.add(this.object, "zoom");
@@ -72,6 +76,7 @@ class SceneNode {
                 this.object.updateProjectionMatrix();
                 this.on_update()
             });
+            this.controllers.push(controller);
         }
     }
 
