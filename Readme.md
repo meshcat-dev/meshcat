@@ -13,18 +13,18 @@ MeshCat can be used programmatically from JS or over a WebSocket connection.
 
 ### Programmatic API
 
-To create a new MeshCat viewer, use the `Viewer` constructor: 
+To create a new MeshCat viewer, use the `Viewer` constructor:
 
 ```js
 let viewer = new MeshCat.Viewer(dom_element);
 ```
 
-where `dom_element` is the `div` in which the viewer should live. The primary interface to the viewer is the `handle_command` function, which maps directly to the behaviors available over the WebSocket. 
+where `dom_element` is the `div` in which the viewer should live. The primary interface to the viewer is the `handle_command` function, which maps directly to the behaviors available over the WebSocket.
 
 <dl>
     <dt><code>Viewer.handle_command(cmd)</code></dt>
     <dd>
-        Handle a single command and update the viewer. <code>cmd</code> should be a JS object with at least the field <code>type</code>. Available command types are: 
+        Handle a single command and update the viewer. <code>cmd</code> should be a JS object with at least the field <code>type</code>. Available command types are:
         <dl>
             <dt><code>set_object</code></dt>
             <dd>
@@ -32,11 +32,11 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>path</code></dt>
-                    <dd>A <code>"/"</code>-separated string indicating the object's path in the scene tree. An object at path <code>"/foo/bar"</code> is a child of an object at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> will also affect its children. 
+                    <dd>A <code>"/"</code>-separated string indicating the object's path in the scene tree. An object at path <code>"/foo/bar"</code> is a child of an object at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> will also affect its children.
                     <dt><code>object</code></dt>
-                    <dd>The Three.js Object, with its geometry and material, in JSON form as a JS object. The format accepted is, essentially, anything that <a href="https://threejs.org/docs/#api/loaders/ObjectLoader">ObjectLoader</a> can handle, or, similarly, anything you might get by calling the <code>toJSON()</code> method of a Three.js Object3D. 
+                    <dd>The Three.js Object, with its geometry and material, in JSON form as a JS object. The format accepted is, essentially, anything that <a href="https://threejs.org/docs/#api/loaders/ObjectLoader">ObjectLoader</a> can handle, or, similarly, anything you might get by calling the <code>toJSON()</code> method of a Three.js Object3D.
                 </dl>
-                Example: 
+                Example:
                 <pre>
 {
     type: "set_object",
@@ -47,7 +47,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             {
                 uuid: "cef79e52-526d-4263-b595-04fa2705974e",
                 type: "BoxGeometry",
-                width: 1, 
+                width: 1,
                 height: 1,
                 depth:1
             }
@@ -73,15 +73,15 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
     }
 }
                 </pre>
-                Note the somewhat indirect way in which geometries and materials are specified. Each Three.js serialized object has a list of geometries and a list of materials, each with a UUID. The actual geometry and material for a given object are simply references to those existing UUIDs. This enables easy re-use of geometries between objects in Three.js, although we don't really rely on that in MeshCat. Some information about the JSON object format can be found on the <a href="https://github.com/mrdoob/three.js/wiki/JSON-Object-Scene-format-4">Three.js wiki</a>. 
+                Note the somewhat indirect way in which geometries and materials are specified. Each Three.js serialized object has a list of geometries and a list of materials, each with a UUID. The actual geometry and material for a given object are simply references to those existing UUIDs. This enables easy re-use of geometries between objects in Three.js, although we don't really rely on that in MeshCat. Some information about the JSON object format can be found on the <a href="https://github.com/mrdoob/three.js/wiki/JSON-Object-Scene-format-4">Three.js wiki</a>.
             </dd>
             <dt><code>set_transform</code></dt>
             <dd>
-                Set the homogeneous transform for a given path in the scene tree. An object's pose is the concatenation of all of the transforms along its path, so setting the transform of <code>"/foo"</code> will move the objects at <code>"/foo/box1"</code> and <code>"/foo/robots/hal9000"</code>. 
+                Set the homogeneous transform for a given path in the scene tree. An object's pose is the concatenation of all of the transforms along its path, so setting the transform of <code>"/foo"</code> will move the objects at <code>"/foo/box1"</code> and <code>"/foo/robots/hal9000"</code>.
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>path</code></dt>
-                    <dd>A <code>"/"</code>-separated string indicating the object's path in the scene tree. An object at path <code>"/foo/bar"</code> is a child of an object at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> will also affect its children. 
+                    <dd>A <code>"/"</code>-separated string indicating the object's path in the scene tree. An object at path <code>"/foo/bar"</code> is a child of an object at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> will also affect its children.
                     <dt><code>matrix</code></dt>
                     <dd>
                         The homogeneous transformation matrix, given as a 16-element <code>Float32Array</code> in column-major order.
@@ -92,7 +92,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
 {
     type: "set_transform",
     path: "/meshcat/boxes",
-    matrix: new Float32Array([1, 0, 0, 0, 
+    matrix: new Float32Array([1, 0, 0, 0,
                             0, 1, 0, 0,
                             0, 0, 1, 0,
                             0.5, 0.0, 0.5, 1])
@@ -101,11 +101,11 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             </dd>
             <dt><code>delete</code></dt>
             <dd>
-                Delete the object at the given path as well as all of its children. 
+                Delete the object at the given path as well as all of its children.
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>path</code></dt>
-                    <dd>A <code>"/"</code>-separated string indicating the object's path in the scene tree. An object at path <code>"/foo/bar"</code> is a child of an object at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> will also affect its children. 
+                    <dd>A <code>"/"</code>-separated string indicating the object's path in the scene tree. An object at path <code>"/foo/bar"</code> is a child of an object at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> will also affect its children.
                 </dl>
                 Example:
                 <pre>
@@ -117,7 +117,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             </dd>
             <dt><code>set_property</code></dt>
             <dd>
-                Set a single named property of the object at the given path. If no object exists at that path, an empty one is automatically created. 
+                Set a single named property of the object at the given path. If no object exists at that path, an empty one is automatically created.
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>property</code></dt>
@@ -144,6 +144,111 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
 }
                 </pre>
             </dd>
+            <dt><code>set_animation</code></dt>
+            <dd>
+                Create an animation of any number of properties on any number of objects in the scene tree, and optionally start playing that animation.
+                <p>Additional fields:</p>
+                <dl>
+                    <dt><code>animations</code></dt>
+                    <dd>
+                        A list of objects, each with two fields:
+                        <dl>
+                            <dt><code>path</code></dt>
+                            <dd>
+                                The path to the object whose property is begin animated.
+                            </dd>
+                            <dt><code>clip</code></dt>
+                            <dd>
+                                A Three.js <code>AnimationClip</code> in JSON form. The clip in turn has the following fields:
+                                <dl>
+                                    <dt><code>fps</code></dt>
+                                    <dd>
+                                        The frame rate of the clip
+                                    </dd>
+                                    <dt><code>name</code></dt>
+                                    <dd>
+                                        A name for this clip. Not currently used.
+                                    </dd>
+                                    <dt><code>tracks</code></dt>
+                                    <dd>
+                                        The tracks (i.e. the properties to animate for this particular object. In Three.js, it is possible for a track to specify the name of the object it is attached to, and Three.js will automatically perform a depth-first search for a child object with that name. We choose to ignore that feature, since MeshCat already has unambiguous paths. So each track should just specify a property in its <code>name</code> field, with a single <code>"."</code> before that property name to signify that it applies to exactly the object given by the <code>path</code> above.
+                                        <p>Each track has the following fields:</p>
+                                        <dl>
+                                            <dt><code>name</code></dt>
+                                            <dd>
+                                                The property to be animated, with a leading <code>"."</code> (e.g. <code>".position"</code>)
+                                            </dd>
+                                            <dt><code>type</code></dt>
+                                            <dd>
+                                                The Three.js data type of the property being animated (e.g. <code>"vector3"</code> for the <code>position</code> property)
+                                            </dd>
+                                            <dt><code>keys</code></dt>
+                                            <dd>
+                                                The keyframes of the animation. The format is a list of objects, each with a field <code>time</code> (in frames) and <code>value</code> indicating the value of the animated property at that time.
+                                            </dd>
+                                        </dl>
+                                    </dd>
+                                </dl>
+                            </dd>
+                        </dl>
+                    </dd>
+                    <dt><code>options</code></dt>
+                    <dd>
+                        Additional options controlling the animation. Currently supported values are:
+                        <dl>
+                            <dt><code>play</code></dt>
+                            <dd>Boolean [true]. Controls whether the animation should play immediately.</dd>
+                            <dt><code>repetitions</code></dt>
+                            <dd>Integer [1]. Controls the number of repetitions of the animation each time you play it.</dd>
+                        </dl>
+                    </dd>
+                </dl>
+                Example:
+                <pre>
+{
+    type: "set_animation",
+    animations: [{
+            path: "/Cameras/default",
+            clip: {
+                fps: 30,
+                name: "default",
+                tracks: [{
+                    name: ".position"
+                    type: "vector3",
+                    keys: [{
+                        time: 0,
+                        value: [0, 1, .3]
+                    },{
+                        time: 80,
+                        value: [0, 1, 2]
+                    }],
+                }]
+            }
+        },{
+            path: "/meshcat/boxes",
+            clip: {
+                fps: 30,
+                name: "default",
+                tracks: [{
+                    name: ".position"
+                    type: "vector3",
+                    keys: [{
+                        time: 0,
+                        value: [0, 1, 0]
+                    },{
+                        time: 80,
+                        value: [0, -1, 0]
+                    }],
+                }]
+            }
+        }],
+    options: {
+        play: true,
+        repetitions: 1
+    }
+}
+                </pre>
+            </dd>
         </dl>
     </dd>
 </dl>
@@ -161,7 +266,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
 
 ### Useful Paths
 
-The default MeshCat scene comes with a few objects at pre-set paths. You can replace, delete, or transform these objects just like anything else in the scene. 
+The default MeshCat scene comes with a few objects at pre-set paths. You can replace, delete, or transform these objects just like anything else in the scene.
 
 <dl>
     <dt><code>/Lights/DirectionalLight</code></dt>
@@ -178,18 +283,18 @@ The default MeshCat scene comes with a few objects at pre-set paths. You can rep
 
 ### Camera Control
 
-The camera is just another object in the MeshCat scene, so you can move it around with <code>set_transform</code> commands like any other object. Please note that replacing the camera with <code>set_object</code> is not currently supported (but we expect to implement this in the future). 
+The camera is just another object in the MeshCat scene, so you can move it around with <code>set_transform</code> commands like any other object. Please note that replacing the camera with <code>set_object</code> is not currently supported (but we expect to implement this in the future).
 
-Controlling the camera is slightly more complicated than moving a single object because the camera actually has two important poses: the origin about which the camera orbits when you click-and-drag with the mouse, and the position of the camera itself. In addition, cameras and controls in Three.js assume a coordinate system in which the Y axis is upward. In robotics, we typically have the Z axis pointing up, and that's what's done in MeshCat. To account for this, the actual camera lives inside a few path elements: 
+Controlling the camera is slightly more complicated than moving a single object because the camera actually has two important poses: the origin about which the camera orbits when you click-and-drag with the mouse, and the position of the camera itself. In addition, cameras and controls in Three.js assume a coordinate system in which the Y axis is upward. In robotics, we typically have the Z axis pointing up, and that's what's done in MeshCat. To account for this, the actual camera lives inside a few path elements:
 
 <code>/Cameras/default/rotated/camera</code>
 
-The <code>/rotated</code> path element exists to remind users that its transform has been rotated to a Y-up coordinate system for the camera inside. 
+The <code>/rotated</code> path element exists to remind users that its transform has been rotated to a Y-up coordinate system for the camera inside.
 
-There is one additional complication: the built-in orbit and pan controls (which allow the user to move the view with their mouse) use the translation of *only* the `/Cameras/default/rotated/camera` element with respect to its immediate parent to compute the radius of the orbit. That means that, in practice, you can allow the user to orbit by setting the transform of `/Cameras/default/rotated/camera` to a translation like `[1, 1, 1]`, or you can lock the orbit controls by setting that transform to the identity (a translation of `[0, 0, 0]`). Remember that whatever translation you choose is in the *rotated*, Y-up coordinate system that the Three.js camera expects. We're sorry. 
+There is one additional complication: the built-in orbit and pan controls (which allow the user to move the view with their mouse) use the translation of *only* the `/Cameras/default/rotated/camera` element with respect to its immediate parent to compute the radius of the orbit. That means that, in practice, you can allow the user to orbit by setting the transform of `/Cameras/default/rotated/camera` to a translation like `[1, 1, 1]`, or you can lock the orbit controls by setting that transform to the identity (a translation of `[0, 0, 0]`). Remember that whatever translation you choose is in the *rotated*, Y-up coordinate system that the Three.js camera expects. We're sorry.
 
 #### Examples
 
-To move the camera's center of attention, while still allowing the user to orbit and pan manually, we suggest setting the transform of the `/Cameras/default` path to whatever center point you want and setting the transform of `/Cameras/default/rotated/camera` to a translation of `[2, 0, 0]`. 
+To move the camera's center of attention, while still allowing the user to orbit and pan manually, we suggest setting the transform of the `/Cameras/default` path to whatever center point you want and setting the transform of `/Cameras/default/rotated/camera` to a translation of `[2, 0, 0]`.
 
-To move the camera itself and lock its controls, we suggest setting the transform of `/Cameras/default` to the exact camera pose and setting `/Cameras/default/rotated/camera` to a translation of `[0, 0, 0]` (the identity). 
+To move the camera itself and lock its controls, we suggest setting the transform of `/Cameras/default` to the exact camera pose and setting `/Cameras/default/rotated/camera` to a translation of `[0, 0, 0]` (the identity).
