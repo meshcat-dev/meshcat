@@ -6,29 +6,30 @@ require('imports-loader?THREE=three!./OBJLoader2.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 
 class SceneNode {
-    constructor(object, folder, on_update) {
-        this.object = object;
+    constructor(group, folder, on_update) {
+        this.group = group;
+        this.object = null;
         this.folder = folder;
         this.children = {};
         this.controllers = [];
         this.on_update = on_update;
         this.create_controls();
-        for (let c of this.object.children) {
+        for (let c of this.group.children) {
             this.add_child(c);
         }
     }
 
-    add_child(object) {
-        let f = this.folder.addFolder(object.name);
-        let node = new SceneNode(object, f, this.on_update);
-        this.children[object.name] = node;
+    add_child(group) {
+        let f = this.folder.addFolder(group.name);
+        let node = new SceneNode(group, f, this.on_update);
+        this.children[group.name] = node;
         return node;
     }
 
     create_child(name) {
         let obj = new THREE.Group();
         obj.name = name;
-        this.object.add(obj);
+        this.group.add(obj);
         return this.add_child(obj);
     }
 
@@ -52,7 +53,7 @@ class SceneNode {
         if (this.vis_controller !== undefined) {
             this.folder.domElement.removeChild(this.vis_controller.domElement);
         }
-        this.vis_controller = new dat.controllers.BooleanController(this.object, "visible");
+        this.vis_controller = new dat.controllers.BooleanController(this.group, "visible");
         this.vis_controller.onChange(() => this.on_update());
         this.folder.domElement.prepend(this.vis_controller.domElement);
         this.vis_controller.domElement.style.height = "0";
@@ -65,33 +66,48 @@ class SceneNode {
                 this.folder.domElement.classList.add("meshcat-hidden-scene-element");
             }
         });
-        if (this.object.isLight) {
-            let controller = this.folder.add(this.object, "intensity");
-            controller.onChange(() => this.on_update());
-            this.controllers.push(controller);
+        if (this.object !== null) {
+            if (this.object.isLight) {
+                let controller = this.folder.add(this.object, "intensity");
+                controller.onChange(() => this.on_update());
+                this.controllers.push(controller);
+            }
+            if (this.object.isCamera) {
+                let controller = this.folder.add(this.object, "zoom");
+                controller.onChange(() => {
+                    this.object.updateProjectionMatrix();
+                    this.on_update()
+                });
+                this.controllers.push(controller);
+            }
         }
-        if (this.object.isCamera) {
-            let controller = this.folder.add(this.object, "zoom");
-            controller.onChange(() => {
-                this.object.updateProjectionMatrix();
-                this.on_update()
-            });
-            this.controllers.push(controller);
+    }
+
+    set_property(property, value) {
+        if (property === "position") {
+            this.object.position.set(value[0], value[1], value[2]);
+        } else if (property === "quaternion") {
+            this.object.quaternion.set(value[0], value[1], value[2], value[3]);
+        } else if (property === "scale") {
+            this.object.scale.set(value[0], value[1], value[2]);
+        } else {
+            this.object[property] = value;
         }
     }
 
     set_transform(matrix) {
         let mat = new THREE.Matrix4();
         mat.fromArray(matrix);
-        mat.decompose(this.object.position, this.object.quaternion, this.object.scale);
+        mat.decompose(this.group.position, this.group.quaternion, this.group.scale);
     }
 
     set_object(object) {
-        let parent = this.object.parent;
-        this.dispose_recursive();
-        this.object.parent.remove(this.object);
+        if (this.object !== null) {
+            this.group.remove(this.object);
+            dispose(this.object);
+        }
         this.object = object;
-        parent.add(object);
+        this.group.add(object);
         this.create_controls();
     }
 
@@ -156,35 +172,24 @@ function create_default_scene() {
     var scene = new THREE.Scene();
     scene.name = "Scene";
     scene.rotateX(-Math.PI / 2);
-    var lights = new THREE.Group();
-    lights.name = "Lights";
-    scene.add(lights);
+    return scene;
+}
 
+function add_default_scene_elements(scene_tree) {
     var light = new THREE.DirectionalLight(0xffffff, 0.75);
-    light.name = "DirectionalLight";
     light.position.set(5, 5, 10);
-    lights.add(light);
+    scene_tree.find(["Lights", "DirectionalLight"]).set_object(light);
 
     var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
-    ambient_light.name = "AmbientLight";
-    lights.add(ambient_light);
-
-    var cameras = new THREE.Group();
-    cameras.name = "Cameras";
-    // cameras.rotateX(Math.PI / 2);  // rotate the cameras back to match their expected orientation
-    scene.add(cameras);
+    scene_tree.find(["Lights", "AmbientLight"]).set_object(ambient_light);
 
     var grid = new THREE.GridHelper(20, 40);
-    grid.name = "Grid";
     grid.rotateX(Math.PI / 2);
-    scene.add(grid);
+    scene_tree.find(["Grid"]).set_object(grid);
 
     var axes = new THREE.AxesHelper(0.5);
-    axes.name = "Axes";
-    scene.add(axes);
     // axes.visible = false;
-
-    return scene;
+    scene_tree.find(["Axes"]).set_object(axes);
 }
 
 
@@ -233,6 +238,7 @@ class Viewer {
 
         this.scene = create_default_scene();
         this.create_scene_tree();
+        add_default_scene_elements(this.scene_tree);
         this.set_dirty();
 
         this.create_camera();
@@ -260,8 +266,7 @@ class Viewer {
         this.set_camera(camera);
 
         this.set_object(["Cameras", "default", "rotated", "camera"], camera)
-        mat.makeTranslation(3, 1, 0);
-        this.set_transform(["Cameras", "default", "rotated", "camera"], mat.toArray());
+        camera.position.set(3, 1, 0);
     }
 
     create_scene_tree() {
@@ -276,8 +281,8 @@ class Viewer {
         let scene_folder = this.gui.addFolder("Scene");
         scene_folder.open();
         this.scene_tree = new SceneNode(this.scene, scene_folder, () => this.set_dirty());
-        this.scene_tree.folder.add(this, 'save_scene');
-        this.scene_tree.folder.add(this, 'load_scene');
+        this.gui.add(this, 'save_scene');
+        this.gui.add(this, 'load_scene');
         this.gui.close();
     }
 
@@ -355,7 +360,7 @@ class Viewer {
     }
 
     set_property(path, property, value) {
-        this.scene_tree.find(path).object[property] = value;
+        this.scene_tree.find(path).set_property(property, value);
         if (path[0] === "Cameras") {
             this.camera.updateProjectionMatrix();
         }
