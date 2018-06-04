@@ -242,8 +242,16 @@ class Animator {
         this.viewer.set_dirty();
     }
 
-    load(animations, options) {
+    clear() {
         remove_folders(this.folder);
+        this.mixer.stopAllAction();
+        this.actions = [];
+        this.mixer = new THREE.AnimationMixer();
+    }
+
+    load(animations, options) {
+        this.clear();
+
         this.folder.open();
         let folder = this.folder.addFolder("default");
         folder.open();
