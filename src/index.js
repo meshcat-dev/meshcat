@@ -6,30 +6,29 @@ require('imports-loader?THREE=three!./OBJLoader2.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 
 class SceneNode {
-    constructor(group, folder, on_update) {
-        this.group = group;
-        this.object = null;
+    constructor(object, folder, on_update) {
+        this.object = object;
         this.folder = folder;
         this.children = {};
         this.controllers = [];
         this.on_update = on_update;
         this.create_controls();
-        for (let c of this.group.children) {
+        for (let c of this.object.children) {
             this.add_child(c);
         }
     }
 
-    add_child(group) {
-        let f = this.folder.addFolder(group.name);
-        let node = new SceneNode(group, f, this.on_update);
-        this.children[group.name] = node;
+    add_child(object) {
+        let f = this.folder.addFolder(object.name);
+        let node = new SceneNode(object, f, this.on_update);
+        this.children[object.name] = node;
         return node;
     }
 
     create_child(name) {
         let obj = new THREE.Group();
         obj.name = name;
-        this.group.add(obj);
+        this.object.add(obj);
         return this.add_child(obj);
     }
 
@@ -53,7 +52,7 @@ class SceneNode {
         if (this.vis_controller !== undefined) {
             this.folder.domElement.removeChild(this.vis_controller.domElement);
         }
-        this.vis_controller = new dat.controllers.BooleanController(this.group, "visible");
+        this.vis_controller = new dat.controllers.BooleanController(this.object, "visible");
         this.vis_controller.onChange(() => this.on_update());
         this.folder.domElement.prepend(this.vis_controller.domElement);
         this.vis_controller.domElement.style.height = "0";
@@ -66,20 +65,18 @@ class SceneNode {
                 this.folder.domElement.classList.add("meshcat-hidden-scene-element");
             }
         });
-        if (this.object !== null) {
-            if (this.object.isLight) {
-                let controller = this.folder.add(this.object, "intensity");
-                controller.onChange(() => this.on_update());
-                this.controllers.push(controller);
-            }
-            if (this.object.isCamera) {
-                let controller = this.folder.add(this.object, "zoom");
-                controller.onChange(() => {
-                    this.object.updateProjectionMatrix();
-                    this.on_update()
-                });
-                this.controllers.push(controller);
-            }
+        if (this.object.isLight) {
+            let controller = this.folder.add(this.object, "intensity").min(0).step(0.01);
+            controller.onChange(() => this.on_update());
+            this.controllers.push(controller);
+        }
+        if (this.object.isCamera) {
+            let controller = this.folder.add(this.object, "zoom").min(0).step(0.1);
+            controller.onChange(() => {
+                this.object.updateProjectionMatrix();
+                this.on_update()
+            });
+            this.controllers.push(controller);
         }
     }
 
@@ -98,16 +95,15 @@ class SceneNode {
     set_transform(matrix) {
         let mat = new THREE.Matrix4();
         mat.fromArray(matrix);
-        mat.decompose(this.group.position, this.group.quaternion, this.group.scale);
+        mat.decompose(this.object.position, this.object.quaternion, this.object.scale);
     }
 
     set_object(object) {
-        if (this.object !== null) {
-            this.group.remove(this.object);
-            dispose(this.object);
-        }
+        let parent = this.object.parent;
+        this.dispose_recursive();
+        this.object.parent.remove(this.object);
         this.object = object;
-        this.group.add(object);
+        parent.add(object);
         this.create_controls();
     }
 
@@ -175,23 +171,6 @@ function create_default_scene() {
     return scene;
 }
 
-function add_default_scene_elements(scene_tree) {
-    var light = new THREE.DirectionalLight(0xffffff, 0.75);
-    light.position.set(5, 5, 10);
-    scene_tree.find(["Lights", "DirectionalLight"]).set_object(light);
-
-    var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
-    scene_tree.find(["Lights", "AmbientLight"]).set_object(ambient_light);
-
-    var grid = new THREE.GridHelper(20, 40);
-    grid.rotateX(Math.PI / 2);
-    scene_tree.find(["Grid"]).set_object(grid);
-
-    var axes = new THREE.AxesHelper(0.5);
-    // axes.visible = false;
-    scene_tree.find(["Axes"]).set_object(axes);
-}
-
 
 function handle_special_geometry(geom) {
     if (geom.type == "_meshfile") {
@@ -229,6 +208,94 @@ function download_file(name, contents, mime) {
     link.remove();
 }
 
+class Animator {
+    constructor(viewer) {
+        this.viewer = viewer;
+        this.folder = this.viewer.gui.addFolder("Animations");
+        this.mixer = new THREE.AnimationMixer();
+        this.loader = new THREE.ObjectLoader();
+        this.clock = new THREE.Clock();
+        this.actions = [];
+        this.playing = false;
+    }
+
+    play() {
+        this.clock.start();
+        // this.mixer.timeScale = 1;
+        for (let action of this.actions) {
+            action.play();
+        }
+        this.playing = true;
+    }
+
+    pause() {
+        // this.mixer.timeScale = 0;
+        this.clock.stop();
+        this.playing = false;
+    }
+
+    reset() {
+        for (let action of this.actions) {
+            action.reset();
+        }
+        this.mixer.update(0);
+        this.viewer.set_dirty();
+    }
+
+    clear() {
+        remove_folders(this.folder);
+        this.mixer.stopAllAction();
+        this.actions = [];
+        this.mixer = new THREE.AnimationMixer();
+    }
+
+    load(animations, options) {
+        this.clear();
+
+        this.folder.open();
+        let folder = this.folder.addFolder("default");
+        folder.open();
+        folder.add(this, "play");
+        folder.add(this, "pause");
+        folder.add(this, "reset");
+        folder.add(this.mixer, "timeScale").step(0.01).min(0);
+
+        if (options.play === undefined) {options.play = true}
+        if (options.loopMode === undefined) {options.loopMode = THREE.LoopRepeat}
+        if (options.repetitions === undefined) {options.repetitions = 1}
+        if (options.clampWhenFinished === undefined) {options.clampWhenFinished = true}
+
+        for (let animation of animations) {
+            console.log(animation.path);
+            let target = this.viewer.scene_tree.find(animation.path).object;
+            console.log(target);
+            let clip = this.loader.parseAnimations([animation.clip])[0];
+            let action = this.mixer.clipAction(clip, target);
+            action.clampWhenFinished = options.clampWhenFinished;
+            action.setLoop(options.loopMode, options.repetitions);
+            this.actions.push(action);
+        }
+        this.reset();
+        if (options.play) {
+            this.play();
+        }
+    }
+
+    update() {
+        if (this.playing) {
+            this.mixer.update(this.clock.getDelta());
+            this.viewer.set_dirty();
+            if (this.actions.every((action) => action.paused)) {
+                this.pause();
+                for (let action of this.actions) {
+                    action.reset();
+                }
+            }
+        }
+    }
+}
+
+
 class Viewer {
     constructor(dom_element, animate) {
         this.dom_element = dom_element;
@@ -238,10 +305,11 @@ class Viewer {
 
         this.scene = create_default_scene();
         this.create_scene_tree();
-        add_default_scene_elements(this.scene_tree);
+        this.add_default_scene_elements();
         this.set_dirty();
 
         this.create_camera();
+
 
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
@@ -265,8 +333,25 @@ class Viewer {
         let camera = new THREE.PerspectiveCamera(75, 1, 0.01, 100)
         this.set_camera(camera);
 
-        this.set_object(["Cameras", "default", "rotated", "camera"], camera)
+        this.set_object(["Cameras", "default", "rotated"], camera)
         camera.position.set(3, 1, 0);
+    }
+
+    add_default_scene_elements() {
+        var light = new THREE.DirectionalLight(0xffffff, 0.75);
+        light.position.set(5, 5, 10);
+        this.set_object(["Lights", "DirectionalLight"], light);
+
+        var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
+        this.set_object(["Lights", "AmbientLight"], ambient_light);
+
+        var grid = new THREE.GridHelper(20, 40);
+        grid.rotateX(Math.PI / 2);
+        this.set_object(["Grid"], grid);
+
+        var axes = new THREE.AxesHelper(0.5);
+        // axes.visible = false;
+        this.set_object(["Axes"], axes);
     }
 
     create_scene_tree() {
@@ -283,6 +368,7 @@ class Viewer {
         this.scene_tree = new SceneNode(this.scene, scene_folder, () => this.set_dirty());
         this.gui.add(this, 'save_scene');
         this.gui.add(this, 'load_scene');
+        this.animator = new Animator(this);
         this.gui.close();
     }
 
@@ -307,6 +393,7 @@ class Viewer {
 
     animate() {
         requestAnimationFrame(() => this.animate());
+        this.animator.update();
         if (this.needs_render) {
             this.render();
         }
@@ -333,7 +420,7 @@ class Viewer {
     }
 
     set_object(path, object) {
-        this.scene_tree.find(path).set_object(object);
+        this.scene_tree.find(path.concat(["<object>"])).set_object(object);
     }
 
     set_object_from_json(path, object_json) {
@@ -343,9 +430,9 @@ class Viewer {
             if (obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
-            if (obj.name === "") {
-                obj.name = "<object>";
-            }
+            // if (obj.name === "") {
+            //     obj.name = "<object>";
+            // }
             this.set_object(path, obj);
             this.set_dirty();
         });
@@ -366,6 +453,11 @@ class Viewer {
         }
     }
 
+    set_animation(animations, options) {
+        options = options || {};
+        this.animator.load(animations, options);
+    }
+
     set_control(name, callback, value, min, max, step) {
         let handler = {};
         if (value !== undefined) {
@@ -380,17 +472,22 @@ class Viewer {
 
     handle_command(cmd) {
         if (cmd.type == "set_transform") {
-            let path = cmd.path.split("/").filter(x => x.length > 0);
+            let path = split_path(cmd.path);
             this.set_transform(path, cmd.matrix);
         } else if (cmd.type == "delete") {
-            let path = cmd.path.split("/").filter(x => x.length > 0);
+            let path = split_path(cmd.path);
             this.delete_path(path);
         } else if (cmd.type == "set_object") {
-            let path = cmd.path.split("/").filter(x => x.length > 0);
+            let path = split_path(cmd.path);
             this.set_object_from_json(path, cmd.object);
         } else if (cmd.type == "set_property") {
-            let path = cmd.path.split("/").filter(x => x.length > 0);
+            let path = split_path(cmd.path);
             this.set_property(path, cmd.property, cmd.value);
+        } else if (cmd.type == "set_animation") {
+            cmd.animations.forEach(animation => {
+                animation.path = split_path(animation.path);
+            });
+            this.set_animation(cmd.animations, cmd.options);
         } else if (cmd.type == "set_control") {
             this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
         }
@@ -424,8 +521,8 @@ class Viewer {
         this.scene_tree.dispose_recursive();
         this.scene = loader.parse(json);
         this.create_scene_tree();
-        let cam_node = this.scene_tree.find(["Cameras", "default", "rotated", "camera"]);
-        if (cam_node.object && cam_node.object.isCamera) {
+        let cam_node = this.scene_tree.find(["Cameras", "default", "rotated", "<object>"]);
+        if (cam_node.object.isCamera) {
             this.set_camera(cam_node.object);
         } else {
             this.create_camera();
@@ -461,6 +558,10 @@ class Viewer {
         input.click();
         input.remove();
     }
+}
+
+function split_path(path_str) {
+    return path_str.split("/").filter(x => x.length > 0);
 }
 
 // TODO: surely there's a better way to inject this style information
