@@ -11,6 +11,7 @@
     "webpack-cli": "^2.0.13"
   },
   "dependencies": {
+    "ccapture.js": "^1.1.0",
     "dat.gui": "^0.7.1",
     "msgpack-lite": "^0.1.26",
     "three": "^0.91.0"

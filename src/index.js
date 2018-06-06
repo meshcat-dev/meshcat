@@ -199,7 +199,6 @@ function download_data_uri(name, uri) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-  delete link;
 }
 
 // https://stackoverflow.com/a/35251739
@@ -229,6 +228,8 @@ class Animator {
         this.clock = new THREE.Clock();
         this.actions = [];
         this.playing = false;
+        this.capturer = new CCapture({format: "png"});
+        this.capturer.format = "png";
     }
 
     play() {
@@ -240,10 +241,37 @@ class Animator {
         this.playing = true;
     }
 
+    record() {
+        this.reset();
+        this.play();
+        this.recording = true;
+        this.capturer.start();
+    }
+
     pause() {
         // this.mixer.timeScale = 0;
         this.clock.stop();
         this.playing = false;
+
+        if (this.recording) {
+            this.stop_capture();
+            this.save_capture();
+        }
+    }
+
+    stop_capture() {
+        this.recording = false;
+        this.capturer.stop();
+        this.viewer.animate(); // restore the animation loop which gets disabled by capturer.stop()
+    }
+
+    save_capture() {
+        this.capturer.save();
+        if (this.capturer.format === "png") {
+            alert("To convert the still frames into a video, extract the `.tar` file and run: \nffmpeg -r 60 -i %07d.png \\\n\t -vcodec libx264 \\\n\t -preset slow \\\n\t -crf 18 \\\n\t output.mp4");
+        } else if (this.capturer.format === "jpg") {
+            alert("To convert the still frames into a video, extract the `.tar` file and run: \nffmpeg -r 60 -i %07d.jpg \\\n\t -vcodec libx264 \\\n\t -preset slow \\\n\t -crf 18 \\\n\t output.mp4");
+        }
     }
 
     reset() {
@@ -271,6 +299,17 @@ class Animator {
         folder.add(this, "pause");
         folder.add(this, "reset");
         folder.add(this.mixer, "timeScale").step(0.01).min(0);
+        let recording_folder = folder.addFolder("Recording");
+        recording_folder.add(this, "record");
+        recording_folder.add({format: "png"}, "format", ["webm", "png", "jpg"]).onChange(value => {
+            let params = {format: value};
+            // if (value === "gif") {
+            //     params.workersPath = "node_modules/ccapture.js/src/";
+            // }
+            this.capturer = new CCapture(params);
+            this.capturer.format = value;
+        });
+
 
         if (options.play === undefined) {options.play = true}
         if (options.loopMode === undefined) {options.loopMode = THREE.LoopRepeat}
@@ -297,11 +336,26 @@ class Animator {
         if (this.playing) {
             this.mixer.update(this.clock.getDelta());
             this.viewer.set_dirty();
+
             if (this.actions.every((action) => action.paused)) {
                 this.pause();
                 for (let action of this.actions) {
                     action.reset();
                 }
+            }
+        }
+    }
+
+    after_render() {
+        if (this.recording) {
+            try {
+                this.capturer.capture(this.viewer.renderer.domElement);
+            } catch(error) {
+                alert("Could not record. Please note that the 'webm' format is only supported in the Chrome browser");
+                this.capturer.stop();
+                this.stop_capture();
+                this.pause();
+                this.reset();
             }
         }
     }
@@ -452,6 +506,7 @@ class Viewer {
     render() {
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
+        this.animator.after_render();
         this.needs_render = false;
     }
 
@@ -593,6 +648,7 @@ class Viewer {
         let loader = new THREE.ObjectLoader();
         this.scene_tree.dispose_recursive();
         this.scene = loader.parse(json);
+        this.show_background();
         this.create_scene_tree();
         let cam_node = this.scene_tree.find(["Cameras", "default", "rotated", "<object>"]);
         if (cam_node.object.isCamera) {
