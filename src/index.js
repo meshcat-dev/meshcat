@@ -229,8 +229,15 @@ class Animator {
         this.clock = new THREE.Clock();
         this.actions = [];
         this.playing = false;
-        this.capturer = new CCapture({format: "png"});
-        this.capturer.format = "png";
+        this.setup_capturer("png");
+    }
+
+    setup_capturer(format) {
+        this.capturer = new CCapture({
+            format: format,
+            name: "meshcat_" + String(Date.now())
+        });
+        this.capturer.format = format;
     }
 
     play() {
@@ -303,9 +310,7 @@ class Animator {
         let recording_folder = folder.addFolder("Recording");
         recording_folder.add(this, "record");
         recording_folder.add({format: "png"}, "format", ["png", "jpg"]).onChange(value => {
-            let params = {format: value};
-            this.capturer = new CCapture(params);
-            this.capturer.format = value;
+            this.setup_capturer(format);
         });
 
 
