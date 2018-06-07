@@ -289,7 +289,7 @@ The camera is just another object in the MeshCat scene, so you can move it aroun
 
 Controlling the camera is slightly more complicated than moving a single object because the camera actually has two important poses: the origin about which the camera orbits when you click-and-drag with the mouse, and the position of the camera itself. In addition, cameras and controls in Three.js assume a coordinate system in which the Y axis is upward. In robotics, we typically have the Z axis pointing up, and that's what's done in MeshCat. To account for this, the actual camera lives inside a few path elements:
 
-<code>/Cameras/default/rotated/camera</code>
+`/Cameras/default/rotated/<object>`
 
 The <code>/rotated</code> path element exists to remind users that its transform has been rotated to a Y-up coordinate system for the camera inside.
 
