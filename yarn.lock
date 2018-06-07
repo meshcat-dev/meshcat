@@ -1013,9 +1013,9 @@ caseless@~0.12.0:
   version "0.12.0"
   resolved "https://registry.yarnpkg.com/caseless/-/caseless-0.12.0.tgz#1b681c21ff84033c826543090689420d187151dc"
 
-ccapture.js@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/ccapture.js/-/ccapture.js-1.1.0.tgz#ac4030e8b43847e305242d784abf284d2313beff"
+ccapture.js@aceslowman/ccapture.js#npm-fix:
+  version "1.0.8"
+  resolved "https://codeload.github.com/aceslowman/ccapture.js/tar.gz/98b8046970c2bfbb25f749e732f196e15c3486fd"
 
 chalk@^1.0.0, chalk@^1.1.1, chalk@^1.1.3:
   version "1.1.3"

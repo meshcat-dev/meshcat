@@ -4,6 +4,7 @@ var dat = require('dat.gui').default; // TODO: why is .default needed?
 require('imports-loader?THREE=three!./LoaderSupport.js');
 require('imports-loader?THREE=three!./OBJLoader2.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
+require('ccapture.js');
 
 class SceneNode {
     constructor(object, folder, on_update) {
@@ -301,11 +302,8 @@ class Animator {
         folder.add(this.mixer, "timeScale").step(0.01).min(0);
         let recording_folder = folder.addFolder("Recording");
         recording_folder.add(this, "record");
-        recording_folder.add({format: "png"}, "format", ["webm", "png", "jpg"]).onChange(value => {
+        recording_folder.add({format: "png"}, "format", ["png", "jpg"]).onChange(value => {
             let params = {format: value};
-            // if (value === "gif") {
-            //     params.workersPath = "node_modules/ccapture.js/src/";
-            // }
             this.capturer = new CCapture(params);
             this.capturer.format = value;
         });
@@ -348,15 +346,7 @@ class Animator {
 
     after_render() {
         if (this.recording) {
-            try {
-                this.capturer.capture(this.viewer.renderer.domElement);
-            } catch(error) {
-                alert("Could not record. Please note that the 'webm' format is only supported in the Chrome browser");
-                this.capturer.stop();
-                this.stop_capture();
-                this.pause();
-                this.reset();
-            }
+            this.capturer.capture(this.viewer.renderer.domElement);
         }
     }
 }
