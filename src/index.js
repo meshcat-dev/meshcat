@@ -74,7 +74,7 @@ class SceneNode {
         if (this.object.isCamera) {
             let controller = this.folder.add(this.object, "zoom").min(0).step(0.1);
             controller.onChange(() => {
-                this.object.updateProjectionMatrix();
+                // this.object.updateProjectionMatrix();
                 this.on_update()
             });
             this.controllers.push(controller);
@@ -495,6 +495,7 @@ class Viewer {
 
     render() {
         this.controls.update();
+        this.camera.updateProjectionMatrix();
         this.renderer.render(this.scene, this.camera);
         this.animator.after_render();
         this.needs_render = false;
@@ -566,9 +567,9 @@ class Viewer {
 
     set_property(path, property, value) {
         this.scene_tree.find(path).set_property(property, value);
-        if (path[0] === "Cameras") {
-            this.camera.updateProjectionMatrix();
-        }
+        // if (path[0] === "Cameras") {
+        //     this.camera.updateProjectionMatrix();
+        // }
     }
 
     set_animation(animations, options) {
