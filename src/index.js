@@ -190,6 +190,18 @@ function handle_special_geometry(geom) {
     }
 }
 
+
+// https://stackoverflow.com/a/15832662
+function download_data_uri(name, uri) {
+  let link = document.createElement("a");
+  link.download = name;
+  link.href = uri;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  delete link;
+}
+
 // https://stackoverflow.com/a/35251739
 function download_file(name, contents, mime) {
     mime = mime || "text/plain";
@@ -295,15 +307,51 @@ class Animator {
     }
 }
 
+// Generates a gradient texture without filling up
+// an entire canvas. We simply create a 2x1 image
+// containing only the two colored pixels and then
+// set up the appropriate magnification and wrapping
+// modes to generate the gradient automatically
+function gradient_texture(top_color, bottom_color) {
+    let colors = [bottom_color, top_color];
+
+    let width = 1;
+    let height = 2;
+    let size = width * height;
+    var data = new Uint8Array( 3 * size );
+    for (let row=0; row < height; row++) {
+        let color = colors[row];
+        for (let col=0; col < width; col++) {
+            let i = 3 * (row * width + col);
+            for (let j=0; j < 3; j++) {
+                data[i + j] = color[j];
+            }
+        }
+    }
+    var texture = new THREE.DataTexture( data, width, height, THREE.RGBFormat);
+    texture.magFilter = THREE.LinearFilter;
+    texture.encoding = THREE.LinearEncoding;
+    // By default, the points in our texture map to the center of
+    // the pixels, which means that the gradient only occupies
+    // the middle half of the screen. To get around that, we just have
+    // to tweak the UV transform matrix
+    texture.matrixAutoUpdate = false;
+    texture.matrix.set(0.5, 0, 0.25,
+                       0, 0.5, 0.25,
+                       0, 0, 1);
+    texture.needsUpdate = true
+    return texture;
+}
+
 
 class Viewer {
     constructor(dom_element, animate) {
         this.dom_element = dom_element;
         this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
         this.dom_element.appendChild(this.renderer.domElement);
-        this.renderer.domElement.style.background = "linear-gradient(to bottom,  lightskyblue 0%,midnightblue 100%)"
 
         this.scene = create_default_scene();
+        this.show_background();
         this.create_scene_tree();
         this.add_default_scene_elements();
         this.set_dirty();
@@ -319,6 +367,18 @@ class Viewer {
         if (animate || animate === undefined) {
             this.animate();
         }
+    }
+
+    hide_background() {
+        this.scene.background = null;
+        this.set_dirty();
+    }
+
+    show_background() {
+        let top_color = [135,206,250]; // lightskyblue
+        let bottom_color = [25,25,112]; // midnightblue
+        this.scene.background = gradient_texture(top_color, bottom_color);
+        this.set_dirty();
     }
 
     set_dirty() {
@@ -368,6 +428,10 @@ class Viewer {
         this.scene_tree = new SceneNode(this.scene, scene_folder, () => this.set_dirty());
         this.gui.add(this, 'save_scene');
         this.gui.add(this, 'load_scene');
+        this.gui.add(this, 'save_image');
+        let back_folder = this.gui.addFolder("Background");
+        back_folder.add(this, 'hide_background');
+        back_folder.add(this, 'show_background');
         this.animator = new Animator(this);
         this.gui.close();
     }
@@ -397,6 +461,15 @@ class Viewer {
         if (this.needs_render) {
             this.render();
         }
+    }
+
+    capture_image() {
+        this.render();
+        return this.renderer.domElement.toDataURL();
+    }
+
+    save_image() {
+        download_data_uri("meshcat.png", this.capture_image());
     }
 
     set_camera(obj) {
