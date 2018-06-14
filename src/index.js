@@ -475,9 +475,10 @@ class Viewer {
         let scene_folder = this.gui.addFolder("Scene");
         scene_folder.open();
         this.scene_tree = new SceneNode(this.scene, scene_folder, () => this.set_dirty());
-        this.gui.add(this, 'save_scene');
-        this.gui.add(this, 'load_scene');
-        this.gui.add(this, 'save_image');
+        let save_folder = this.gui.addFolder("Save / Load / Capture");
+        save_folder.add(this, 'save_scene');
+        save_folder.add(this, 'load_scene');
+        save_folder.add(this, 'save_image');
         let back_folder = this.gui.addFolder("Background");
         back_folder.add(this, 'hide_background');
         back_folder.add(this, 'show_background');
