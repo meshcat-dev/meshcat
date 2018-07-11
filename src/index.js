@@ -177,7 +177,7 @@ function handle_special_geometry(geom) {
     if (geom.type == "_meshfile") {
         if (geom.format == "obj") {
             let loader = new THREE.OBJLoader2();
-            let obj = loader.parse("data:text/plain," + geom.data);
+            let obj = loader.parse(geom.data);
             let loaded_geom = obj.children[0].geometry;
             loaded_geom.uuid = geom.uuid;
             let json = loaded_geom.toJSON();
