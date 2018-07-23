@@ -67,9 +67,14 @@ class SceneNode {
             }
         });
         if (this.object.isLight) {
-            let controller = this.folder.add(this.object, "intensity").min(0).step(0.01);
-            controller.onChange(() => this.on_update());
-            this.controllers.push(controller);
+            let intensity_controller = this.folder.add(this.object, "intensity").min(0).step(0.01);
+            intensity_controller.onChange(() => this.on_update());
+            this.controllers.push(intensity_controller);
+            if (this.object.castShadow !== undefined){
+                let cast_shadow_controller = this.folder.add(this.object, "castShadow");
+                cast_shadow_controller.onChange(() => this.on_update());
+                this.controllers.push(cast_shadow_controller);
+            }
         }
         if (this.object.isCamera) {
             let controller = this.folder.add(this.object, "zoom").min(0).step(0.1);
@@ -397,6 +402,8 @@ class Viewer {
     constructor(dom_element, animate) {
         this.dom_element = dom_element;
         this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.dom_element.appendChild(this.renderer.domElement);
 
         this.scene = create_default_scene();
@@ -447,11 +454,16 @@ class Viewer {
     }
 
     add_default_scene_elements() {
-        var light = new THREE.DirectionalLight(0xffffff, 0.75);
-        light.position.set(5, 5, 10);
-        this.set_object(["Lights", "DirectionalLight"], light);
+        var spot_light = new THREE.SpotLight(0xffffff, 0.333);
+        spot_light.position.set(1, 1, 2);
+        spot_light.castShadow = true;            // default false
+        spot_light.shadow.mapSize.width = 1024;  // default 512
+        spot_light.shadow.mapSize.height = 1024; // default 512
+        spot_light.shadow.camera.near = 0.5;     // default 0.5
+        spot_light.shadow.camera.far = 50.;      // default 500
+        this.set_object(["Lights", "SpotLight"], spot_light);
 
-        var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
+        var ambient_light = new THREE.AmbientLight(0xffffff, 0.81);
         this.set_object(["Lights", "AmbientLight"], ambient_light);
 
         var grid = new THREE.GridHelper(20, 40);
@@ -555,6 +567,8 @@ class Viewer {
             if (obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
+            obj.castShadow = true;
+            obj.receiveShadow = true;
             // if (obj.name === "") {
             //     obj.name = "<object>";
             // }
