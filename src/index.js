@@ -456,7 +456,11 @@ class Viewer {
     add_default_scene_elements() {
         var spot_light = new THREE.SpotLight(0xffffff, 0.333);
         spot_light.position.set(1, 1, 2);
-        spot_light.castShadow = true;            // default false
+        // Make light not cast shadows by default (effectively
+        // disabling them, as there are no shadow-casting light
+        // sources in the default configuration). This is toggleable
+        // in the light options menu.
+        spot_light.castShadow = false;
         spot_light.shadow.mapSize.width = 1024;  // default 512
         spot_light.shadow.mapSize.height = 1024; // default 512
         spot_light.shadow.camera.near = 0.5;     // default 0.5
