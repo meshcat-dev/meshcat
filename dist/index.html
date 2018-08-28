@@ -13,7 +13,8 @@
             var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
             try {
                 viewer.connect();
-            } catch {
+            } catch (e) {
+                console.info("Not connected to MeshCat websocket server: ", e);
             }
         </script>
 
