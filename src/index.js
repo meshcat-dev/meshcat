@@ -467,7 +467,7 @@ class Viewer {
         spot_light.shadow.camera.far = 50.;      // default 500
         this.set_object(["Lights", "SpotLight"], spot_light);
 
-        var ambient_light = new THREE.AmbientLight(0xffffff, 0.75);
+        var ambient_light = new THREE.AmbientLight(0xffffff, 0.65);
         this.set_object(["Lights", "AmbientLight"], ambient_light);
 
         var grid = new THREE.GridHelper(20, 40);
