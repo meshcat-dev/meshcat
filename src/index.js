@@ -454,8 +454,8 @@ class Viewer {
     }
 
     add_default_scene_elements() {
-        var spot_light = new THREE.SpotLight(0xffffff, 0.333);
-        spot_light.position.set(1, 1, 2);
+        var spot_light = new THREE.SpotLight(0xffffff, 0.7);
+        spot_light.position.set(1.5, 1.5, 2);
         // Make light not cast shadows by default (effectively
         // disabling them, as there are no shadow-casting light
         // sources in the default configuration). This is toggleable
@@ -467,8 +467,12 @@ class Viewer {
         spot_light.shadow.camera.far = 50.;      // default 500
         this.set_object(["Lights", "SpotLight"], spot_light);
 
-        var ambient_light = new THREE.AmbientLight(0xffffff, 0.65);
+        var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
         this.set_object(["Lights", "AmbientLight"], ambient_light);
+
+        var fill_light = new THREE.DirectionalLight(0xffffff, 0.4);
+        fill_light.position.set(-10, -10, 0);
+        this.set_object(["Lights", "FillLight"], fill_light);
 
         var grid = new THREE.GridHelper(20, 40);
         grid.rotateX(Math.PI / 2);
