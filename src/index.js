@@ -292,6 +292,7 @@ class Animator {
             action.reset();
         }
         this.mixer.update(0);
+        this.setup_capturer(this.capturer.format);
         this.viewer.set_dirty();
     }
 
@@ -315,7 +316,7 @@ class Animator {
         let recording_folder = folder.addFolder("Recording");
         recording_folder.add(this, "record");
         recording_folder.add({format: "png"}, "format", ["png", "jpg"]).onChange(value => {
-            this.setup_capturer(format);
+            this.setup_capturer(value);
         });
 
 
@@ -325,9 +326,7 @@ class Animator {
         if (options.clampWhenFinished === undefined) {options.clampWhenFinished = true}
 
         for (let animation of animations) {
-            console.log(animation.path);
             let target = this.viewer.scene_tree.find(animation.path).object;
-            console.log(target);
             let clip = this.loader.parseAnimations([animation.clip])[0];
             let action = this.mixer.clipAction(clip, target);
             action.clampWhenFinished = options.clampWhenFinished;
