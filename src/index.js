@@ -186,6 +186,21 @@ function handle_special_geometry(geom) {
             }
             return json;
         }
+    } else if (geom.type == "TextGeometry") {
+        var loader = new THREE.FontLoader();
+        loader.load( '../data/fonts/helvetiker_regular.typeface.json', function ( font ) {
+            var textGeo = new THREE.TextGeometry( geom.text, {
+                type: "TextGeometry",
+                font: font,
+                size: geom.size,
+                height: geom.height,
+                curveSegments: geom.curveSegments,
+                bevelThickness: geom.bevelThickness,
+                bevelSize: geom.bevelSize,
+                bevelEnabled: geom.bevelEnabled
+            } );
+            return textGeo;
+        });
     } else {
         return geom;
     }
