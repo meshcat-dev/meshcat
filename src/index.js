@@ -392,6 +392,32 @@ function gradient_texture(top_color, bottom_color) {
     return texture;
 }
 
+function text_mesh(text, x, y, z) {
+    let canvas = document.createElement('canvas');
+    // canvas.width = 300;
+    // canvas.height = 200;
+    let ctx = canvas.getContext('2d');
+    ctx.textAlign = "center";
+    ctx.font = '48px sans-serif';
+    ctx.fillText('Hello world', canvas.width / 2, canvas.height / 2);
+    var texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+    var material = new THREE.MeshBasicMaterial({
+        map: texture,
+        // color: 0xffffff,
+        transparent: true,
+        opacity: 1
+    });
+    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(10, 10, 1, 1), material);
+
+    mesh.position.x = x;
+    mesh.position.y = y;
+    // mesh.position.z = z;
+    return mesh;
+
+}
+
+
 
 class Viewer {
     constructor(dom_element, animate) {
@@ -427,6 +453,7 @@ class Viewer {
         let top_color = [135,206,250]; // lightskyblue
         let bottom_color = [25,25,112]; // midnightblue
         this.scene.background = gradient_texture(top_color, bottom_color);
+        this.scene.add(text_mesh("hahaha", 0, 0, 0))
         this.set_dirty();
     }
 
