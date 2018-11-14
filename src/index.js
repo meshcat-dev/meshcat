@@ -96,6 +96,8 @@ class SceneNode {
         } else {
             this.object[property] = value;
         }
+        this.vis_controller.updateDisplay();
+        this.controllers.forEach(c => c.updateDisplay());
     }
 
     set_transform(matrix) {
@@ -452,8 +454,8 @@ class Viewer {
         camera.position.set(3, 1, 0);
     }
 
-    add_default_scene_elements() {
-        var spot_light = new THREE.SpotLight(0xffffff, 0.7);
+    create_default_spot_light() {
+        var spot_light = new THREE.SpotLight(0xffffff, 0.8);
         spot_light.position.set(1.5, 1.5, 2);
         // Make light not cast shadows by default (effectively
         // disabling them, as there are no shadow-casting light
@@ -464,7 +466,19 @@ class Viewer {
         spot_light.shadow.mapSize.height = 1024; // default 512
         spot_light.shadow.camera.near = 0.5;     // default 0.5
         spot_light.shadow.camera.far = 50.;      // default 500
+        return spot_light;
+    }
+
+    add_default_scene_elements() {
+        var spot_light = this.create_default_spot_light();
         this.set_object(["Lights", "SpotLight"], spot_light);
+        // By default, the spot light is turned off, since
+        // it's primarily used for casting detailed shadows
+        this.set_property(["Lights", "SpotLight"], "visible", false);
+
+        var directional_light = new THREE.DirectionalLight(0xffffff, 0.7);
+        directional_light.position.set(1.5, 1.5, 2);
+        this.set_object(["Lights", "DirectionalLight"], directional_light);
 
         var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
         this.set_object(["Lights", "AmbientLight"], ambient_light);
