@@ -191,21 +191,37 @@ function handle_special_geometry(geom) {
     }
 }
 
+function handle_special_texture(txtr) {
+    let canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    let ctx = canvas.getContext('2d');
+    ctx.textAlign = "center";
+    ctx.font = txtr[0].font;
+    ctx.fillText(txtr[0].text, canvas.width / 2, canvas.height / 2);
+    var texture = new THREE.CanvasTexture(canvas);
+    // var canvas_url = canvas.toDataURL();
+    console.log(texture)
+    return texture;
+}
+
 
 // https://stackoverflow.com/a/15832662
 function download_data_uri(name, uri) {
-  let link = document.createElement("a");
-  link.download = name;
-  link.href = uri;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    let link = document.createElement("a");
+    link.download = name;
+    link.href = uri;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // https://stackoverflow.com/a/35251739
 function download_file(name, contents, mime) {
     mime = mime || "text/plain";
-    let blob = new Blob([contents], {type: mime});
+    let blob = new Blob([contents], {
+        type: mime
+    });
     let link = document.createElement("a");
     document.body.appendChild(link);
     link.download = name;
@@ -309,15 +325,25 @@ class Animator {
         folder.add(this.mixer, "timeScale").step(0.01).min(0);
         let recording_folder = folder.addFolder("Recording");
         recording_folder.add(this, "record");
-        recording_folder.add({format: "png"}, "format", ["png", "jpg"]).onChange(value => {
+        recording_folder.add({
+            format: "png"
+        }, "format", ["png", "jpg"]).onChange(value => {
             this.setup_capturer(format);
         });
 
 
-        if (options.play === undefined) {options.play = true}
-        if (options.loopMode === undefined) {options.loopMode = THREE.LoopRepeat}
-        if (options.repetitions === undefined) {options.repetitions = 1}
-        if (options.clampWhenFinished === undefined) {options.clampWhenFinished = true}
+        if (options.play === undefined) {
+            options.play = true
+        }
+        if (options.loopMode === undefined) {
+            options.loopMode = THREE.LoopRepeat
+        }
+        if (options.repetitions === undefined) {
+            options.repetitions = 1
+        }
+        if (options.clampWhenFinished === undefined) {
+            options.clampWhenFinished = true
+        }
 
         for (let animation of animations) {
             console.log(animation.path);
@@ -367,17 +393,17 @@ function gradient_texture(top_color, bottom_color) {
     let width = 1;
     let height = 2;
     let size = width * height;
-    var data = new Uint8Array( 3 * size );
-    for (let row=0; row < height; row++) {
+    var data = new Uint8Array(3 * size);
+    for (let row = 0; row < height; row++) {
         let color = colors[row];
-        for (let col=0; col < width; col++) {
+        for (let col = 0; col < width; col++) {
             let i = 3 * (row * width + col);
-            for (let j=0; j < 3; j++) {
+            for (let j = 0; j < 3; j++) {
                 data[i + j] = color[j];
             }
         }
     }
-    var texture = new THREE.DataTexture( data, width, height, THREE.RGBFormat);
+    var texture = new THREE.DataTexture(data, width, height, THREE.RGBFormat);
     texture.magFilter = THREE.LinearFilter;
     texture.encoding = THREE.LinearEncoding;
     // By default, the points in our texture map to the center of
@@ -386,43 +412,20 @@ function gradient_texture(top_color, bottom_color) {
     // to tweak the UV transform matrix
     texture.matrixAutoUpdate = false;
     texture.matrix.set(0.5, 0, 0.25,
-                       0, 0.5, 0.25,
-                       0, 0, 1);
+        0, 0.5, 0.25,
+        0, 0, 1);
     texture.needsUpdate = true
     return texture;
 }
-
-function text_mesh(text, x, y, z) {
-    let canvas = document.createElement('canvas');
-    // canvas.width = 300;
-    // canvas.height = 200;
-    let ctx = canvas.getContext('2d');
-    ctx.textAlign = "center";
-    ctx.font = '48px sans-serif';
-    ctx.fillText('Hello world', canvas.width / 2, canvas.height / 2);
-    var texture = new THREE.Texture(canvas);
-    texture.needsUpdate = true;
-    var material = new THREE.MeshBasicMaterial({
-        map: texture,
-        // color: 0xffffff,
-        transparent: true,
-        opacity: 1
-    });
-    var mesh = new THREE.Mesh(new THREE.PlaneGeometry(10, 10, 1, 1), material);
-
-    mesh.position.x = x;
-    mesh.position.y = y;
-    // mesh.position.z = z;
-    return mesh;
-
-}
-
 
 
 class Viewer {
     constructor(dom_element, animate) {
         this.dom_element = dom_element;
-        this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+        this.renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
         this.dom_element.appendChild(this.renderer.domElement);
 
         this.scene = create_default_scene();
@@ -450,10 +453,9 @@ class Viewer {
     }
 
     show_background() {
-        let top_color = [135,206,250]; // lightskyblue
-        let bottom_color = [25,25,112]; // midnightblue
+        let top_color = [135, 206, 250]; // lightskyblue
+        let bottom_color = [25, 25, 112]; // midnightblue
         this.scene.background = gradient_texture(top_color, bottom_color);
-        this.scene.add(text_mesh("hahaha", 0, 0, 0))
         this.set_dirty();
     }
 
@@ -494,7 +496,9 @@ class Viewer {
         if (this.gui) {
             this.gui.destroy();
         }
-        this.gui = new dat.GUI({autoPlace: false});
+        this.gui = new dat.GUI({
+            autoPlace: false
+        });
         this.dom_element.appendChild(this.gui.domElement);
         this.gui.domElement.style.position = "absolute";
         this.gui.domElement.style.right = 0;
@@ -555,8 +559,12 @@ class Viewer {
         this.camera = obj;
         this.controls = new THREE.OrbitControls(obj, this.dom_element);
         this.controls.enableKeys = false;
-        this.controls.addEventListener('start', () => {this.set_dirty()});
-        this.controls.addEventListener('change', () => {this.set_dirty()});
+        this.controls.addEventListener('start', () => {
+            this.set_dirty()
+        });
+        this.controls.addEventListener('change', () => {
+            this.set_dirty()
+        });
     }
 
     set_camera_from_json(data) {
@@ -585,6 +593,23 @@ class Viewer {
             // if (obj.name === "") {
             //     obj.name = "<object>";
             // }
+            this.set_object(path, obj);
+            this.set_dirty();
+        });
+    }
+
+    set_text(path, object_json, textures) {
+        var text_textures = handle_special_texture(textures)
+        let loader = new THREE.ObjectLoader();
+        loader.parse(object_json, (obj) => {
+            if (obj.geometry.type == "BufferGeometry") {
+                obj.geometry.computeVertexNormals();
+            }
+            obj = new THREE.Mesh(obj.geometry, new THREE.MeshBasicMaterial({
+                map: text_textures,
+                transparent: true
+            }));
+            // console.log(obj)
             this.set_object(path, obj);
             this.set_dirty();
         });
@@ -632,6 +657,9 @@ class Viewer {
         } else if (cmd.type == "set_object") {
             let path = split_path(cmd.path);
             this.set_object_from_json(path, cmd.object);
+        } else if (cmd.type == "set_text") {
+            let path = split_path(cmd.path);
+            this.set_text(path, cmd.object, cmd.textures);
         } else if (cmd.type == "set_property") {
             let path = split_path(cmd.path);
             this.set_property(path, cmd.property, cmd.value);
@@ -659,7 +687,7 @@ class Viewer {
         let connection = new WebSocket(url);
         connection.binaryType = "arraybuffer";
         connection.onmessage = (msg) => this.handle_command_message(msg);
-        connection.onclose = function (evt) {
+        connection.onclose = function(evt) {
             // TODO: start trying to reconnect
         }
     }
@@ -741,6 +769,6 @@ style.sheet.insertRule(`
 
 
 module.exports = {
-	Viewer: Viewer,
+    Viewer: Viewer,
     THREE: THREE
 };
