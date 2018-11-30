@@ -598,18 +598,16 @@ class Viewer {
         });
     }
 
-    set_text(path, object_json, textures) {
-        var text_textures = handle_special_texture(textures)
+    set_text(path, object_json) {
+        var text_textures = handle_special_texture(object_json.textures)
         let loader = new THREE.ObjectLoader();
         loader.parse(object_json, (obj) => {
             if (obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
-            obj = new THREE.Mesh(obj.geometry, new THREE.MeshBasicMaterial({
-                map: text_textures,
-                transparent: true
-            }));
-            // console.log(obj)
+            if (obj.material.needsUpdate=true){
+                obj.material.map = text_textures
+            }
             this.set_object(path, obj);
             this.set_dirty();
         });
@@ -659,7 +657,7 @@ class Viewer {
             this.set_object_from_json(path, cmd.object);
         } else if (cmd.type == "set_text") {
             let path = split_path(cmd.path);
-            this.set_text(path, cmd.object, cmd.textures);
+            this.set_text(path, cmd.object);
         } else if (cmd.type == "set_property") {
             let path = split_path(cmd.path);
             this.set_property(path, cmd.property, cmd.value);
