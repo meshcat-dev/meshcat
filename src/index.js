@@ -3,6 +3,8 @@ var msgpack = require('msgpack-lite');
 var dat = require('dat.gui').default; // TODO: why is .default needed?
 require('imports-loader?THREE=three!./LoaderSupport.js');
 require('imports-loader?THREE=three!./OBJLoader2.js');
+require('imports-loader?THREE=three!./ColladaLoader.js');
+require('imports-loader?THREE=three!./STLLoader.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 require('ccapture.js');
 
@@ -192,6 +194,23 @@ function handle_special_geometry(geom) {
                 dispose(child);
             }
             return json;
+        } else if (geom.format == "dae") {
+            let loader = new THREE.ColladaLoader();
+            let obj = loader.parse(geom.data);
+
+            let loaded_geom = obj.scene.children[0].geometry;
+            loaded_geom.uuid = geom.uuid;
+            let json = loaded_geom.toJSON();
+            return json;
+        } else if (geom.format == "stl") {
+            let loader = new THREE.STLLoader();
+            let loaded_geom = loader.parse(geom.data.buffer);
+
+            loaded_geom.uuid = geom.uuid;
+            let json = loaded_geom.toJSON();
+            return json;
+        } else {
+            console.error("Unsupported mesh type:", geom);
         }
     } else {
         return geom;
