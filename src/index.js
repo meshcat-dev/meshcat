@@ -193,7 +193,8 @@ function handle_special_geometry(geom) {
 
 function handle_special_texture(txtr) {
     let canvas = document.createElement('canvas');
-    // canvas width and height must be in the power of 2;
+    // canvas width and height should be in the power of 2; otherwise although
+    // page usually loads successfully WebGL complains
     canvas.width = 256;
     canvas.height = 128;
     let ctx = canvas.getContext('2d');
@@ -201,6 +202,7 @@ function handle_special_texture(txtr) {
     font_size = txtr[0].font_size;
     font_face = txtr[0].font_face;
     text = txtr[0].text;
+    // auto-resing the font_size to fit in the canvas
     do {
         font_size--;
         ctx.font = font_size + "px " + font_face;
@@ -208,7 +210,7 @@ function handle_special_texture(txtr) {
     ctx.fillText(text, canvas.width / 2, canvas.height / 2);
     var texture = new THREE.CanvasTexture(canvas);
     // var canvas_url = canvas.toDataURL();
-    console.log(texture)
+    // console.log(texture)
     return texture;
 }
 
@@ -591,6 +593,9 @@ class Viewer {
     }
 
     set_object_from_json(path, object_json) {
+        if ('textures' in object_json){
+            var text_textures = handle_special_texture(object_json.textures)
+        }
         object_json.geometries = object_json.geometries.map(handle_special_geometry);
         let loader = new THREE.ObjectLoader();
         loader.parse(object_json, (obj) => {
@@ -600,6 +605,10 @@ class Viewer {
             // if (obj.name === "") {
             //     obj.name = "<object>";
             // }
+            if (obj.material.needsUpdate = true) {
+                obj.material.map = text_textures
+            }
+
             this.set_object(path, obj);
             this.set_dirty();
         });
