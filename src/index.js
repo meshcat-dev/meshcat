@@ -193,12 +193,19 @@ function handle_special_geometry(geom) {
 
 function handle_special_texture(txtr) {
     let canvas = document.createElement('canvas');
+    // canvas width and height must be in the power of 2;
     canvas.width = 256;
     canvas.height = 128;
     let ctx = canvas.getContext('2d');
     ctx.textAlign = "center";
-    ctx.font = txtr[0].font;
-    ctx.fillText(txtr[0].text, canvas.width / 2, canvas.height / 2);
+    font_size = txtr[0].font_size;
+    font_face = txtr[0].font_face;
+    text = txtr[0].text;
+    do {
+        font_size--;
+        ctx.font = font_size + "px " + font_face;
+    } while (ctx.measureText(text).width > canvas.width)
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
     var texture = new THREE.CanvasTexture(canvas);
     // var canvas_url = canvas.toDataURL();
     console.log(texture)
@@ -605,7 +612,7 @@ class Viewer {
             if (obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
-            if (obj.material.needsUpdate=true){
+            if (obj.material.needsUpdate = true) {
                 obj.material.map = text_textures
             }
             this.set_object(path, obj);
