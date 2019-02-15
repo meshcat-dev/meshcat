@@ -3,6 +3,8 @@ var msgpack = require('msgpack-lite');
 var dat = require('dat.gui').default; // TODO: why is .default needed?
 require('imports-loader?THREE=three!./LoaderSupport.js');
 require('imports-loader?THREE=three!./OBJLoader2.js');
+require('imports-loader?THREE=three!./ColladaLoader.js');
+require('imports-loader?THREE=three!./STLLoader.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 require('ccapture.js');
 
@@ -67,9 +69,14 @@ class SceneNode {
             }
         });
         if (this.object.isLight) {
-            let controller = this.folder.add(this.object, "intensity").min(0).step(0.01);
-            controller.onChange(() => this.on_update());
-            this.controllers.push(controller);
+            let intensity_controller = this.folder.add(this.object, "intensity").min(0).step(0.01);
+            intensity_controller.onChange(() => this.on_update());
+            this.controllers.push(intensity_controller);
+            if (this.object.castShadow !== undefined){
+                let cast_shadow_controller = this.folder.add(this.object, "castShadow");
+                cast_shadow_controller.onChange(() => this.on_update());
+                this.controllers.push(cast_shadow_controller);
+            }
         }
         if (this.object.isCamera) {
             let controller = this.folder.add(this.object, "zoom").min(0).step(0.1);
@@ -91,6 +98,8 @@ class SceneNode {
         } else {
             this.object[property] = value;
         }
+        this.vis_controller.updateDisplay();
+        this.controllers.forEach(c => c.updateDisplay());
     }
 
     set_transform(matrix) {
@@ -177,7 +186,7 @@ function handle_special_geometry(geom) {
     if (geom.type == "_meshfile") {
         if (geom.format == "obj") {
             let loader = new THREE.OBJLoader2();
-            let obj = loader.parse("data:text/plain," + geom.data);
+            let obj = loader.parse(geom.data + "\n");
             let loaded_geom = obj.children[0].geometry;
             loaded_geom.uuid = geom.uuid;
             let json = loaded_geom.toJSON();
@@ -185,6 +194,23 @@ function handle_special_geometry(geom) {
                 dispose(child);
             }
             return json;
+        } else if (geom.format == "dae") {
+            let loader = new THREE.ColladaLoader();
+            let obj = loader.parse(geom.data);
+
+            let loaded_geom = obj.scene.children[0].geometry;
+            loaded_geom.uuid = geom.uuid;
+            let json = loaded_geom.toJSON();
+            return json;
+        } else if (geom.format == "stl") {
+            let loader = new THREE.STLLoader();
+            let loaded_geom = loader.parse(geom.data.buffer);
+
+            loaded_geom.uuid = geom.uuid;
+            let json = loaded_geom.toJSON();
+            return json;
+        } else {
+            console.error("Unsupported mesh type:", geom);
         }
     } else {
         return geom;
@@ -312,6 +338,7 @@ class Animator {
             action.reset();
         }
         this.mixer.update(0);
+        this.setup_capturer(this.capturer.format);
         this.viewer.set_dirty();
     }
 
@@ -353,9 +380,7 @@ class Animator {
         }
 
         for (let animation of animations) {
-            console.log(animation.path);
             let target = this.viewer.scene_tree.find(animation.path).object;
-            console.log(target);
             let clip = this.loader.parseAnimations([animation.clip])[0];
             let action = this.mixer.clipAction(clip, target);
             action.clampWhenFinished = options.clampWhenFinished;
@@ -481,13 +506,38 @@ class Viewer {
         camera.position.set(3, 1, 0);
     }
 
+    create_default_spot_light() {
+        var spot_light = new THREE.SpotLight(0xffffff, 0.8);
+        spot_light.position.set(1.5, 1.5, 2);
+        // Make light not cast shadows by default (effectively
+        // disabling them, as there are no shadow-casting light
+        // sources in the default configuration). This is toggleable
+        // in the light options menu.
+        spot_light.castShadow = false;
+        spot_light.shadow.mapSize.width = 1024;  // default 512
+        spot_light.shadow.mapSize.height = 1024; // default 512
+        spot_light.shadow.camera.near = 0.5;     // default 0.5
+        spot_light.shadow.camera.far = 50.;      // default 500
+        return spot_light;
+    }
+
     add_default_scene_elements() {
-        var light = new THREE.DirectionalLight(0xffffff, 0.75);
-        light.position.set(5, 5, 10);
-        this.set_object(["Lights", "DirectionalLight"], light);
+        var spot_light = this.create_default_spot_light();
+        this.set_object(["Lights", "SpotLight"], spot_light);
+        // By default, the spot light is turned off, since
+        // it's primarily used for casting detailed shadows
+        this.set_property(["Lights", "SpotLight"], "visible", false);
+
+        var directional_light = new THREE.DirectionalLight(0xffffff, 0.7);
+        directional_light.position.set(1.5, 1.5, 2);
+        this.set_object(["Lights", "DirectionalLight"], directional_light);
 
         var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
         this.set_object(["Lights", "AmbientLight"], ambient_light);
+
+        var fill_light = new THREE.DirectionalLight(0xffffff, 0.4);
+        fill_light.position.set(-10, -10, 0);
+        this.set_object(["Lights", "FillLight"], fill_light);
 
         var grid = new THREE.GridHelper(20, 40);
         grid.rotateX(Math.PI / 2);
@@ -596,6 +646,8 @@ class Viewer {
             if (obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
+            obj.castShadow = true;
+            obj.receiveShadow = true;
             // if (obj.name === "") {
             //     obj.name = "<object>";
             // }
