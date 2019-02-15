@@ -334,10 +334,8 @@ class Animator {
         folder.add(this.mixer, "timeScale").step(0.01).min(0);
         let recording_folder = folder.addFolder("Recording");
         recording_folder.add(this, "record");
-        recording_folder.add({
-            format: "png"
-        }, "format", ["png", "jpg"]).onChange(value => {
-            this.setup_capturer(format);
+        recording_folder.add({format: "png"}, "format", ["png", "jpg"]).onChange(value => {
+                    this.setup_capturer(value);
         });
 
 
@@ -431,10 +429,9 @@ function gradient_texture(top_color, bottom_color) {
 class Viewer {
     constructor(dom_element, animate) {
         this.dom_element = dom_element;
-        this.renderer = new THREE.WebGLRenderer({
-            antialias: true,
-            alpha: true
-        });
+        this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.dom_element.appendChild(this.renderer.domElement);
 
         this.scene = create_default_scene();
