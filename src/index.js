@@ -335,7 +335,7 @@ class Animator {
         let recording_folder = folder.addFolder("Recording");
         recording_folder.add(this, "record");
         recording_folder.add({format: "png"}, "format", ["png", "jpg"]).onChange(value => {
-                    this.setup_capturer(value);
+            this.setup_capturer(value);
         });
 
 
