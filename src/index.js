@@ -7,6 +7,8 @@ require('imports-loader?THREE=three!./ColladaLoader.js');
 require('imports-loader?THREE=three!./STLLoader.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 require('ccapture.js');
+require('imports-loader?THREE=three!./DeviceOrientationControls.js');
+require('imports-loader?THREE=three!./StereoEffect.js');
 
 class SceneNode {
     constructor(object, folder, on_update) {
@@ -426,6 +428,9 @@ class Viewer {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.dom_element.appendChild(this.renderer.domElement);
 
+        //Misha -- adding stereo effect
+        this.effect = new THREE.StereoEffect(this.renderer);
+
         this.scene = create_default_scene();
         this.show_background();
         this.create_scene_tree();
@@ -466,10 +471,10 @@ class Viewer {
         mat.makeRotationX(Math.PI / 2);
         this.set_transform(["Cameras", "default", "rotated"], mat.toArray());
 
-        let camera = new THREE.PerspectiveCamera(75, 1, 0.01, 100)
+        let camera = new THREE.PerspectiveCamera(75, 1, 0.01, 1000);
         this.set_camera(camera);
 
-        this.set_object(["Cameras", "default", "rotated"], camera)
+        this.set_object(["Cameras", "default", "rotated"], camera);
         camera.position.set(3, 1, 0);
     }
 
@@ -548,13 +553,15 @@ class Viewer {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
+        this.effect.setSize(w,h);
         this.set_dirty();
     }
 
     render() {
         this.controls.update();
         this.camera.updateProjectionMatrix();
-        this.renderer.render(this.scene, this.camera);
+        //this.renderer.render(this.scene, this.camera);
+        this.effect.render(this.scene, this.camera);
         this.animator.after_render();
         this.needs_render = false;
     }
@@ -578,10 +585,32 @@ class Viewer {
 
     set_camera(obj) {
         this.camera = obj;
-        this.controls = new THREE.OrbitControls(obj, this.dom_element);
-        this.controls.enableKeys = false;
-        this.controls.addEventListener('start', () => {this.set_dirty()});
-        this.controls.addEventListener('change', () => {this.set_dirty()});
+        //this.controls = new THREE.OrbitControls(obj, this.dom_element);
+        //this.controls.enableKeys = false;
+        //this.controls.addEventListener('start', () => {this.set_dirty()});
+        //this.controls.addEventListener('change', () => {this.set_dirty()});
+        
+        //misha add orientation controls
+        this.controls = new THREE.DeviceOrientationControls(this.camera);
+        console.log("setup a new THREE.DeviceOrientationControls");
+        if( typeof this.controls == 'undefined') {
+            console.log("this.controls is undefined");
+        }
+        else {
+            console.log("this.controls IS defined");
+        }
+        this.controls.connect();
+        this.controls.update();
+
+        //TODO: connect Device Orientaiton Controls to set_dirty()
+        window.addEventListener('orientationchange', () => {this.set_dirty()});
+        window.addEventListener('deviceorientation', () => {this.set_dirty()});
+        //note: event.alpha was null in laptop testing so check other variables
+        window.addEventListener('deviceorientation', function(event) {
+            console.log(event.alpha + ' : ' + event.beta + ' : ' + event.gamma);
+        });
+        console.log("got passed setting addEventListners for setting dirty");
+        //this.dom_element.addEventListener('click',fullscreen,false); 
     }
 
     set_camera_from_json(data) {
