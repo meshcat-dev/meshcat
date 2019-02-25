@@ -8,6 +8,117 @@ require('imports-loader?THREE=three!./STLLoader.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 require('ccapture.js');
 
+// Handler for special texture types that we want to support
+// in addition to whatever three.js supports. This function
+// takes a json object representing a single texture, and should
+// return either:
+//   * A new `THREE.Texture` if that json represents a special texture
+//   * `null` otherwise
+function handle_special_texture(json) {
+    if (json.type == "_text") {
+        let canvas = document.createElement('canvas');
+        // canvas width and height should be in the power of 2; otherwise although
+        // the page usually loads successfully, WebGL does complain/warn
+        canvas.width = 256;
+        canvas.height = 128;
+        let ctx = canvas.getContext('2d');
+        ctx.textAlign = "center";
+        let font_size = json.font_size;
+        // auto-resing the font_size to fit in the canvas
+        ctx.font = `${font_size} px ${json.font_face}`;
+        while (ctx.measureText(json.text).width > canvas.width) {
+            font_size--;
+            ctx.font = `${font_size} px ${json.font_face}`;
+        }
+        ctx.fillText(json.text, canvas.width / 2, canvas.height / 2);
+        let canvas_texture = new THREE.CanvasTexture(canvas);
+        canvas_texture.uuid = json.uuid;
+        return canvas_texture;
+    } else {
+        return null;
+    }
+}
+
+// Handler for special geometry types that we want to support
+// in addition to whatever three.js supports. This function
+// takes a json object representing a single geometry, and should
+// return either:
+//   * A new `THREE.Mesh` if that json represents a special geometry
+//   * `null` otherwise
+function handle_special_geometry(geom) {
+    if (geom.type == "_meshfile") {
+        if (geom.format == "obj") {
+            let loader = new THREE.OBJLoader2();
+            let obj = loader.parse(geom.data + "\n");
+            let loaded_geom = obj.children[0].geometry;
+            loaded_geom.uuid = geom.uuid;
+            return loaded_geom;
+        } else if (geom.format == "dae") {
+            let loader = new THREE.ColladaLoader();
+            let obj = loader.parse(geom.data);
+            let loaded_geom = obj.scene.children[0].geometry;
+            loaded_geom.uuid = geom.uuid;
+            return loaded_geom;
+        } else if (geom.format == "stl") {
+            let loader = new THREE.STLLoader();
+            let loaded_geom = loader.parse(geom.data.buffer);
+            loaded_geom.uuid = geom.uuid;
+            return loaded_geom;
+        } else {
+            console.error("Unsupported mesh type:", geom);
+            return null;
+        }
+    } else {
+        return null;
+    }
+}
+
+
+// The ExtensibleObjectLoader extends the THREE.ObjectLoader
+// interface, while providing some hooks for us to perform some
+// custom loading for things other than three.js native JSON.
+//
+// We currently use this class to support some extensions to
+// three.js JSON for objects which are easy to construct in
+// javascript but hard to construct in Python and/or Julia.
+// For example, we perform the following transformations:
+//
+//   * Converting "_meshfile" geometries into actual meshes
+//     using the THREE.js native mesh loaders
+//   * Converting "_text" textures into text by drawing the
+//     requested text onto a canvas.
+class ExtensibleObjectLoader extends THREE.ObjectLoader {
+    delegate(special_handler, base_handler, json, additional_objects) {
+        let result = {};
+        if (json === undefined) {
+            return result;
+        }
+        let remaining_json = [];
+        for (let data of json) {
+            let x = special_handler(data);
+            if (x !== null) {
+                result[x.uuid] = x;
+            } else {
+                remaining_json.push(data);
+            }
+        }
+        return Object.assign(result, base_handler(remaining_json, additional_objects));
+    }
+
+    parseTextures(json, images) {
+        return this.delegate(handle_special_texture,
+                             super.parseTextures,
+                             json, images);
+    }
+
+    parseGeometries(json, shapes) {
+        return this.delegate(handle_special_geometry,
+                             super.parseGeometries,
+                             json, shapes);
+    }
+}
+
+
 class SceneNode {
     constructor(object, folder, on_update) {
         this.object = object;
@@ -142,14 +253,6 @@ class SceneNode {
     }
 }
 
-// function material_gui(gui, material) {
-//     gui.addColor(material, "color");
-//     "reflectivity" in material && gui.add(material, "reflectivity");
-//     "transparent" in material && gui.add(material, "transparent");
-//     "opacity" in material && gui.add(material, "opacity", 0, 1, 0.01);
-//     "emissive" in material && gui.addColor(material, "emissive");
-// }
-
 function remove_folders(gui) {
     for (let name of Object.keys(gui.__folders)) {
         let folder = gui.__folders[name];
@@ -179,65 +282,6 @@ function create_default_scene() {
     scene.name = "Scene";
     scene.rotateX(-Math.PI / 2);
     return scene;
-}
-
-
-function handle_special_geometry(geom) {
-    if (geom.type == "_meshfile") {
-        if (geom.format == "obj") {
-            let loader = new THREE.OBJLoader2();
-            let obj = loader.parse(geom.data + "\n");
-            let loaded_geom = obj.children[0].geometry;
-            loaded_geom.uuid = geom.uuid;
-            let json = loaded_geom.toJSON();
-            for (let child of obj.children) {
-                dispose(child);
-            }
-            return json;
-        } else if (geom.format == "dae") {
-            let loader = new THREE.ColladaLoader();
-            let obj = loader.parse(geom.data);
-
-            let loaded_geom = obj.scene.children[0].geometry;
-            loaded_geom.uuid = geom.uuid;
-            let json = loaded_geom.toJSON();
-            return json;
-        } else if (geom.format == "stl") {
-            let loader = new THREE.STLLoader();
-            let loaded_geom = loader.parse(geom.data.buffer);
-
-            loaded_geom.uuid = geom.uuid;
-            let json = loaded_geom.toJSON();
-            return json;
-        } else {
-            console.error("Unsupported mesh type:", geom);
-        }
-    } else {
-        return geom;
-    }
-}
-
-function handle_special_texture(txtr) {
-    let canvas = document.createElement('canvas');
-    // canvas width and height should be in the power of 2; otherwise although
-    // the page usually loads successfully, WebGL does complain/warn
-    canvas.width = 256;
-    canvas.height = 128;
-    let ctx = canvas.getContext('2d');
-    ctx.textAlign = "center";
-    font_size = txtr[0].font_size;
-    font_face = txtr[0].font_face;
-    text = txtr[0].text;
-    // auto-resing the font_size to fit in the canvas
-    do {
-        font_size--;
-        ctx.font = font_size + "px " + font_face;
-    } while (ctx.measureText(text).width > canvas.width)
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-    var texture = new THREE.CanvasTexture(canvas);
-    // var canvas_url = canvas.toDataURL();
-    // console.log(texture)
-    return texture;
 }
 
 
@@ -624,7 +668,7 @@ class Viewer {
     }
 
     set_camera_from_json(data) {
-        let loader = new THREE.ObjectLoader();
+        let loader = new ExtensibleObjectLoader();
         loader.parse(data, (obj) => {
             console.log(obj);
             this.set_camera(obj);
@@ -640,32 +684,14 @@ class Viewer {
     }
 
     set_object_from_json(path, object_json) {
-        object_json.geometries = object_json.geometries.map(handle_special_geometry);
-        let loader = new THREE.ObjectLoader();
+        console.log("object_json:", object_json);
+        let loader = new ExtensibleObjectLoader();
         loader.parse(object_json, (obj) => {
             if (obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
             obj.castShadow = true;
             obj.receiveShadow = true;
-            // if (obj.name === "") {
-            //     obj.name = "<object>";
-            // }
-            this.set_object(path, obj);
-            this.set_dirty();
-        });
-    }
-
-    set_text(path, object_json) {
-        var text_textures = handle_special_texture(object_json.textures)
-        let loader = new THREE.ObjectLoader();
-        loader.parse(object_json, (obj) => {
-            if (obj.geometry.type == "BufferGeometry") {
-                obj.geometry.computeVertexNormals();
-            }
-            if (obj.material.needsUpdate = true) {
-                obj.material.map = text_textures
-            }
             this.set_object(path, obj);
             this.set_dirty();
         });
@@ -704,6 +730,7 @@ class Viewer {
     }
 
     handle_command(cmd) {
+        console.log("cmd:", cmd);
         if (cmd.type == "set_transform") {
             let path = split_path(cmd.path);
             this.set_transform(path, cmd.matrix);
@@ -713,9 +740,6 @@ class Viewer {
         } else if (cmd.type == "set_object") {
             let path = split_path(cmd.path);
             this.set_object_from_json(path, cmd.object);
-        } else if (cmd.type == "set_text") {
-            let path = split_path(cmd.path);
-            this.set_text(path, cmd.object);
         } else if (cmd.type == "set_property") {
             let path = split_path(cmd.path);
             this.set_property(path, cmd.property, cmd.value);
@@ -753,7 +777,7 @@ class Viewer {
     }
 
     load_scene_from_json(json) {
-        let loader = new THREE.ObjectLoader();
+        let loader = new ExtensibleObjectLoader();
         this.scene_tree.dispose_recursive();
         this.scene = loader.parse(json);
         this.show_background();
