@@ -670,7 +670,6 @@ class Viewer {
     set_camera_from_json(data) {
         let loader = new ExtensibleObjectLoader();
         loader.parse(data, (obj) => {
-            console.log(obj);
             this.set_camera(obj);
         });
     }
@@ -684,7 +683,6 @@ class Viewer {
     }
 
     set_object_from_json(path, object_json) {
-        console.log("object_json:", object_json);
         let loader = new ExtensibleObjectLoader();
         loader.parse(object_json, (obj) => {
             if (obj.geometry.type == "BufferGeometry") {
@@ -730,7 +728,6 @@ class Viewer {
     }
 
     handle_command(cmd) {
-        console.log("cmd:", cmd);
         if (cmd.type == "set_transform") {
             let path = split_path(cmd.path);
             this.set_transform(path, cmd.matrix);
