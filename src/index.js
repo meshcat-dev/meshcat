@@ -20,15 +20,15 @@ function handle_special_texture(json) {
         // canvas width and height should be in the power of 2; otherwise although
         // the page usually loads successfully, WebGL does complain/warn
         canvas.width = 256;
-        canvas.height = 128;
+        canvas.height = 256;
         let ctx = canvas.getContext('2d');
         ctx.textAlign = "center";
         let font_size = json.font_size;
         // auto-resing the font_size to fit in the canvas
-        ctx.font = `${font_size} px ${json.font_face}`;
+        ctx.font = font_size + "px " + json.font_face;
         while (ctx.measureText(json.text).width > canvas.width) {
             font_size--;
-            ctx.font = `${font_size} px ${json.font_face}`;
+            ctx.font = font_size + "px " + json.font_face;
         }
         ctx.fillText(json.text, canvas.width / 2, canvas.height / 2);
         let canvas_texture = new THREE.CanvasTexture(canvas);
