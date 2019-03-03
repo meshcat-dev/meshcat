@@ -8,6 +8,117 @@ require('imports-loader?THREE=three!./STLLoader.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 require('ccapture.js');
 
+// Handler for special texture types that we want to support
+// in addition to whatever three.js supports. This function
+// takes a json object representing a single texture, and should
+// return either:
+//   * A new `THREE.Texture` if that json represents a special texture
+//   * `null` otherwise
+function handle_special_texture(json) {
+    if (json.type == "_text") {
+        let canvas = document.createElement('canvas');
+        // canvas width and height should be in the power of 2; otherwise although
+        // the page usually loads successfully, WebGL does complain/warn
+        canvas.width = 256;
+        canvas.height = 256;
+        let ctx = canvas.getContext('2d');
+        ctx.textAlign = "center";
+        let font_size = json.font_size;
+        // auto-resing the font_size to fit in the canvas
+        ctx.font = font_size + "px " + json.font_face;
+        while (ctx.measureText(json.text).width > canvas.width) {
+            font_size--;
+            ctx.font = font_size + "px " + json.font_face;
+        }
+        ctx.fillText(json.text, canvas.width / 2, canvas.height / 2);
+        let canvas_texture = new THREE.CanvasTexture(canvas);
+        canvas_texture.uuid = json.uuid;
+        return canvas_texture;
+    } else {
+        return null;
+    }
+}
+
+// Handler for special geometry types that we want to support
+// in addition to whatever three.js supports. This function
+// takes a json object representing a single geometry, and should
+// return either:
+//   * A new `THREE.Mesh` if that json represents a special geometry
+//   * `null` otherwise
+function handle_special_geometry(geom) {
+    if (geom.type == "_meshfile") {
+        if (geom.format == "obj") {
+            let loader = new THREE.OBJLoader2();
+            let obj = loader.parse(geom.data + "\n");
+            let loaded_geom = obj.children[0].geometry;
+            loaded_geom.uuid = geom.uuid;
+            return loaded_geom;
+        } else if (geom.format == "dae") {
+            let loader = new THREE.ColladaLoader();
+            let obj = loader.parse(geom.data);
+            let loaded_geom = obj.scene.children[0].geometry;
+            loaded_geom.uuid = geom.uuid;
+            return loaded_geom;
+        } else if (geom.format == "stl") {
+            let loader = new THREE.STLLoader();
+            let loaded_geom = loader.parse(geom.data.buffer);
+            loaded_geom.uuid = geom.uuid;
+            return loaded_geom;
+        } else {
+            console.error("Unsupported mesh type:", geom);
+            return null;
+        }
+    } else {
+        return null;
+    }
+}
+
+
+// The ExtensibleObjectLoader extends the THREE.ObjectLoader
+// interface, while providing some hooks for us to perform some
+// custom loading for things other than three.js native JSON.
+//
+// We currently use this class to support some extensions to
+// three.js JSON for objects which are easy to construct in
+// javascript but hard to construct in Python and/or Julia.
+// For example, we perform the following transformations:
+//
+//   * Converting "_meshfile" geometries into actual meshes
+//     using the THREE.js native mesh loaders
+//   * Converting "_text" textures into text by drawing the
+//     requested text onto a canvas.
+class ExtensibleObjectLoader extends THREE.ObjectLoader {
+    delegate(special_handler, base_handler, json, additional_objects) {
+        let result = {};
+        if (json === undefined) {
+            return result;
+        }
+        let remaining_json = [];
+        for (let data of json) {
+            let x = special_handler(data);
+            if (x !== null) {
+                result[x.uuid] = x;
+            } else {
+                remaining_json.push(data);
+            }
+        }
+        return Object.assign(result, base_handler(remaining_json, additional_objects));
+    }
+
+    parseTextures(json, images) {
+        return this.delegate(handle_special_texture,
+                             super.parseTextures,
+                             json, images);
+    }
+
+    parseGeometries(json, shapes) {
+        return this.delegate(handle_special_geometry,
+                             super.parseGeometries,
+                             json, shapes);
+    }
+}
+
+
 class SceneNode {
     constructor(object, folder, on_update) {
         this.object = object;
@@ -142,14 +253,6 @@ class SceneNode {
     }
 }
 
-// function material_gui(gui, material) {
-//     gui.addColor(material, "color");
-//     "reflectivity" in material && gui.add(material, "reflectivity");
-//     "transparent" in material && gui.add(material, "transparent");
-//     "opacity" in material && gui.add(material, "opacity", 0, 1, 0.01);
-//     "emissive" in material && gui.addColor(material, "emissive");
-// }
-
 function remove_folders(gui) {
     for (let name of Object.keys(gui.__folders)) {
         let folder = gui.__folders[name];
@@ -182,56 +285,22 @@ function create_default_scene() {
 }
 
 
-function handle_special_geometry(geom) {
-    if (geom.type == "_meshfile") {
-        if (geom.format == "obj") {
-            let loader = new THREE.OBJLoader2();
-            let obj = loader.parse(geom.data + "\n");
-            let loaded_geom = obj.children[0].geometry;
-            loaded_geom.uuid = geom.uuid;
-            let json = loaded_geom.toJSON();
-            for (let child of obj.children) {
-                dispose(child);
-            }
-            return json;
-        } else if (geom.format == "dae") {
-            let loader = new THREE.ColladaLoader();
-            let obj = loader.parse(geom.data);
-
-            let loaded_geom = obj.scene.children[0].geometry;
-            loaded_geom.uuid = geom.uuid;
-            let json = loaded_geom.toJSON();
-            return json;
-        } else if (geom.format == "stl") {
-            let loader = new THREE.STLLoader();
-            let loaded_geom = loader.parse(geom.data.buffer);
-
-            loaded_geom.uuid = geom.uuid;
-            let json = loaded_geom.toJSON();
-            return json;
-        } else {
-            console.error("Unsupported mesh type:", geom);
-        }
-    } else {
-        return geom;
-    }
-}
-
-
 // https://stackoverflow.com/a/15832662
 function download_data_uri(name, uri) {
-  let link = document.createElement("a");
-  link.download = name;
-  link.href = uri;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    let link = document.createElement("a");
+    link.download = name;
+    link.href = uri;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // https://stackoverflow.com/a/35251739
 function download_file(name, contents, mime) {
     mime = mime || "text/plain";
-    let blob = new Blob([contents], {type: mime});
+    let blob = new Blob([contents], {
+        type: mime
+    });
     let link = document.createElement("a");
     document.body.appendChild(link);
     link.download = name;
@@ -341,10 +410,18 @@ class Animator {
         });
 
 
-        if (options.play === undefined) {options.play = true}
-        if (options.loopMode === undefined) {options.loopMode = THREE.LoopRepeat}
-        if (options.repetitions === undefined) {options.repetitions = 1}
-        if (options.clampWhenFinished === undefined) {options.clampWhenFinished = true}
+        if (options.play === undefined) {
+            options.play = true
+        }
+        if (options.loopMode === undefined) {
+            options.loopMode = THREE.LoopRepeat
+        }
+        if (options.repetitions === undefined) {
+            options.repetitions = 1
+        }
+        if (options.clampWhenFinished === undefined) {
+            options.clampWhenFinished = true
+        }
 
         for (let animation of animations) {
             let target = this.viewer.scene_tree.find(animation.path).object;
@@ -392,17 +469,17 @@ function gradient_texture(top_color, bottom_color) {
     let width = 1;
     let height = 2;
     let size = width * height;
-    var data = new Uint8Array( 3 * size );
-    for (let row=0; row < height; row++) {
+    var data = new Uint8Array(3 * size);
+    for (let row = 0; row < height; row++) {
         let color = colors[row];
-        for (let col=0; col < width; col++) {
+        for (let col = 0; col < width; col++) {
             let i = 3 * (row * width + col);
-            for (let j=0; j < 3; j++) {
+            for (let j = 0; j < 3; j++) {
                 data[i + j] = color[j];
             }
         }
     }
-    var texture = new THREE.DataTexture( data, width, height, THREE.RGBFormat);
+    var texture = new THREE.DataTexture(data, width, height, THREE.RGBFormat);
     texture.magFilter = THREE.LinearFilter;
     texture.encoding = THREE.LinearEncoding;
     // By default, the points in our texture map to the center of
@@ -411,8 +488,8 @@ function gradient_texture(top_color, bottom_color) {
     // to tweak the UV transform matrix
     texture.matrixAutoUpdate = false;
     texture.matrix.set(0.5, 0, 0.25,
-                       0, 0.5, 0.25,
-                       0, 0, 1);
+        0, 0.5, 0.25,
+        0, 0, 1);
     texture.needsUpdate = true
     return texture;
 }
@@ -451,8 +528,8 @@ class Viewer {
     }
 
     show_background() {
-        let top_color = [135,206,250]; // lightskyblue
-        let bottom_color = [25,25,112]; // midnightblue
+        let top_color = [135, 206, 250]; // lightskyblue
+        let bottom_color = [25, 25, 112]; // midnightblue
         this.scene.background = gradient_texture(top_color, bottom_color);
         this.set_dirty();
     }
@@ -519,7 +596,9 @@ class Viewer {
         if (this.gui) {
             this.gui.destroy();
         }
-        this.gui = new dat.GUI({autoPlace: false});
+        this.gui = new dat.GUI({
+            autoPlace: false
+        });
         this.dom_element.appendChild(this.gui.domElement);
         this.gui.domElement.style.position = "absolute";
         this.gui.domElement.style.right = 0;
@@ -580,14 +659,17 @@ class Viewer {
         this.camera = obj;
         this.controls = new THREE.OrbitControls(obj, this.dom_element);
         this.controls.enableKeys = false;
-        this.controls.addEventListener('start', () => {this.set_dirty()});
-        this.controls.addEventListener('change', () => {this.set_dirty()});
+        this.controls.addEventListener('start', () => {
+            this.set_dirty()
+        });
+        this.controls.addEventListener('change', () => {
+            this.set_dirty()
+        });
     }
 
     set_camera_from_json(data) {
-        let loader = new THREE.ObjectLoader();
+        let loader = new ExtensibleObjectLoader();
         loader.parse(data, (obj) => {
-            console.log(obj);
             this.set_camera(obj);
         });
     }
@@ -601,17 +683,13 @@ class Viewer {
     }
 
     set_object_from_json(path, object_json) {
-        object_json.geometries = object_json.geometries.map(handle_special_geometry);
-        let loader = new THREE.ObjectLoader();
+        let loader = new ExtensibleObjectLoader();
         loader.parse(object_json, (obj) => {
             if (obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
             obj.castShadow = true;
             obj.receiveShadow = true;
-            // if (obj.name === "") {
-            //     obj.name = "<object>";
-            // }
             this.set_object(path, obj);
             this.set_dirty();
         });
@@ -686,7 +764,7 @@ class Viewer {
         let connection = new WebSocket(url);
         connection.binaryType = "arraybuffer";
         connection.onmessage = (msg) => this.handle_command_message(msg);
-        connection.onclose = function (evt) {
+        connection.onclose = function(evt) {
             // TODO: start trying to reconnect
         }
     }
@@ -696,7 +774,7 @@ class Viewer {
     }
 
     load_scene_from_json(json) {
-        let loader = new THREE.ObjectLoader();
+        let loader = new ExtensibleObjectLoader();
         this.scene_tree.dispose_recursive();
         this.scene = loader.parse(json);
         this.show_background();
@@ -768,6 +846,6 @@ style.sheet.insertRule(`
 
 
 module.exports = {
-	Viewer: Viewer,
+    Viewer: Viewer,
     THREE: THREE
 };
