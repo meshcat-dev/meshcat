@@ -684,9 +684,17 @@ class Viewer {
     set_object_from_json(path, object_json) {
         let loader = new ExtensibleObjectLoader();
         loader.parse(object_json, (obj) => {
-            console.log("obj:", obj);
             if (obj.geometry.type == "Group") {
-                obj = obj.geometry;
+                let group = obj.geometry;
+                // TODO: there's an easier way to copy the pose, I'm sure
+                group.position.x = obj.position.x;
+                group.position.y = obj.position.y;
+                group.position.z = obj.position.z;
+                group.quaternion.w = obj.quaternion.w;
+                group.quaternion.x = obj.quaternion.x;
+                group.quaternion.y = obj.quaternion.y;
+                group.quaternion.z = obj.quaternion.z;
+                obj = group;
             } else if (obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
