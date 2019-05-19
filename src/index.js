@@ -685,15 +685,16 @@ class Viewer {
         let loader = new ExtensibleObjectLoader();
         loader.parse(object_json, (obj) => {
             if (obj.geometry.type == "Group") {
+                // Loading a .DAE file currently results in a new
+                // THREE.Group being set as the geometry field of
+                // obj. This isn't actually correct: a Group is an
+                // Object not a Geometry. To work around that, we
+                // check for this special case and promote that
+                // Group itself to be the new object.
                 let group = obj.geometry;
-                // TODO: there's an easier way to copy the pose, I'm sure
-                group.position.x = obj.position.x;
-                group.position.y = obj.position.y;
-                group.position.z = obj.position.z;
-                group.quaternion.w = obj.quaternion.w;
-                group.quaternion.x = obj.quaternion.x;
-                group.quaternion.y = obj.quaternion.y;
-                group.quaternion.z = obj.quaternion.z;
+                group.position.copy(obj.position);
+                group.quaternion.copy(obj.quaternion);
+                group.scale.copy(obj.scale);
                 obj = group;
             } else if (obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
