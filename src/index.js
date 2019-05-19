@@ -56,9 +56,9 @@ function handle_special_geometry(geom) {
         } else if (geom.format == "dae") {
             let loader = new THREE.ColladaLoader();
             let obj = loader.parse(geom.data);
-            let loaded_geom = obj.scene.children[0].geometry;
-            loaded_geom.uuid = geom.uuid;
-            return loaded_geom;
+            let result = obj.scene;
+            result.uuid = geom.uuid;
+            return result;
         } else if (geom.format == "stl") {
             let loader = new THREE.STLLoader();
             let loaded_geom = loader.parse(geom.data.buffer);
@@ -68,9 +68,8 @@ function handle_special_geometry(geom) {
             console.error("Unsupported mesh type:", geom);
             return null;
         }
-    } else {
-        return null;
     }
+    return null;
 }
 
 
@@ -685,7 +684,10 @@ class Viewer {
     set_object_from_json(path, object_json) {
         let loader = new ExtensibleObjectLoader();
         loader.parse(object_json, (obj) => {
-            if (obj.geometry.type == "BufferGeometry") {
+            console.log("obj:", obj);
+            if (obj.geometry.type == "Group") {
+                obj = obj.geometry;
+            } else if (obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
             obj.castShadow = true;
