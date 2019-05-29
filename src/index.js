@@ -4,6 +4,7 @@ var dat = require('dat.gui').default; // TODO: why is .default needed?
 require('imports-loader?THREE=three!./LoaderSupport.js');
 require('imports-loader?THREE=three!./OBJLoader2.js');
 require('imports-loader?THREE=three!./ColladaLoader.js');
+require('imports-loader?THREE=three!./MTLLoader.js');
 require('imports-loader?THREE=three!./STLLoader.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 require('ccapture.js');
@@ -47,6 +48,10 @@ function handle_special_texture(json) {
 //   * `null` otherwise
 function handle_special_geometry(geom) {
     if (geom.type == "_meshfile") {
+        console.warn("_meshfile is deprecated. Please use _meshfile_geometry for geometries and _meshfile_object for objects with geometry and material");
+        geom.type = "_meshfile_geometry";
+    }
+    if (geom.type == "_meshfile_geometry") {
         if (geom.format == "obj") {
             let loader = new THREE.OBJLoader2();
             let obj = loader.parse(geom.data + "\n");
@@ -56,10 +61,11 @@ function handle_special_geometry(geom) {
         } else if (geom.format == "dae") {
             let loader = new THREE.ColladaLoader();
             let obj = loader.parse(geom.data);
-            let result = obj.scene;
+            let result = obj.scene.children[0].geometry;
             result.uuid = geom.uuid;
             return result;
         } else if (geom.format == "stl") {
+            console.log(geom);
             let loader = new THREE.STLLoader();
             let loaded_geom = loader.parse(geom.data.buffer);
             loaded_geom.uuid = geom.uuid;
@@ -71,7 +77,6 @@ function handle_special_geometry(geom) {
     }
     return null;
 }
-
 
 // The ExtensibleObjectLoader extends the THREE.ObjectLoader
 // interface, while providing some hooks for us to perform some
@@ -114,6 +119,38 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
         return this.delegate(handle_special_geometry,
                              super.parseGeometries,
                              json, shapes);
+    }
+
+    parseObject(json, geometries, materials) {
+        if (json.type == "_meshfile_object") {
+            let manager = new THREE.LoadingManager();
+            manager.setURLModifier(url => {
+                if (json.resources[url] !== undefined) {
+                    return json.resources[url];
+                }
+                return url;
+            });
+            if (json.format == "obj") {
+                let loader = new THREE.OBJLoader2(manager);
+                if (json.mtl_library) {
+                    loader.loadMtl("", json.mtl_library + "\n", (materials) => {
+                        loader.setMaterials(materials);
+                    });
+                }
+                return loader.parse(json.data + "\n");
+            } else if (json.format == "dae") {
+                let loader = new THREE.ColladaLoader(manager);
+                let obj = loader.parse(json.data);
+                let result = obj.scene;
+                result.uuid = json.uuid;
+                return result;
+            } else {
+                console.error("Unsupported mesh type:", json);
+                return null;
+            }
+        } else {
+            return super.parseObject(json, geometries, materials);
+        }
     }
 }
 
@@ -684,19 +721,7 @@ class Viewer {
     set_object_from_json(path, object_json) {
         let loader = new ExtensibleObjectLoader();
         loader.parse(object_json, (obj) => {
-            if (obj.geometry.type == "Group") {
-                // Loading a .DAE file currently results in a new
-                // THREE.Group being set as the geometry field of
-                // obj. This isn't actually correct: a Group is an
-                // Object not a Geometry. To work around that, we
-                // check for this special case and promote that
-                // Group itself to be the new object.
-                let group = obj.geometry;
-                group.position.copy(obj.position);
-                group.quaternion.copy(obj.quaternion);
-                group.scale.copy(obj.scale);
-                obj = group;
-            } else if (obj.geometry.type == "BufferGeometry") {
+            if (obj.geometry !== undefined && obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
             obj.castShadow = true;
