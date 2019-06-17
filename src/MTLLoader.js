@@ -7,6 +7,7 @@
 THREE.MTLLoader = function ( manager ) {
 
 	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
+	this.onTextureLoad = () => {};
 
 };
 
@@ -27,7 +28,7 @@ THREE.MTLLoader.prototype = {
 	 * @note In order for relative texture references to resolve correctly
 	 * you must call setResourcePath() explicitly prior to load.
 	 */
-	load: function ( url, onLoad, onProgress, onError ) {
+	load: function ( url, onLoad, onProgress, onError, onTextureLoad ) {
 
 		var scope = this;
 
@@ -375,7 +376,7 @@ THREE.MTLLoader.MaterialCreator.prototype = {
 			if ( params[ mapType ] ) return; // Keep the first encountered texture
 
 			var texParams = scope.getTextureParams( value, params );
-			var map = scope.loadTexture( resolveURL( scope.baseUrl, texParams.url ) );
+			var map = scope.loadTexture( resolveURL( scope.baseUrl, texParams.url ), undefined, this.onTextureLoad );
 
 			map.repeat.copy( texParams.scale );
 			map.offset.copy( texParams.offset );
@@ -572,7 +573,7 @@ THREE.MTLLoader.MaterialCreator.prototype = {
 		}
 
 		if ( loader.setCrossOrigin ) loader.setCrossOrigin( this.crossOrigin );
-		texture = loader.load( url, onLoad, onProgress, onError );
+		texture = loader.load( url, onLoad, onProgress, onError);
 
 		if ( mapping !== undefined ) texture.mapping = mapping;
 

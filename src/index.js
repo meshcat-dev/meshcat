@@ -135,7 +135,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                 if (json.mtl_library) {
                     loader.loadMtl("", json.mtl_library + "\n", (materials) => {
                         loader.setMaterials(materials);
-                    });
+                    }, undefined, () => {this.set_dirty();});
                 }
                 return loader.parse(json.data + "\n");
             } else if (json.format == "dae") {
