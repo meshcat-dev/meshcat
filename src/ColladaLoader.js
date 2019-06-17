@@ -63,6 +63,7 @@ THREE.ColladaLoader.prototype = {
 	},
 
 	parse: function ( text, path ) {
+		let scope = this;
 
 		function getElementsByTagName( xml, name ) {
 
@@ -1535,7 +1536,7 @@ THREE.ColladaLoader.prototype = {
 
 					if ( loader !== undefined ) {
 
-						var texture = loader.load( image );
+						var texture = loader.load( image, scope.onTextureLoad );
 
 						var extra = textureObject.extra;
 

@@ -139,6 +139,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                 return loader.parse(json.data + "\n");
             } else if (json.format == "dae") {
                 let loader = new THREE.ColladaLoader(manager);
+                loader.onTextureLoad = this.onTextureLoad;
                 let obj = loader.parse(json.data);
                 let result = obj.scene;
                 result.uuid = json.uuid;
