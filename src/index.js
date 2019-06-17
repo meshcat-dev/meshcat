@@ -65,7 +65,6 @@ function handle_special_geometry(geom) {
             result.uuid = geom.uuid;
             return result;
         } else if (geom.format == "stl") {
-            console.log(geom);
             let loader = new THREE.STLLoader();
             let loaded_geom = loader.parse(geom.data.buffer);
             loaded_geom.uuid = geom.uuid;
@@ -135,7 +134,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                 if (json.mtl_library) {
                     loader.loadMtl("", json.mtl_library + "\n", (materials) => {
                         loader.setMaterials(materials);
-                    }, undefined, () => {this.set_dirty();});
+                    }, undefined, this.onTextureLoad);
                 }
                 return loader.parse(json.data + "\n");
             } else if (json.format == "dae") {
@@ -720,6 +719,7 @@ class Viewer {
 
     set_object_from_json(path, object_json) {
         let loader = new ExtensibleObjectLoader();
+        loader.onTextureLoad = () => {this.set_dirty();}
         loader.parse(object_json, (obj) => {
             if (obj.geometry !== undefined && obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
@@ -811,6 +811,7 @@ class Viewer {
 
     load_scene_from_json(json) {
         let loader = new ExtensibleObjectLoader();
+        loader.onTextureLoad = () => {this.set_dirty();}
         this.scene_tree.dispose_recursive();
         this.scene = loader.parse(json);
         this.show_background();

@@ -169,6 +169,7 @@ THREE.MTLLoader.prototype = {
 		materialCreator.setCrossOrigin( this.crossOrigin );
 		materialCreator.setManager( this.manager );
 		materialCreator.setMaterials( materialsInfo );
+		materialCreator.onTextureLoad = this.onTextureLoad;
 		return materialCreator;
 
 	}
@@ -376,7 +377,7 @@ THREE.MTLLoader.MaterialCreator.prototype = {
 			if ( params[ mapType ] ) return; // Keep the first encountered texture
 
 			var texParams = scope.getTextureParams( value, params );
-			var map = scope.loadTexture( resolveURL( scope.baseUrl, texParams.url ), undefined, this.onTextureLoad );
+			var map = scope.loadTexture( resolveURL( scope.baseUrl, texParams.url ), undefined, scope.onTextureLoad );
 
 			map.repeat.copy( texParams.scale );
 			map.offset.copy( texParams.offset );
