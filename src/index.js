@@ -4,6 +4,7 @@ var dat = require('dat.gui').default; // TODO: why is .default needed?
 require('imports-loader?THREE=three!./LoaderSupport.js');
 require('imports-loader?THREE=three!./OBJLoader2.js');
 require('imports-loader?THREE=three!./ColladaLoader.js');
+require('imports-loader?THREE=three!./MTLLoader.js');
 require('imports-loader?THREE=three!./STLLoader.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 require('ccapture.js');
@@ -47,6 +48,10 @@ function handle_special_texture(json) {
 //   * `null` otherwise
 function handle_special_geometry(geom) {
     if (geom.type == "_meshfile") {
+        console.warn("_meshfile is deprecated. Please use _meshfile_geometry for geometries and _meshfile_object for objects with geometry and material");
+        geom.type = "_meshfile_geometry";
+    }
+    if (geom.type == "_meshfile_geometry") {
         if (geom.format == "obj") {
             let loader = new THREE.OBJLoader2();
             let obj = loader.parse(geom.data + "\n");
@@ -56,10 +61,11 @@ function handle_special_geometry(geom) {
         } else if (geom.format == "dae") {
             let loader = new THREE.ColladaLoader();
             let obj = loader.parse(geom.data);
-            let loaded_geom = obj.scene.children[0].geometry;
-            loaded_geom.uuid = geom.uuid;
-            return loaded_geom;
+            let result = obj.scene.children[0].geometry;
+            result.uuid = geom.uuid;
+            return result;
         } else if (geom.format == "stl") {
+            console.log(geom);
             let loader = new THREE.STLLoader();
             let loaded_geom = loader.parse(geom.data.buffer);
             loaded_geom.uuid = geom.uuid;
@@ -68,11 +74,9 @@ function handle_special_geometry(geom) {
             console.error("Unsupported mesh type:", geom);
             return null;
         }
-    } else {
-        return null;
     }
+    return null;
 }
-
 
 // The ExtensibleObjectLoader extends the THREE.ObjectLoader
 // interface, while providing some hooks for us to perform some
@@ -115,6 +119,38 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
         return this.delegate(handle_special_geometry,
                              super.parseGeometries,
                              json, shapes);
+    }
+
+    parseObject(json, geometries, materials) {
+        if (json.type == "_meshfile_object") {
+            let manager = new THREE.LoadingManager();
+            manager.setURLModifier(url => {
+                if (json.resources[url] !== undefined) {
+                    return json.resources[url];
+                }
+                return url;
+            });
+            if (json.format == "obj") {
+                let loader = new THREE.OBJLoader2(manager);
+                if (json.mtl_library) {
+                    loader.loadMtl("", json.mtl_library + "\n", (materials) => {
+                        loader.setMaterials(materials);
+                    }, undefined, () => {this.set_dirty();});
+                }
+                return loader.parse(json.data + "\n");
+            } else if (json.format == "dae") {
+                let loader = new THREE.ColladaLoader(manager);
+                let obj = loader.parse(json.data);
+                let result = obj.scene;
+                result.uuid = json.uuid;
+                return result;
+            } else {
+                console.error("Unsupported mesh type:", json);
+                return null;
+            }
+        } else {
+            return super.parseObject(json, geometries, materials);
+        }
     }
 }
 
@@ -685,7 +721,7 @@ class Viewer {
     set_object_from_json(path, object_json) {
         let loader = new ExtensibleObjectLoader();
         loader.parse(object_json, (obj) => {
-            if (obj.geometry.type == "BufferGeometry") {
+            if (obj.geometry !== undefined && obj.geometry.type == "BufferGeometry") {
                 obj.geometry.computeVertexNormals();
             }
             obj.castShadow = true;
