@@ -7,8 +7,8 @@
   "license": "MIT",
   "devDependencies": {
     "imports-loader": "^0.8.0",
-    "webpack": "^4.2.0",
-    "webpack-cli": "^2.0.13"
+    "webpack": "^4.20.2",
+    "webpack-cli": "^3.1.1"
   },
   "dependencies": {
     "ccapture.js": "aceslowman/ccapture.js#npm-fix",
