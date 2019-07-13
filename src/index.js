@@ -7,6 +7,7 @@ require('imports-loader?THREE=three!./ColladaLoader.js');
 require('imports-loader?THREE=three!./MTLLoader.js');
 require('imports-loader?THREE=three!./STLLoader.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
+require('imports-loader?THREE=three!./BufferGeometryUtils.js');
 require('ccapture.js');
 
 // Handler for special texture types that we want to support
@@ -61,15 +62,21 @@ function handle_special_geometry(geom) {
         } else if (geom.format == "dae") {
             let loader = new THREE.ColladaLoader();
             let obj = loader.parse(geom.data);
-
+            let buffer_geometries = []
             for (let child of obj.scene.children) {
-                let child_type = child.type;
-                if (child_type == "Mesh") {
-                    let result = child.geometry;
-                    result.uuid = geom.uuid;
-                    return result;
+                if (child.type == "Mesh") {
+                    let geometry = child.geometry;
+                    if (geometry.type == "BufferGeometry") {
+                        buffer_geometries.push(geometry);
+                    }
+                    else {
+                        console.error("Unhandled geometry type: ", geometry.type);
+                    }
                 }
             }
+            buffer_geometry = THREE.BufferGeometryUtils.mergeBufferGeometries(buffer_geometries, false);
+            buffer_geometry.uuid = geom.uuid;
+            return buffer_geometry;
         } else if (geom.format == "stl") {
             let loader = new THREE.STLLoader();
             let loaded_geom = loader.parse(geom.data.buffer);
