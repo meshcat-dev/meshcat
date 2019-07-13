@@ -8,6 +8,44 @@ require('imports-loader?THREE=three!./MTLLoader.js');
 require('imports-loader?THREE=three!./STLLoader.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 require('ccapture.js');
+require('imports-loader?THREE=three!./BufferGeometryUtils.js'); 
+
+// Merges a hierarchy of collada mesh geometries into a single 
+// `BufferGeometry` object:
+//   * A new merged `BufferGeometry` if the input contains meshes
+//   * empty `BufferGeometry` otherwise
+function merge_geometries(object, preserve_materials = false) {
+    let materials = [];
+    let geometries = [];
+    let root_transform = new THREE.Matrix4();
+    function collectGeometries(node, parent_transform) {
+        let transform = parent_transform.multiply(node.matrix);
+        if (node.type==='Mesh') {
+            node.geometry.applyMatrix(transform);
+            geometries.push(node.geometry);
+            materials.push(node.material)
+        }
+        if (node.children.length>0) {
+            for (let child of node.children) {
+                collectGeometries(child, transform);
+            }
+        }
+    }
+    collectGeometries(object.scene, root_transform);
+    let result = null;
+    if (geometries.length == 1) {
+        result =  geometries[0];
+        if (preserve_materials) 
+            result.material = materials[0];
+    } else if (geometries.length > 1) {
+        result = THREE.BufferGeometryUtils.mergeBufferGeometries(geometries, true);
+        if (preserve_materials) 
+            result.material = materials;
+    } else {
+        result = new THREE.BufferGeometry();
+    }
+    return result;
+}
 
 // Handler for special texture types that we want to support
 // in addition to whatever three.js supports. This function
@@ -61,7 +99,7 @@ function handle_special_geometry(geom) {
         } else if (geom.format == "dae") {
             let loader = new THREE.ColladaLoader();
             let obj = loader.parse(geom.data);
-            let result = obj.scene.children[0].geometry;
+            let result = merge_geometries(obj);
             result.uuid = geom.uuid;
             return result;
         } else if (geom.format == "stl") {
@@ -120,36 +158,88 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                              json, shapes);
     }
 
-    parseObject(json, geometries, materials) {
-        if (json.type == "_meshfile_object") {
+    parseObject(data, geometries, materials) {
+        if (data.type == "_meshfile_object") {
+            let geometry;
+            let material;
             let manager = new THREE.LoadingManager();
+            let path = ( data.url === undefined ) ? null : THREE.LoaderUtils.extractUrlBase( data.url );
             manager.setURLModifier(url => {
-                if (json.resources[url] !== undefined) {
-                    return json.resources[url];
+                if (data.resources[url] !== undefined) {
+                    return data.resources[url];
                 }
                 return url;
             });
-            if (json.format == "obj") {
+            if (data.format == "obj") {
                 let loader = new THREE.OBJLoader2(manager);
-                if (json.mtl_library) {
-                    loader.loadMtl("", json.mtl_library + "\n", (materials) => {
+                if (data.mtl_library) {
+                    loader.loadMtl("", data.mtl_library + "\n", (materials) => {
                         loader.setMaterials(materials);
                     }, undefined, this.onTextureLoad);
                 }
-                return loader.parse(json.data + "\n");
-            } else if (json.format == "dae") {
+                geometry = loader.parse(data.data + "\n", path);
+                geometry.uuid = data.uuid;
+                material = geometry.material;
+            } else if (data.format == "dae") {
                 let loader = new THREE.ColladaLoader(manager);
                 loader.onTextureLoad = this.onTextureLoad;
-                let obj = loader.parse(json.data);
-                let result = obj.scene;
-                result.uuid = json.uuid;
-                return result;
+                let obj = loader.parse(data.data, path);
+                geometry = merge_geometries(obj, true);
+                geometry.uuid = data.uuid;
+                material = geometry.material;
+            } else if (data.format == "stl") {
+                let loader = new THREE.STLLoader();
+                geometry = loader.parse(data.data.buffer, path);
+                geometry.uuid = data.uuid;
+                material = geometry.material;
             } else {
-                console.error("Unsupported mesh type:", json);
+                console.error("Unsupported mesh type:", data);
                 return null;
             }
+            let object = new THREE.Mesh( geometry, material );
+
+            // Copied from ObjcetLoader
+            object.uuid = data.uuid;
+
+            if ( data.name !== undefined ) object.name = data.name;
+
+            if ( data.matrix !== undefined ) {
+
+                object.matrix.fromArray( data.matrix );
+
+                if ( data.matrixAutoUpdate !== undefined ) object.matrixAutoUpdate = data.matrixAutoUpdate;
+                if ( object.matrixAutoUpdate ) object.matrix.decompose( object.position, object.quaternion, object.scale );
+
+            } else {
+
+                if ( data.position !== undefined ) object.position.fromArray( data.position );
+                if ( data.rotation !== undefined ) object.rotation.fromArray( data.rotation );
+                if ( data.quaternion !== undefined ) object.quaternion.fromArray( data.quaternion );
+                if ( data.scale !== undefined ) object.scale.fromArray( data.scale );
+
+            }
+
+            if ( data.castShadow !== undefined ) object.castShadow = data.castShadow;
+            if ( data.receiveShadow !== undefined ) object.receiveShadow = data.receiveShadow;
+
+            if ( data.shadow ) {
+
+                if ( data.shadow.bias !== undefined ) object.shadow.bias = data.shadow.bias;
+                if ( data.shadow.radius !== undefined ) object.shadow.radius = data.shadow.radius;
+                if ( data.shadow.mapSize !== undefined ) object.shadow.mapSize.fromArray( data.shadow.mapSize );
+                if ( data.shadow.camera !== undefined ) object.shadow.camera = this.parseObject( data.shadow.camera );
+
+            }
+
+            if ( data.visible !== undefined ) object.visible = data.visible;
+            if ( data.frustumCulled !== undefined ) object.frustumCulled = data.frustumCulled;
+            if ( data.renderOrder !== undefined ) object.renderOrder = data.renderOrder;
+            if ( data.userData !== undefined ) object.userData = data.userData;
+            if ( data.layers !== undefined ) object.layers.mask = data.layers;
+
+            return object;
         } else {
-            return super.parseObject(json, geometries, materials);
+            return super.parseObject(data, geometries, materials);
         }
     }
 }
@@ -723,7 +813,8 @@ class Viewer {
         loader.onTextureLoad = () => {this.set_dirty();}
         loader.parse(object_json, (obj) => {
             if (obj.geometry !== undefined && obj.geometry.type == "BufferGeometry") {
-                obj.geometry.computeVertexNormals();
+                if(! 'normal' in obj.geometry.attributes || ('normal' in obj.geometry.attributes && obj.geometry.attributes.normal.count===0))
+                    obj.geometry.computeVertexNormals();
             }
             obj.castShadow = true;
             obj.receiveShadow = true;

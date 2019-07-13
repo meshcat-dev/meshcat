@@ -3823,12 +3823,17 @@ THREE.ColladaLoader.prototype = {
 
 		var xml = new DOMParser().parseFromString( text, 'application/xml' );
 
+		if ( typeof xml.getElementsByTagName("parsererror")[0] !== 'undefined' ) {
+			// Fail gracefully when XML parsing fails
+			return { scene: new THREE.Scene() };
+		}
+
 		var collada = getElementsByTagName( xml, 'COLLADA' )[ 0 ];
 
 		// metadata
 
 		var version = collada.getAttribute( 'version' );
-		console.log( 'THREE.ColladaLoader: File version', version );
+		// console.log( 'THREE.ColladaLoader: File version', version );
 
 		var asset = parseAsset( getElementsByTagName( collada, 'asset' )[ 0 ] );
 		var textureLoader = new THREE.TextureLoader( this.manager );
