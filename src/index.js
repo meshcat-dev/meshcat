@@ -61,9 +61,15 @@ function handle_special_geometry(geom) {
         } else if (geom.format == "dae") {
             let loader = new THREE.ColladaLoader();
             let obj = loader.parse(geom.data);
-            let result = obj.scene.children[0].geometry;
-            result.uuid = geom.uuid;
-            return result;
+
+            for (let child of obj.scene.children) {
+                let child_type = child.type;
+                if (child_type == "Mesh") {
+                    let result = child.geometry;
+                    result.uuid = geom.uuid;
+                    return result;
+                }
+            }
         } else if (geom.format == "stl") {
             let loader = new THREE.STLLoader();
             let loaded_geom = loader.parse(geom.data.buffer);
