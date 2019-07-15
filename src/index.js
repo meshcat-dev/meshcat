@@ -23,7 +23,7 @@ function merge_geometries(object, preserve_materials = false) {
         if (node.type==='Mesh') {
             node.geometry.applyMatrix(transform);
             geometries.push(node.geometry);
-            materials.push(node.material)
+            materials.push(node.material);
         }
         for (let child of node.children) {
             collectGeometries(child, transform);
@@ -156,88 +156,88 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                              json, shapes);
     }
 
-    parseObject(data, geometries, materials) {
-        if (data.type == "_meshfile_object") {
+    parseObject(json, geometries, materials) {
+        if (json.type == "_meshfile_object") {
             let geometry;
             let material;
             let manager = new THREE.LoadingManager();
-            let path = ( data.url === undefined ) ? null : THREE.LoaderUtils.extractUrlBase( data.url );
+            let path = ( json.url === undefined ) ? null : THREE.LoaderUtils.extractUrlBase( json.url );
             manager.setURLModifier(url => {
-                if (data.resources[url] !== undefined) {
-                    return data.resources[url];
+                if (json.resources[url] !== undefined) {
+                    return json.resources[url];
                 }
                 return url;
             });
-            if (data.format == "obj") {
+            if (json.format == "obj") {
                 let loader = new THREE.OBJLoader2(manager);
-                if (data.mtl_library) {
-                    loader.loadMtl("", data.mtl_library + "\n", (materials) => {
+                if (json.mtl_library) {
+                    loader.loadMtl("", json.mtl_library + "\n", (materials) => {
                         loader.setMaterials(materials);
                     }, undefined, this.onTextureLoad);
                 }
-                geometry = loader.parse(data.data + "\n", path);
-                geometry.uuid = data.uuid;
+                geometry = loader.parse(json.data + "\n", path);
+                geometry.uuid = json.uuid;
                 material = geometry.material;
-            } else if (data.format == "dae") {
+            } else if (json.format == "dae") {
                 let loader = new THREE.ColladaLoader(manager);
                 loader.onTextureLoad = this.onTextureLoad;
-                let obj = loader.parse(data.data, path);
+                let obj = loader.parse(json.data, path);
                 geometry = merge_geometries(obj, true);
-                geometry.uuid = data.uuid;
+                geometry.uuid = json.uuid;
                 material = geometry.material;
-            } else if (data.format == "stl") {
+            } else if (json.format == "stl") {
                 let loader = new THREE.STLLoader();
-                geometry = loader.parse(data.data.buffer, path);
-                geometry.uuid = data.uuid;
+                geometry = loader.parse(json.data.buffer, path);
+                geometry.uuid = json.uuid;
                 material = geometry.material;
             } else {
-                console.error("Unsupported mesh type:", data);
+                console.error("Unsupported mesh type:", json);
                 return null;
             }
             let object = new THREE.Mesh( geometry, material );
 
-            // Copied from ObjcetLoader
-            object.uuid = data.uuid;
+            // Copied from ObjectLoader
+            object.uuid = json.uuid;
 
-            if ( data.name !== undefined ) object.name = data.name;
+            if ( json.name !== undefined ) object.name = json.name;
 
-            if ( data.matrix !== undefined ) {
+            if ( json.matrix !== undefined ) {
 
-                object.matrix.fromArray( data.matrix );
+                object.matrix.fromArray( json.matrix );
 
-                if ( data.matrixAutoUpdate !== undefined ) object.matrixAutoUpdate = data.matrixAutoUpdate;
+                if ( json.matrixAutoUpdate !== undefined ) object.matrixAutoUpdate = json.matrixAutoUpdate;
                 if ( object.matrixAutoUpdate ) object.matrix.decompose( object.position, object.quaternion, object.scale );
 
             } else {
 
-                if ( data.position !== undefined ) object.position.fromArray( data.position );
-                if ( data.rotation !== undefined ) object.rotation.fromArray( data.rotation );
-                if ( data.quaternion !== undefined ) object.quaternion.fromArray( data.quaternion );
-                if ( data.scale !== undefined ) object.scale.fromArray( data.scale );
+                if ( json.position !== undefined ) object.position.fromArray( json.position );
+                if ( json.rotation !== undefined ) object.rotation.fromArray( json.rotation );
+                if ( json.quaternion !== undefined ) object.quaternion.fromArray( json.quaternion );
+                if ( json.scale !== undefined ) object.scale.fromArray( json.scale );
 
             }
 
-            if ( data.castShadow !== undefined ) object.castShadow = data.castShadow;
-            if ( data.receiveShadow !== undefined ) object.receiveShadow = data.receiveShadow;
+            if ( json.castShadow !== undefined ) object.castShadow = json.castShadow;
+            if ( json.receiveShadow !== undefined ) object.receiveShadow = json.receiveShadow;
 
-            if ( data.shadow ) {
+            if ( json.shadow ) {
 
-                if ( data.shadow.bias !== undefined ) object.shadow.bias = data.shadow.bias;
-                if ( data.shadow.radius !== undefined ) object.shadow.radius = data.shadow.radius;
-                if ( data.shadow.mapSize !== undefined ) object.shadow.mapSize.fromArray( data.shadow.mapSize );
-                if ( data.shadow.camera !== undefined ) object.shadow.camera = this.parseObject( data.shadow.camera );
+                if ( json.shadow.bias !== undefined ) object.shadow.bias = json.shadow.bias;
+                if ( json.shadow.radius !== undefined ) object.shadow.radius = json.shadow.radius;
+                if ( json.shadow.mapSize !== undefined ) object.shadow.mapSize.fromArray( json.shadow.mapSize );
+                if ( json.shadow.camera !== undefined ) object.shadow.camera = this.parseObject( json.shadow.camera );
 
             }
 
-            if ( data.visible !== undefined ) object.visible = data.visible;
-            if ( data.frustumCulled !== undefined ) object.frustumCulled = data.frustumCulled;
-            if ( data.renderOrder !== undefined ) object.renderOrder = data.renderOrder;
-            if ( data.userData !== undefined ) object.userData = data.userData;
-            if ( data.layers !== undefined ) object.layers.mask = data.layers;
+            if ( json.visible !== undefined ) object.visible = json.visible;
+            if ( json.frustumCulled !== undefined ) object.frustumCulled = json.frustumCulled;
+            if ( json.renderOrder !== undefined ) object.renderOrder = json.renderOrder;
+            if ( json.userjson !== undefined ) object.userjson = json.userData;
+            if ( json.layers !== undefined ) object.layers.mask = json.layers;
 
             return object;
         } else {
-            return super.parseObject(data, geometries, materials);
+            return super.parseObject(json, geometries, materials);
         }
     }
 }
