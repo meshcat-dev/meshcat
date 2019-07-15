@@ -17,9 +17,9 @@ require('imports-loader?THREE=three!./BufferGeometryUtils.js');
 function merge_geometries(object, preserve_materials = false) {
     let materials = [];
     let geometries = [];
-    let root_transform = object.scene.matrix;
+    let root_transform = object.scene.matrix.clone();
     function collectGeometries(node, parent_transform) {
-        let transform = parent_transform.multiply(node.matrix);
+        let transform = parent_transform.clone().multiply(node.matrix);
         if (node.type==='Mesh') {
             node.geometry.applyMatrix(transform);
             geometries.push(node.geometry);
