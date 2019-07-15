@@ -394,10 +394,19 @@ function dispose(object) {
         object.geometry.dispose();
     }
     if (object.material) {
-        if (object.material.map) {
-            object.material.map.dispose();
+        if (Array.isArray(object.material)) {
+            for (let material of object.material) {
+                if (material.map) {
+                    material.map.dispose();
+                }
+                material.dispose();
+            }
+        } else {
+            if (object.material.map) {
+                object.material.map.dispose();
+            }
+            object.material.dispose();
         }
-        object.material.dispose();
     }
 }
 
