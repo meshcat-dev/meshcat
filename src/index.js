@@ -17,7 +17,7 @@ require('imports-loader?THREE=three!./BufferGeometryUtils.js');
 function merge_geometries(object, preserve_materials = false) {
     let materials = [];
     let geometries = [];
-    let root_transform = object.scene.matrix.clone();
+    let root_transform = object.matrix.clone();
     function collectGeometries(node, parent_transform) {
         let transform = parent_transform.clone().multiply(node.matrix);
         if (node.type==='Mesh') {
@@ -29,7 +29,7 @@ function merge_geometries(object, preserve_materials = false) {
             collectGeometries(child, transform);
         }
     }
-    collectGeometries(object.scene, root_transform);
+    collectGeometries(object, root_transform);
     let result = null;
     if (geometries.length == 1) {
         result =  geometries[0];
@@ -91,13 +91,13 @@ function handle_special_geometry(geom) {
         if (geom.format == "obj") {
             let loader = new THREE.OBJLoader2();
             let obj = loader.parse(geom.data + "\n");
-            let loaded_geom = obj.children[0].geometry;
+            let loaded_geom = merge_geometries(obj);
             loaded_geom.uuid = geom.uuid;
             return loaded_geom;
         } else if (geom.format == "dae") {
             let loader = new THREE.ColladaLoader();
             let obj = loader.parse(geom.data);
-            let result = merge_geometries(obj);
+            let result = merge_geometries(obj.scene);
             result.uuid = geom.uuid;
             return result;
         } else if (geom.format == "stl") {
@@ -161,7 +161,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
             let geometry;
             let material;
             let manager = new THREE.LoadingManager();
-            let path = ( json.url === undefined ) ? null : THREE.LoaderUtils.extractUrlBase( json.url );
+            let path = ( json.url === undefined ) ? undefined : THREE.LoaderUtils.extractUrlBase( json.url );
             manager.setURLModifier(url => {
                 if (json.resources[url] !== undefined) {
                     return json.resources[url];
@@ -175,14 +175,15 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                         loader.setMaterials(materials);
                     }, undefined, this.onTextureLoad);
                 }
-                geometry = loader.parse(json.data + "\n", path);
+                let obj = loader.parse(json.data + "\n", path);
+                geometry = merge_geometries(obj);
                 geometry.uuid = json.uuid;
                 material = geometry.material;
             } else if (json.format == "dae") {
                 let loader = new THREE.ColladaLoader(manager);
                 loader.onTextureLoad = this.onTextureLoad;
                 let obj = loader.parse(json.data, path);
-                geometry = merge_geometries(obj, true);
+                geometry = merge_geometries(obj.scene, true);
                 geometry.uuid = json.uuid;
                 material = geometry.material;
             } else if (json.format == "stl") {
