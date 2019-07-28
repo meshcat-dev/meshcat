@@ -8,9 +8,9 @@ require('imports-loader?THREE=three!./MTLLoader.js');
 require('imports-loader?THREE=three!./STLLoader.js');
 require('imports-loader?THREE=three!./OrbitControls.js');
 require('ccapture.js');
-require('imports-loader?THREE=three!./BufferGeometryUtils.js'); 
+require('imports-loader?THREE=three!./BufferGeometryUtils.js');
 
-// Merges a hierarchy of collada mesh geometries into a single 
+// Merges a hierarchy of collada mesh geometries into a single
 // `BufferGeometry` object:
 //   * A new merged `BufferGeometry` if the input contains meshes
 //   * empty `BufferGeometry` otherwise
@@ -33,12 +33,14 @@ function merge_geometries(object, preserve_materials = false) {
     let result = null;
     if (geometries.length == 1) {
         result =  geometries[0];
-        if (preserve_materials) 
+        if (preserve_materials) {
             result.material = materials[0];
+        }
     } else if (geometries.length > 1) {
         result = THREE.BufferGeometryUtils.mergeBufferGeometries(geometries, true);
-        if (preserve_materials) 
+        if (preserve_materials) {
             result.material = materials;
+        }
     } else {
         result = new THREE.BufferGeometry();
     }
@@ -176,7 +178,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                     }, undefined, this.onTextureLoad);
                 }
                 let obj = loader.parse(json.data + "\n", path);
-                geometry = merge_geometries(obj);
+                geometry = merge_geometries(obj, true);
                 geometry.uuid = json.uuid;
                 material = geometry.material;
             } else if (json.format == "dae") {
