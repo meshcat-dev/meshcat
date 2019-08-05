@@ -823,8 +823,9 @@ class Viewer {
         loader.onTextureLoad = () => {this.set_dirty();}
         loader.parse(object_json, (obj) => {
             if (obj.geometry !== undefined && obj.geometry.type == "BufferGeometry") {
-                if(! 'normal' in obj.geometry.attributes || ('normal' in obj.geometry.attributes && obj.geometry.attributes.normal.count===0))
+                if ((obj.geometry.attributes.normal === undefined) || obj.geometry.attributes.normal.count === 0) {
                     obj.geometry.computeVertexNormals();
+                }
             }
             obj.castShadow = true;
             obj.receiveShadow = true;
