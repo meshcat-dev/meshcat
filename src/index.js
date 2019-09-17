@@ -317,6 +317,16 @@ class SceneNode {
                 let cast_shadow_controller = this.folder.add(this.object, "castShadow");
                 cast_shadow_controller.onChange(() => this.on_update());
                 this.controllers.push(cast_shadow_controller);
+                // Light source radius
+                let radius_controller = this.folder.add(this.object.shadow, "radius").min(0).step(0.05).max(3.0);
+                radius_controller.onChange(() => this.on_update());
+                this.controllers.push(radius_controller);
+            }
+            // Point light falloff distance
+            if (this.object.distance !== undefined){
+                let distance_controller = this.folder.add(this.object, "distance").min(0).step(0.1).max(100.0);
+                distance_controller.onChange(() => this.on_update());
+                this.controllers.push(distance_controller);
             }
         }
         if (this.object.isCamera) {
@@ -701,6 +711,7 @@ class Viewer {
         spot_light.shadow.mapSize.height = 1024; // default 512
         spot_light.shadow.camera.near = 0.5;     // default 0.5
         spot_light.shadow.camera.far = 50.;      // default 500
+        spot_light.shadow.bias = -0.001;
         return spot_light;
     }
 
@@ -711,11 +722,30 @@ class Viewer {
         // it's primarily used for casting detailed shadows
         this.set_property(["Lights", "SpotLight"], "visible", false);
 
-        var directional_light = new THREE.DirectionalLight(0xffffff, 0.7);
-        directional_light.position.set(1.5, 1.5, 2);
-        this.set_object(["Lights", "DirectionalLight"], directional_light);
+        var point_light_px = new THREE.PointLight(0xffffff, 0.4);
+        point_light_px.position.set(1.5, 1.5, 2);
+        point_light_px.castShadow = false;
+        point_light_px.distance = 10.0;
+        point_light_px.shadow.mapSize.width = 1024;  // default 512
+        point_light_px.shadow.mapSize.height = 1024; // default 512
+        point_light_px.shadow.camera.near = 0.5;     // default 0.5
+        point_light_px.shadow.camera.far = 10.;      // default 500
+        point_light_px.shadow.bias = -0.001;      // Default 0
+        this.set_object(["Lights", "PointLightNegativeX"], point_light_px);
+
+        var point_light_nx = new THREE.PointLight(0xffffff, 0.4);
+        point_light_nx.position.set(-1.5, -1.5, 2);
+        point_light_nx.castShadow = false;
+        point_light_nx.distance = 10.0;
+        point_light_nx.shadow.mapSize.width = 1024;  // default 512
+        point_light_nx.shadow.mapSize.height = 1024; // default 512
+        point_light_nx.shadow.camera.near = 0.5;     // default 0.5
+        point_light_nx.shadow.camera.far = 10.;      // default 500
+        point_light_nx.shadow.bias = -0.001;      // Default 0
+        this.set_object(["Lights", "PointLightPositiveX"], point_light_nx);
 
         var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
+        ambient_light.intensity = 0.6;
         this.set_object(["Lights", "AmbientLight"], ambient_light);
 
         var fill_light = new THREE.DirectionalLight(0xffffff, 0.4);
