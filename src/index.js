@@ -735,7 +735,7 @@ class Viewer {
         this.gui = new dat.GUI({
             autoPlace: false
         });
-        this.dom_element.appendChild(this.gui.domElement);
+        this.dom_element.parentElement.appendChild(this.gui.domElement);
         this.gui.domElement.style.position = "absolute";
         this.gui.domElement.style.right = 0;
         this.gui.domElement.style.top = 0;
