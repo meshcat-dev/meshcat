@@ -1,14 +1,13 @@
 var THREE = require('three');
 var msgpack = require('msgpack-lite');
 var dat = require('dat.gui').default; // TODO: why is .default needed?
-require('imports-loader?THREE=three!./LoaderSupport.js');
-require('imports-loader?THREE=three!./OBJLoader2.js');
-require('imports-loader?THREE=three!./ColladaLoader.js');
-require('imports-loader?THREE=three!./MTLLoader.js');
-require('imports-loader?THREE=three!./STLLoader.js');
-require('imports-loader?THREE=three!./OrbitControls.js');
+import {OBJLoader2} from 'three/examples/jsm/loaders/OBJLoader2.js';
+import {ColladaLoader} from 'three/examples/jsm/loaders/ColladaLoader.js';
+import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
+import {MtlObjBridge} from 'three/examples/jsm/loaders/obj2/bridge/MtlObjBridge.js';
+import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
+import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 require('ccapture.js');
-require('imports-loader?THREE=three!./BufferGeometryUtils.js');
 
 // Merges a hierarchy of collada mesh geometries into a single
 // `BufferGeometry` object:
@@ -91,19 +90,19 @@ function handle_special_geometry(geom) {
     }
     if (geom.type == "_meshfile_geometry") {
         if (geom.format == "obj") {
-            let loader = new THREE.OBJLoader2();
+            let loader = new OBJLoader2();
             let obj = loader.parse(geom.data + "\n");
             let loaded_geom = merge_geometries(obj);
             loaded_geom.uuid = geom.uuid;
             return loaded_geom;
         } else if (geom.format == "dae") {
-            let loader = new THREE.ColladaLoader();
+            let loader = new ColladaLoader();
             let obj = loader.parse(geom.data);
             let result = merge_geometries(obj.scene);
             result.uuid = geom.uuid;
             return result;
         } else if (geom.format == "stl") {
-            let loader = new THREE.STLLoader();
+            let loader = new STLLoader();
             let loaded_geom = loader.parse(geom.data.buffer);
             loaded_geom.uuid = geom.uuid;
             return loaded_geom;
@@ -171,25 +170,29 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                 return url;
             });
             if (json.format == "obj") {
-                let loader = new THREE.OBJLoader2(manager);
+                let loader = new OBJLoader2(manager);
                 if (json.mtl_library) {
-                    loader.loadMtl("", json.mtl_library + "\n", (materials) => {
-                        loader.setMaterials(materials);
-                    }, undefined, this.onTextureLoad);
+                    let mtl_loader = new MTLLoader(manager);
+                    let mtl_parse_result = mtl_loader.parse(json.mtl_library + "\n", "");
+                    console.log(mtl_parse_result);
+                    let materials = MtlObjBridge.addMaterialsFromMtlLoader(mtl_parse_result);
+                    console.log(materials);
+                    loader.addMaterials(materials);
+                    this.onTextureLoad();
                 }
                 let obj = loader.parse(json.data + "\n", path);
                 geometry = merge_geometries(obj, true);
                 geometry.uuid = json.uuid;
                 material = geometry.material;
             } else if (json.format == "dae") {
-                let loader = new THREE.ColladaLoader(manager);
+                let loader = new ColladaLoader(manager);
                 loader.onTextureLoad = this.onTextureLoad;
                 let obj = loader.parse(json.data, path);
                 geometry = merge_geometries(obj.scene, true);
                 geometry.uuid = json.uuid;
                 material = geometry.material;
             } else if (json.format == "stl") {
-                let loader = new THREE.STLLoader();
+                let loader = new STLLoader();
                 geometry = loader.parse(json.data.buffer, path);
                 geometry.uuid = json.uuid;
                 material = geometry.material;
@@ -793,7 +796,7 @@ class Viewer {
 
     set_camera(obj) {
         this.camera = obj;
-        this.controls = new THREE.OrbitControls(obj, this.dom_element);
+        this.controls = new OrbitControls(obj, this.dom_element);
         this.controls.enableKeys = false;
         this.controls.addEventListener('start', () => {
             this.set_dirty()
@@ -984,8 +987,4 @@ style.sheet.insertRule(`
         padding: 0 0 0 0px;
     }`);
 
-
-module.exports = {
-    Viewer: Viewer,
-    THREE: THREE
-};
+export { Viewer, THREE };
