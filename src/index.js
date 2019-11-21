@@ -798,6 +798,7 @@ class Viewer {
         this.camera = obj;
         this.controls = new OrbitControls(obj, this.dom_element);
         this.controls.enableKeys = false;
+        this.controls.screenSpacePanning = true;  // see https://github.com/rdeits/MeshCat.jl/issues/132
         this.controls.addEventListener('start', () => {
             this.set_dirty()
         });
