@@ -924,9 +924,13 @@ class Viewer {
         this.set_dirty();
     }
 
+    handle_command_bytearray(bytearray) {
+        let decoded = msgpack.decode(bytearray);
+        this.handle_command(decoded);
+    }
+
     handle_command_message(message) {
-        let data = msgpack.decode(new Uint8Array(message.data));
-        this.handle_command(data);
+        this.handle_command_bytearray(new Uint8Array(message.data));
     }
 
     connect(url) {
@@ -934,11 +938,12 @@ class Viewer {
             url = `ws://${location.host}`;
         }
         console.log(url);
-        let connection = new WebSocket(url);
-        connection.binaryType = "arraybuffer";
-        connection.onmessage = (msg) => this.handle_command_message(msg);
-        connection.onclose = function(evt) {
-            // TODO: start trying to reconnect
+        this.connection = new WebSocket(url);
+        console.log("connection:", this.connection);
+        this.connection.binaryType = "arraybuffer";
+        this.connection.onmessage = (msg) => this.handle_command_message(msg);
+        this.connection.onclose = function(evt) {
+            console.log("onclose:", evt);
         }
     }
 
