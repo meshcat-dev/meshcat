@@ -474,7 +474,10 @@ class Animator {
         this.clock = new THREE.Clock();
         this.actions = [];
         this.playing = false;
+        this.time = 0;
+        this.time_scrubber = null;
         this.setup_capturer("png");
+        this.duration = 0;
     }
 
     setup_capturer(format) {
@@ -527,10 +530,26 @@ class Animator {
         }
     }
 
+    display_progress(time) {
+        this.time = time;
+        if (this.time_scrubber !== null) {
+            this.time_scrubber.updateDisplay();
+        }
+    }
+
+    seek(time) {
+        this.actions.forEach((action) => {
+            action.time = Math.max(0, Math.min(action._clip.duration, time));
+        });
+        this.mixer.update(0);
+        this.viewer.set_dirty();
+    }
+
     reset() {
         for (let action of this.actions) {
             action.reset();
         }
+        this.display_progress(0);
         this.mixer.update(0);
         this.setup_capturer(this.capturer.format);
         this.viewer.set_dirty();
@@ -540,6 +559,8 @@ class Animator {
         remove_folders(this.folder);
         this.mixer.stopAllAction();
         this.actions = [];
+        this.duration = 0;
+        this.display_progress(0);
         this.mixer = new THREE.AnimationMixer();
     }
 
@@ -552,6 +573,15 @@ class Animator {
         folder.add(this, "play");
         folder.add(this, "pause");
         folder.add(this, "reset");
+
+        // Note, for some reason when you call `.max()` on a slider controller it does
+        // correctly change how the slider behaves but does not change the range of values
+        // that can be entered into the text box attached to the slider. Oh well. We work
+        // around this by creating the slider with an unreasonably huge range and then calling
+        // `.min()` and `.max()` on it later.
+        this.time_scrubber = folder.add(this, "time", 0, 1e9, 0.001);
+        this.time_scrubber.onChange((value) => this.seek(value));
+
         folder.add(this.mixer, "timeScale").step(0.01).min(0);
         let recording_folder = folder.addFolder("Recording");
         recording_folder.add(this, "record");
@@ -573,6 +603,8 @@ class Animator {
             options.clampWhenFinished = true
         }
 
+        this.duration = 0;
+        this.progress = 0;
         for (let animation of animations) {
             let target = this.viewer.scene_tree.find(animation.path).object;
             let clip = this.loader.parseAnimations([animation.clip])[0];
@@ -580,7 +612,10 @@ class Animator {
             action.clampWhenFinished = options.clampWhenFinished;
             action.setLoop(options.loopMode, options.repetitions);
             this.actions.push(action);
+            this.duration = Math.max(this.duration, clip.duration);
         }
+        this.time_scrubber.min(0);
+        this.time_scrubber.max(this.duration);
         this.reset();
         if (options.play) {
             this.play();
@@ -591,6 +626,14 @@ class Animator {
         if (this.playing) {
             this.mixer.update(this.clock.getDelta());
             this.viewer.set_dirty();
+            if (this.duration != 0) {
+                let current_time = this.actions.reduce((acc, action) => {
+                    return Math.max(acc, action.time);
+                }, 0);
+                this.display_progress(current_time);
+            } else {
+                this.display_progress(0);
+            }
 
             if (this.actions.every((action) => action.paused)) {
                 this.pause();
