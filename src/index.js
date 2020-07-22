@@ -981,6 +981,9 @@ class Viewer {
         if (url === undefined) {
             url = `ws://${location.host}`;
         }
+        if (location.protocol == "https:") {
+            url = url.replace("ws:", "wss:");
+        }
         console.log(url);
         this.connection = new WebSocket(url);
         console.log("connection:", this.connection);
