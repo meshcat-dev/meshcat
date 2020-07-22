@@ -847,7 +847,11 @@ class Viewer {
         if (h === undefined) {
             h = window.innerHeight;
         }
-        this.camera.aspect = w / h;
+        if (this.camera.type == "OrthographicCamera") {
+            this.camera.right = this.camera.left + w*(this.camera.top - this.camera.bottom)/h;
+        } else {
+            this.camera.aspect = w / h;
+        }
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
         this.set_dirty();
@@ -914,6 +918,8 @@ class Viewer {
                 if ((obj.geometry.attributes.normal === undefined) || obj.geometry.attributes.normal.count === 0) {
                     obj.geometry.computeVertexNormals();
                 }
+            } else if (obj.type.includes("Camera")) {
+                this.set_camera(obj);
             }
             obj.castShadow = true;
             obj.receiveShadow = true;

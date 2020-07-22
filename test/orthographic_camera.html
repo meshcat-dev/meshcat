@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<title>MeshCat</title>
+	</head>
+	<body>
+        <div id="meshcat-pane">
+        </div>
+
+        <script src="main.min.js"></script>
+        <script>
+            var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+
+            viewer.handle_command({
+                type: "set_object",
+                path: "/meshcat/boxes/box1",
+                object: {
+                    metadata: {version: 4.5, type: "Object"},
+                    geometries: [
+                        {
+                            uuid: "cef79e52-526d-4263-b595-04fa2705974e",
+                            type: "BoxGeometry",
+                            width: 1,
+                            height: 2,
+                            depth:3
+                        }
+                    ],
+                    materials: [
+                        {
+                            uuid: "0767ae32-eb34-450c-b65f-3ae57a1102c3",
+                            type: "MeshLambertMaterial",
+                            color: 16711680,
+                            emissive: 0,
+                            side: 2,
+                            depthFunc: 3,
+                            depthTest: true,
+                            depthWrite: true
+                        }
+                    ],
+                    object: {
+                        uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+                        type: "Mesh",
+                        geometry: "cef79e52-526d-4263-b595-04fa2705974e",
+                        material: "0767ae32-eb34-450c-b65f-3ae57a1102c3"
+                    }
+                }
+            });
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/meshcat/boxes",
+                matrix: new Float32Array([1, 0, 0, 0,
+                                        0, 1, 0, 0,
+                                        0, 0, 1, 0,
+                                        0.5, 0.0, 0.5, 1])
+            });
+
+            // Set up an OrthographicCamera via handle_command to test the same
+            // interface that can be used by websockets.
+            viewer.handle_command({
+                type: "set_object",
+                path: "/Cameras/default/rotated",
+                object: {
+                    object: {
+                        type: "OrthographicCamera",
+                        zoom: 1,
+                        left: -10,
+                        right: 10,
+                        top: 10,
+                        bottom: -10,
+                        near: -1000,
+                        far: 1000
+                    }
+                }
+            });
+
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/Cameras/default",
+                matrix: new Float32Array([1, 0, 0, 0,
+                                        0, 1, 0, 0,
+                                        0, 0, 1, 0,
+                                        0, 0, 1, 1])  // set camera pose
+            });
+            // Lock the orbit controls
+            viewer.handle_command({
+                type: "set_property",
+                path: "/Cameras/default/rotated/<object>",
+                property: "position",
+                value: [0, 0, 0] 
+            })
+
+            viewer.set_property(["Background"], "visible", false);
+            viewer.set_property(["Grid"], "visible", false);
+            // viewer.connect();
+        </script>
+
+
+         <style>
+            body {
+                margin: 0;
+            }
+
+            #meshcat-pane {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+        </style>
+        <script id="embedded-json"></script>
+	</body>
+</html>
