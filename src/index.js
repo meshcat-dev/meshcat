@@ -698,18 +698,6 @@ class Viewer {
 
         this.scene = create_default_scene();
         this.create_scene_tree();
-        
-        this.set_property(["Background"],
-            "top_color", [135, 206, 250]); // lightskyblue
-        this.set_property(["Background"],
-            "bottom_color", [25, 25, 112]); // midnightblue
-        this.scene_tree.find(["Background"]).on_update = () => { 
-            if (this.scene_tree.find(["Background"]).object.visible)
-                this.show_background();
-            else
-                this.hide_background();
-        };
-        this.show_background();
 
         this.add_default_scene_elements();
         this.set_dirty();
@@ -734,7 +722,7 @@ class Viewer {
 
     show_background() {
         var top_color = this.scene_tree.find(["Background"]).object.top_color;
-        var bottom_color = 
+        var bottom_color =
             this.scene_tree.find(["Background"]).object.bottom_color;
         this.scene.background = gradient_texture(top_color, bottom_color);
         this.set_dirty();
@@ -838,6 +826,18 @@ class Viewer {
         save_folder.add(this, 'save_image');
         this.animator = new Animator(this);
         this.gui.close();
+
+        this.set_property(["Background"],
+            "top_color", [135, 206, 250]); // lightskyblue
+        this.set_property(["Background"],
+            "bottom_color", [25, 25, 112]); // midnightblue
+        this.scene_tree.find(["Background"]).on_update = () => {
+            if (this.scene_tree.find(["Background"]).object.visible)
+                this.show_background();
+            else
+                this.hide_background();
+        };
+        this.show_background();
     }
 
     set_3d_pane_size(w, h) {
