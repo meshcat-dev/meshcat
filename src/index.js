@@ -697,8 +697,20 @@ class Viewer {
         this.dom_element.appendChild(this.renderer.domElement);
 
         this.scene = create_default_scene();
-        this.show_background();
         this.create_scene_tree();
+        
+        this.set_property(["Background"],
+            "top_color", [135, 206, 250]); // lightskyblue
+        this.set_property(["Background"],
+            "bottom_color", [25, 25, 112]); // midnightblue
+        this.scene_tree.find(["Background"]).on_update = () => { 
+            if (this.scene_tree.find(["Background"]).object.visible)
+                this.show_background();
+            else
+                this.hide_background();
+        };
+        this.show_background();
+
         this.add_default_scene_elements();
         this.set_dirty();
 
@@ -721,8 +733,9 @@ class Viewer {
     }
 
     show_background() {
-        let top_color = [135, 206, 250]; // lightskyblue
-        let bottom_color = [25, 25, 112]; // midnightblue
+        var top_color = this.scene_tree.find(["Background"]).object.top_color;
+        var bottom_color = 
+            this.scene_tree.find(["Background"]).object.bottom_color;
         this.scene.background = gradient_texture(top_color, bottom_color);
         this.set_dirty();
     }
@@ -823,9 +836,6 @@ class Viewer {
         save_folder.add(this, 'save_scene');
         save_folder.add(this, 'load_scene');
         save_folder.add(this, 'save_image');
-        let back_folder = this.gui.addFolder("Background");
-        back_folder.add(this, 'hide_background');
-        back_folder.add(this, 'show_background');
         this.animator = new Animator(this);
         this.gui.close();
     }
@@ -922,6 +932,10 @@ class Viewer {
 
     set_property(path, property, value) {
         this.scene_tree.find(path).set_property(property, value);
+        if (path[0] === "Background") {
+            // The background is not an Object3d, so needs a little help.
+            this.scene_tree.find(path).on_update();
+        }
         // if (path[0] === "Cameras") {
         //     this.camera.updateProjectionMatrix();
         // }

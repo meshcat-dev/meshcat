@@ -281,6 +281,8 @@ The default MeshCat scene comes with a few objects at pre-set paths. You can rep
     <dd>The red, green, and blue XYZ triad at the origin of the scene (invisible by default, click on "open controls" in the upper right to toggle its visibility).</dd>
     <dt><code>/Cameras</code></dt>
     <dd>The camera from which the scene is rendered (see below for details)</dd>
+    <dt><code>/Background</code></dt>
+    <dd>The background texture, with properties for "top_color" and "bottom_color" as well as a boolean "visible".</dd>
 </dl>
 
 ### Camera Control
