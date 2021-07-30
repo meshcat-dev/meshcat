@@ -991,6 +991,8 @@ class Viewer {
                 'type': 'img',
                 'data': imgdata
             }));
+        } else if (cmd.type == "save_image") {
+            this.save_image()
         }
         this.set_dirty();
     }

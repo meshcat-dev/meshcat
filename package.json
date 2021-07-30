@@ -14,7 +14,7 @@
     "ccapture.js": "aceslowman/ccapture.js#npm-fix",
     "dat.gui": "^0.7.1",
     "msgpack-lite": "^0.1.26",
-    "three": "^0.110.0"
+    "three": "^0.125.0"
   },
   "scripts": {
     "build": "webpack"
