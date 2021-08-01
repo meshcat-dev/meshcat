@@ -6,7 +6,7 @@ module.exports = [{
 	},
 	watch: true,
 	mode: "development",
-	devtool: "cheap-eval-source-map"
+	devtool: "eval-cheap-source-map"
 }, {
 	entry: './src/index.js',
 	output: {

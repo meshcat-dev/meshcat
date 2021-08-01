@@ -6,15 +6,16 @@
   "author": "Robin Deits",
   "license": "MIT",
   "devDependencies": {
-    "imports-loader": "^0.8.0",
-    "webpack": "^4.20.2",
-    "webpack-cli": "^3.1.1"
+    "webpack": "^5.47.1",
+    "webpack-cli": "^4.7.2"
   },
   "dependencies": {
     "ccapture.js": "aceslowman/ccapture.js#npm-fix",
-    "dat.gui": "^0.7.1",
+    "dat.gui": "^0.7.7",
     "msgpack-lite": "^0.1.26",
-    "three": "^0.125.0"
+    "three": "^0.131.0",
+    "three-wtm": "^1.0",
+    "wwobjloader2": "^4.0"
   },
   "scripts": {
     "build": "webpack"
