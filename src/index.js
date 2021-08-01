@@ -2,10 +2,9 @@ var THREE = require('three');
 var msgpack = require('msgpack-lite');
 var dat = require('dat.gui').default; // TODO: why is .default needed?
 import {BufferGeometryUtils} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import {OBJLoader2} from 'three/examples/jsm/loaders/OBJLoader2.js';
+import {OBJLoader2, MtlObjBridge} from 'wwobjloader2'
 import {ColladaLoader} from 'three/examples/jsm/loaders/ColladaLoader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
-import {MtlObjBridge} from 'three/examples/jsm/loaders/obj2/bridge/MtlObjBridge.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 require('ccapture.js');
@@ -21,7 +20,7 @@ function merge_geometries(object, preserve_materials = false) {
     function collectGeometries(node, parent_transform) {
         let transform = parent_transform.clone().multiply(node.matrix);
         if (node.type==='Mesh') {
-            node.geometry.applyMatrix(transform);
+            node.geometry.applyMatrix4(transform);
             geometries.push(node.geometry);
             materials.push(node.material);
         }
@@ -178,7 +177,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                     console.log(mtl_parse_result);
                     let materials = MtlObjBridge.addMaterialsFromMtlLoader(mtl_parse_result);
                     console.log(materials);
-                    loader.addMaterials(materials);
+                    loader.setMaterials(materials);
                     this.onTextureLoad();
                 }
                 let obj = loader.parse(json.data + "\n", path);
@@ -318,10 +317,13 @@ class SceneNode {
                 let cast_shadow_controller = this.folder.add(this.object, "castShadow");
                 cast_shadow_controller.onChange(() => this.on_update());
                 this.controllers.push(cast_shadow_controller);
-                // Light source radius
-                let radius_controller = this.folder.add(this.object.shadow, "radius").min(0).step(0.05).max(3.0);
-                radius_controller.onChange(() => this.on_update());
-                this.controllers.push(radius_controller);
+
+                if (this.object.shadow !== undefined) {
+                    // Light source radius
+                    let radius_controller = this.folder.add(this.object.shadow, "radius").min(0).step(0.05).max(3.0);
+                    radius_controller.onChange(() => this.on_update());
+                    this.controllers.push(radius_controller);
+                }
             }
             // Point light falloff distance
             if (this.object.distance !== undefined){
@@ -607,7 +609,7 @@ class Animator {
         this.progress = 0;
         for (let animation of animations) {
             let target = this.viewer.scene_tree.find(animation.path).object;
-            let clip = this.loader.parseAnimations([animation.clip])[0];
+            let clip = Object.values(this.loader.parseAnimations([animation.clip]))[0];
             let action = this.mixer.clipAction(clip, target);
             action.clampWhenFinished = options.clampWhenFinished;
             action.setLoop(options.loopMode, options.repetitions);
