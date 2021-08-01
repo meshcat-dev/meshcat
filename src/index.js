@@ -985,6 +985,12 @@ class Viewer {
             this.set_animation(cmd.animations, cmd.options);
         } else if (cmd.type == "set_control") {
             this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
+        } else if (cmd.type == "capture_image") {
+            let imgdata = this.capture_image();
+            this.connection.send(JSON.stringify({
+                'type': 'img',
+                'data': imgdata
+            }));
         } else if (cmd.type == "save_image") {
             this.save_image()
         }
@@ -995,7 +1001,7 @@ class Viewer {
         let decoded = msgpack.decode(bytearray);
         this.handle_command(decoded);
     }
-
+    
     handle_command_message(message) {
         this.handle_command_bytearray(new Uint8Array(message.data));
     }
