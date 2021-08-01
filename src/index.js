@@ -174,9 +174,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                 if (json.mtl_library) {
                     let mtl_loader = new MTLLoader(manager);
                     let mtl_parse_result = mtl_loader.parse(json.mtl_library + "\n", "");
-                    console.log(mtl_parse_result);
                     let materials = MtlObjBridge.addMaterialsFromMtlLoader(mtl_parse_result);
-                    console.log(materials);
                     loader.setMaterials(materials);
                     this.onTextureLoad();
                 }
@@ -1015,9 +1013,7 @@ class Viewer {
         if (location.protocol == "https:") {
             url = url.replace("ws:", "wss:");
         }
-        console.log(url);
         this.connection = new WebSocket(url);
-        console.log("connection:", this.connection);
         this.connection.binaryType = "arraybuffer";
         this.connection.onmessage = (msg) => this.handle_command_message(msg);
         this.connection.onclose = function(evt) {

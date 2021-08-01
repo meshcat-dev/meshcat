@@ -2057,9 +2057,9 @@ three-wtm@^1.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/three-wtm/-/three-wtm-1.0.0.tgz#715d1317096de15b87313856befc719c176246d3"
 
-three@^0.129.0:
-  version "0.129.0"
-  resolved "https://registry.yarnpkg.com/three/-/three-0.129.0.tgz#f5e530bbc96eac5d5b4749cb5da886ef0d42f554"
+three@^0.130.0:
+  version "0.130.1"
+  resolved "https://registry.yarnpkg.com/three/-/three-0.130.1.tgz#797588b2877ace31603bbbc864eb2e3022f0b3b4"
 
 through2@^2.0.0:
   version "2.0.5"
