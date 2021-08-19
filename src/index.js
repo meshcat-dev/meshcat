@@ -481,7 +481,7 @@ class Animator {
     }
 
     setup_capturer(format) {
-        this.capturer = new CCapture({
+        this.capturer = new window.CCapture({
             format: format,
             name: "meshcat_" + String(Date.now())
         });
@@ -689,12 +689,16 @@ function gradient_texture(top_color, bottom_color) {
 
 
 class Viewer {
-    constructor(dom_element, animate) {
+    constructor(dom_element, animate, renderer) {
         this.dom_element = dom_element;
-        this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.dom_element.appendChild(this.renderer.domElement);
+        if (renderer === undefined) {
+            this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
+            this.renderer.shadowMap.enabled = true;
+            this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            this.dom_element.appendChild(this.renderer.domElement);
+        } else {
+            this.renderer = renderer;
+        }
 
         this.scene = create_default_scene();
         this.create_scene_tree();
@@ -703,7 +707,7 @@ class Viewer {
         this.set_dirty();
 
         this.create_camera();
-
+        this.num_messages_received = 0;
 
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
@@ -1003,6 +1007,7 @@ class Viewer {
     }
     
     handle_command_message(message) {
+        this.num_messages_received++;
         this.handle_command_bytearray(new Uint8Array(message.data));
     }
 
