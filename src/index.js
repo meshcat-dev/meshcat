@@ -347,6 +347,25 @@ class SceneNode {
             this.object.quaternion.set(value[0], value[1], value[2], value[3]);
         } else if (property === "scale") {
             this.object.scale.set(value[0], value[1], value[2]);
+        } else if (property === "color") {
+            function setNodeColor(node, value) {
+                if (node.material) {
+                    node.material.color.setRGB(value[0], value[1], value[2])
+
+                    let alpha = value[3]
+                    node.material.opacity = alpha 
+                    if(alpha != 1.) {
+                       node.material.transparent = true
+                    } 
+                    else {
+                        node.material.transparent = false
+                    }
+                }
+                for (let child of node.children) {
+                    setNodeColor(child, value);
+                }
+            }
+            setNodeColor(this.object, value)
         } else {
             this.object[property] = value;
         }
