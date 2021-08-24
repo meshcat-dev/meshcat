@@ -366,6 +366,8 @@ class SceneNode {
                 }
             }
             setNodeColor(this.object, value)
+        } else if (property == "top_color" || property == "bottom_color") {
+            this.object[property] = value.map((x) => x * 255);
         } else {
             this.object[property] = value;
         }
@@ -851,9 +853,9 @@ class Viewer {
         this.gui.close();
 
         this.set_property(["Background"],
-            "top_color", [135, 206, 250]); // lightskyblue
+            "top_color", [135/255, 206/255, 250/255]); // lightskyblue
         this.set_property(["Background"],
-            "bottom_color", [25, 25, 112]); // midnightblue
+            "bottom_color", [25/255, 25/255, 112/255]); // midnightblue
         this.scene_tree.find(["Background"]).on_update = () => {
             if (this.scene_tree.find(["Background"]).object.visible)
                 this.show_background();
