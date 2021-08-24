@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<title>MeshCat</title>
+	</head>
+	<body>
+        <div id="meshcat-pane">
+        </div>
+
+        <script src="main.min.js"></script>
+        <script>
+            var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+
+let obj_contents = `
+mtllib ./cube.mtl
+usemtl material_0
+
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 1.0 1.0 0.0
+v 0.0 1.0 0.0
+v 0.0 0.0 1.0
+v 1.0 0.0 1.0
+v 1.0 1.0 1.0
+v 0.0 1.0 1.0
+
+vt 0.3 0.875
+vt 0.2 0.625
+vt 0.3 0.625
+vt 0.6 0.625
+vt 0.3 0.375
+vt 0.3 0.125
+
+vn 0 0 -1
+vn 0 0 1
+vn 0 -1 0
+vn 1 0 0
+vn 0 1 0
+vn -1 0 0
+
+f 3/5/1 2/5/1 1/5/1
+f 1/5/1 4/5/1 3/5/1
+f 5/1/2 6/1/2 7/1/2
+f 7/1/2 8/1/2 5/1/2
+f 1/3/3 2/3/3 6/3/3
+f 6/3/3 5/3/3 1/3/3
+f 2/4/4 3/4/4 7/4/4
+f 7/4/4 6/4/4 2/4/4
+f 3/6/5 4/6/5 8/6/5
+f 8/6/5 7/6/5 3/6/5
+f 4/2/6 1/2/6 5/2/6
+f 5/2/6 8/2/6 4/2/6
+`;
+
+        viewer.handle_command({
+            type: "set_object",
+            path: "/meshcat/mesh_test",
+            object: {
+                metadata: {version: 4.5, type: "Object"},
+                geometries: [
+                    {
+                        uuid: "cef79e52-526d-4263-b595-04fa2705974e",
+                        type: "_meshfile_geometry",
+                        format: "obj",
+                        data: obj_contents
+                    }
+                ],
+                materials: [],
+                object: {
+                    uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+                    type: "Mesh",
+                    geometry: "cef79e52-526d-4263-b595-04fa2705974e"
+                }
+            }
+        });
+        viewer.handle_command({
+            type: "set_property",
+            path: "/meshcat/mesh_test",
+            property: "color",
+            value: [1, 0, 0, 0.5]
+        });
+        </script>
+
+
+         <style>
+            body {
+                margin: 0;
+            }
+
+            #meshcat-pane {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+        </style>
+	</body>
+</html>
