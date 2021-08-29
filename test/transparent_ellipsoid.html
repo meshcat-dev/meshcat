@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<title>MeshCat</title>
+	</head>
+	<body>
+        <div id="meshcat-pane">
+        </div>
+
+        <script src="main.min.js"></script>
+        <script>
+            var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+            viewer.handle_command({'type': 'set_object', 'object': {'metadata': {'version': 4.5, 'type': 'Object'}, 'geometries': [{'uuid': '396744fd-087d-11ec-9957-7fbbaaa96777', 'type': 'SphereGeometry', 'radius': 1.0, 'widthSegments': 20, 'heightSegments': 20}], 'materials': [{'uuid': '396744fe-087d-11ec-9957-7fbbaaa96777', 'type': 'MeshLambertMaterial', 'color': 16711935, 'reflectivity': 0.5, 'side': 2, 'transparent': true, 'opacity': 0.5, 'linewidth': 1.0, 'wireframe': false, 'wireframeLinewidth': 1.0, 'vertexColors': 0}], 'object': {'uuid': '396744ff-087d-11ec-9957-7fbbaaa96777', 'type': 'Mesh', 'geometry': '396744fd-087d-11ec-9957-7fbbaaa96777', 'material': '396744fe-087d-11ec-9957-7fbbaaa96777', 'matrix': [0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0]}}, 'path': '/meshcat'});
+
+            setInterval(() => {
+                let t = (Date.now() % 8000) / 8000.0 * 2 * Math.PI;
+                viewer.handle_command({
+                    type: "set_transform",
+                    path: "/Cameras/default",
+                    matrix: new Float32Array([Math.cos(t), Math.sin(t), 0, 0,
+                                              -Math.sin(t), Math.cos(t), 0, 0,
+                                             0, 0, 1, 0,
+                                             0, 0, 0.5, 1])
+                });
+
+            }, 10);
+            // viewer.connect();
+        </script>
+
+
+         <style>
+            body {
+                margin: 0;
+            }
+
+            #meshcat-pane {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+        </style>
+        <script id="embedded-json"></script>
+	</body>
+</html>
