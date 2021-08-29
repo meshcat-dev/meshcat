@@ -2,10 +2,9 @@ var THREE = require('three');
 var msgpack = require('msgpack-lite');
 var dat = require('dat.gui').default; // TODO: why is .default needed?
 import {BufferGeometryUtils} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import {OBJLoader2} from 'three/examples/jsm/loaders/OBJLoader2.js';
+import {OBJLoader2, MtlObjBridge} from 'wwobjloader2'
 import {ColladaLoader} from 'three/examples/jsm/loaders/ColladaLoader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
-import {MtlObjBridge} from 'three/examples/jsm/loaders/obj2/bridge/MtlObjBridge.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 require('ccapture.js');
@@ -21,7 +20,7 @@ function merge_geometries(object, preserve_materials = false) {
     function collectGeometries(node, parent_transform) {
         let transform = parent_transform.clone().multiply(node.matrix);
         if (node.type==='Mesh') {
-            node.geometry.applyMatrix(transform);
+            node.geometry.applyMatrix4(transform);
             geometries.push(node.geometry);
             materials.push(node.material);
         }
@@ -176,7 +175,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                     let mtl_loader = new MTLLoader(manager);
                     let mtl_parse_result = mtl_loader.parse(json.mtl_library + "\n", "");
                     let materials = MtlObjBridge.addMaterialsFromMtlLoader(mtl_parse_result);
-                    loader.addMaterials(materials);
+                    loader.setMaterials(materials);
                     this.onTextureLoad();
                 }
                 let obj = loader.parse(json.data + "\n", path);
@@ -629,8 +628,7 @@ class Animator {
         this.progress = 0;
         for (let animation of animations) {
             let target = this.viewer.scene_tree.find(animation.path).object;
-            let animations = this.loader.parseAnimations([animation.clip]);
-            let clip = Object.values(animations)[0];
+            let clip = Object.values(this.loader.parseAnimations([animation.clip]))[0];
             let action = this.mixer.clipAction(clip, target);
             action.clampWhenFinished = options.clampWhenFinished;
             action.setLoop(options.loopMode, options.repetitions);
