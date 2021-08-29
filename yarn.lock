@@ -633,13 +633,9 @@ terser@^5.7.0:
     source-map "~0.7.2"
     source-map-support "~0.5.19"
 
-three-wtm@^1.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/three-wtm/-/three-wtm-1.0.0.tgz#715d1317096de15b87313856befc719c176246d3"
-
-three@^0.131.1:
-  version "0.131.1"
-  resolved "https://registry.yarnpkg.com/three/-/three-0.131.1.tgz#c7d35213a0ec5c3ee28316221ecdf2c18d1140a0"
+three@0.122:
+  version "0.122.0"
+  resolved "https://registry.yarnpkg.com/three/-/three-0.122.0.tgz#bd9ed8a8820074856e8ba7b63fe0a65176e01aeb"
 
 uri-js@^4.2.2:
   version "4.4.1"
@@ -724,10 +720,6 @@ which@^2.0.1:
 wildcard@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/wildcard/-/wildcard-2.0.0.tgz#a77d20e5200c6faaac979e4b3aadc7b3dd7f8fec"
-
-wwobjloader2@^4.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/wwobjloader2/-/wwobjloader2-4.0.0.tgz#61304b2e09db66094a813c156c444af5718e143f"
 
 yocto-queue@^0.1.0:
   version "0.1.0"
