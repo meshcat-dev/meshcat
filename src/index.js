@@ -722,6 +722,7 @@ class Viewer {
         }
 
         this.scene = create_default_scene();
+        this.gui_controllers = {};
         this.create_scene_tree();
 
         this.add_default_scene_elements();
@@ -980,13 +981,32 @@ class Viewer {
 
     set_control(name, callback, value, min, max, step) {
         let handler = {};
+        if (name in this.gui_controllers) {
+            this.gui.remove(this.gui_controllers[name]);
+        }
         if (value !== undefined) {
             handler[name] = value;
-            let controller = this.gui.add(handler, name, min, max, step);
-            controller.onChange(eval(callback));
+            this.gui_controllers[name] = this.gui.add(
+                handler, name, min, max, step);
+            this.gui_controllers[name].onChange(eval(callback));
         } else {
             handler[name] = eval(callback);
-            this.gui.add(handler, name);
+            this.gui_controllers[name] = this.gui.add(handler, name);
+        }
+    }
+
+    set_control_value(name, value) {
+        if (name in this.gui_controllers && this.gui_controllers[name] 
+            instanceof dat.controllers.NumberController) {
+            this.gui_controllers[name].setValue(value);
+            this.gui_controllers[name].updateDisplay();
+        }
+    }
+
+    delete_control(name) {
+        if (name in this.gui_controllers) {
+            this.gui.remove(this.gui_controllers[name]);
+            delete this.gui_controllers[name];
         }
     }
 
@@ -1010,6 +1030,10 @@ class Viewer {
             this.set_animation(cmd.animations, cmd.options);
         } else if (cmd.type == "set_control") {
             this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
+        } else if (cmd.type == "set_control_value") {
+            this.set_control_value(cmd.name, cmd.value);
+        } else if (cmd.type == "delete_control") {
+            this.delete_control(cmd.name);
         } else if (cmd.type == "capture_image") {
             let imgdata = this.capture_image();
             this.connection.send(JSON.stringify({
