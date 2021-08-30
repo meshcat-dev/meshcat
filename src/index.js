@@ -995,11 +995,15 @@ class Viewer {
         }
     }
 
-    set_control_value(name, value) {
+    set_control_value(name, value, invoke_callback=true) {
         if (name in this.gui_controllers && this.gui_controllers[name] 
             instanceof dat.controllers.NumberController) {
-            this.gui_controllers[name].setValue(value);
-            this.gui_controllers[name].updateDisplay();
+            if (invoke_callback) {
+              this.gui_controllers[name].setValue(value);              
+            } else {
+              this.gui_controllers[name].object[name] = value;
+              this.gui_controllers[name].updateDisplay();
+            }
         }
     }
 
@@ -1031,7 +1035,7 @@ class Viewer {
         } else if (cmd.type == "set_control") {
             this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
         } else if (cmd.type == "set_control_value") {
-            this.set_control_value(cmd.name, cmd.value);
+            this.set_control_value(cmd.name, cmd.value, cmd.invoke_callback);
         } else if (cmd.type == "delete_control") {
             this.delete_control(cmd.name);
         } else if (cmd.type == "capture_image") {
