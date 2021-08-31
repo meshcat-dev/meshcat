@@ -23,14 +23,18 @@
             // Delete the first.  Only the second should remain in the gui.
             viewer.delete_control("TestButton");
 
-            viewer.set_control("TestSlider", () => {
-                console.log("TestSlider moved");
+            viewer.set_control("TestSlider", (value) => {
+                console.log("TestSlider = " + value);
             }, .5, 0, 1, 0.01);
             viewer.set_control_value("TestSlider", .2);
 
             // Make sure nothing goes wrong here.
             viewer.set_control_value("TestButton", .2);
             viewer.set_control_value("TestButton2", .2);
+
+            // The slider is updated, but the javascript console confirms that 
+            // the callback was not called.
+            viewer.set_control_value("TestSlider", .4, false);
         </script>
 
 
