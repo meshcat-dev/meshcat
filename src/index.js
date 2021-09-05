@@ -992,6 +992,8 @@ class Viewer {
         } else {
             handler[name] = eval(callback);
             this.gui_controllers[name] = this.gui.add(handler, name);
+            // The default layout for dat.GUI buttons is broken, with the button name artificially truncated at the same width that slider names are truncated.  We fix that here.
+            this.gui_controllers[name].domElement.parentElement.querySelector('.property-name').style.width="100%";
         }
     }
 
