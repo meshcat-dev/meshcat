@@ -8,7 +8,7 @@
         <div id="meshcat-pane">
         </div>
 
-        <script src="main.js"></script>
+        <script src="main.min.js"></script>
         <script>
             var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
             viewer.set_control("TestButton", () => {});
@@ -35,6 +35,10 @@
             // The slider is updated, but the javascript console confirms that 
             // the callback was not called.
             viewer.set_control_value("TestSlider", .4, false);
+
+            viewer.set_control("Test button with a really long name", () => {
+                console.log("Test button with a really long name pressed");
+            });
         </script>
 
 
