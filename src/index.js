@@ -720,6 +720,7 @@ class Viewer {
         } else {
             this.renderer = renderer;
         }
+        this.renderer.setPixelRatio(window.devicePixelRatio);
 
         this.scene = create_default_scene();
         this.gui_controllers = {};
