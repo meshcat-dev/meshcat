@@ -38,6 +38,23 @@
                 }]
             }
         },{
+            path: "/Cameras/default/rotated/<object>",
+            clip: {
+                fps: 30,
+                name: "default",
+                tracks: [{
+                    name: ".zoom",
+                    type: "number",
+                    keys: [{
+                        time: 0,
+                        value: 1
+                    },{
+                        time: 80,
+                        value: 0.5
+                    }]
+                }]
+            }
+        }, {
             path: "/meshcat/boxes",
             clip: {
                 fps: 30,
