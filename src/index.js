@@ -628,7 +628,12 @@ class Animator {
         this.progress = 0;
         for (let animation of animations) {
             let target = this.viewer.scene_tree.find(animation.path).object;
-            let clip = Object.values(this.loader.parseAnimations([animation.clip]))[0];
+            let clip = THREE.AnimationClip.parse(animation.clip);
+            // Ensure the clip has a proper UUID (by default it's undefined).
+            // The animation mixer uses that UUID internally, and not setting it
+            // can result in animations accidentally overwriting each other's
+            // properties.
+            clip.uuid = THREE.MathUtils.generateUUID();
             let action = this.mixer.clipAction(clip, target);
             action.clampWhenFinished = options.clampWhenFinished;
             action.setLoop(options.loopMode, options.repetitions);
