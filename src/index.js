@@ -1058,8 +1058,8 @@ class Viewer {
         } else if (cmd.type == "delete_control") {
             this.delete_control(cmd.name);
         } else if (cmd.type == "capture_image") {
-            let w = 1920;
-            let h = 1080;
+            let w = cmd.xres || 1920;
+            let h = cmd.yres || 1080;
             w = w / this.renderer.getPixelRatio();
             h = h / this.renderer.getPixelRatio();
             let imgdata = this.capture_image(w, h);

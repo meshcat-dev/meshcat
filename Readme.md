@@ -251,6 +251,30 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
 }
                 </pre>
             </dd>
+            <dt><code>set_target</code></dt>
+            <dd>
+                Set the target of the 3D camera, around which it rotates. This is expressed in a left-handed coordinate system where <emph>y</emph> is up.  
+                <p>Example:</p>
+                <pre>
+{
+    "type": "set_target",
+    value: [0., 1., 0.]
+}
+                </pre>
+                This sets the camera target to `(0, 1, 0)`
+            </dd>
+            <dt><code>capture_image</code></dt>
+            <dd>
+                Capture an image from the viewport. At the moment it will return the image at a provided resolution (by default 1920x1080).
+                <pre>
+{
+    "type": "capture_image",
+    "xres": 1920,
+    "yres": 1080
+}
+                </pre>
+                This sets the camera target to `(0, 1, 0)`
+            </dd>
         </dl>
     </dd>
 </dl>
@@ -287,7 +311,7 @@ The default MeshCat scene comes with a few objects at pre-set paths. You can rep
 
 ### Camera Control
 
-The camera is just another object in the MeshCat scene, so you can move it around with <code>set_transform</code> commands like any other object. Please note that replacing the camera with <code>set_object</code> is not currently supported (but we expect to implement this in the future).
+The camera is just another object in the MeshCat scene, so you can move it around with <code>set_transform</code> commands like any other object. You can also use <code>set_target</code> to change the camera's target. Please note that replacing the camera with <code>set_object</code> is not currently supported (but we expect to implement this in the future).
 
 Controlling the camera is slightly more complicated than moving a single object because the camera actually has two important poses: the origin about which the camera orbits when you click-and-drag with the mouse, and the position of the camera itself. In addition, cameras and controls in Three.js assume a coordinate system in which the Y axis is upward. In robotics, we typically have the Z axis pointing up, and that's what's done in MeshCat. To account for this, the actual camera lives inside a few path elements:
 
