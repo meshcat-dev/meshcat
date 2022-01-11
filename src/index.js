@@ -932,6 +932,10 @@ class Viewer {
         });
     }
 
+    set_camera_target(value) {
+        this.controls.target.set(value[0], value[1], value[2]);
+    }
+
     set_camera_from_json(data) {
         let loader = new ExtensibleObjectLoader();
         loader.parse(data, (obj) => {
@@ -1045,6 +1049,8 @@ class Viewer {
                 animation.path = split_path(animation.path);
             });
             this.set_animation(cmd.animations, cmd.options);
+        } else if (cmd.type == "set_target") {
+            this.set_camera_target(cmd.value);
         } else if (cmd.type == "set_control") {
             this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
         } else if (cmd.type == "set_control_value") {
