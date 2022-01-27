@@ -741,9 +741,9 @@ three-wtm@^1.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/three-wtm/-/three-wtm-1.0.0.tgz#715d1317096de15b87313856befc719c176246d3"
 
-three@^0.132:
-  version "0.132.2"
-  resolved "https://registry.yarnpkg.com/three/-/three-0.132.2.tgz#95eb1856147237c03e887cbbe56f964b6fb40b5e"
+three@^0.137:
+  version "0.137.0"
+  resolved "https://registry.yarnpkg.com/three/-/three-0.137.0.tgz#0ebd6ba66637a332c31f234bcdd35aeec071a6e3"
 
 uri-js@^4.2.2:
   version "4.4.1"
