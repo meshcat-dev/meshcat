@@ -877,7 +877,7 @@ class Viewer {
             w = this.dom_element.offsetWidth;
         }
         if (h === undefined) {
-            h = window.innerHeight;
+            h = this.dom_element.offsetHeight;
         }
         if (this.camera.type == "OrthographicCamera") {
             this.camera.right = this.camera.left + w*(this.camera.top - this.camera.bottom)/h;
@@ -905,9 +905,14 @@ class Viewer {
         }
     }
 
-    capture_image() {
+    capture_image(w, h) {
+        let w_prev = this.dom_element.offsetWidth;
+        let h_prev = this.dom_element.offsetHeight;
+        this.set_3d_pane_size(w, h);
         this.render();
-        return this.renderer.domElement.toDataURL();
+        let data = this.renderer.domElement.toDataURL();
+        this.set_3d_pane_size(w_prev, h_prev);
+        return data;
     }
 
     save_image() {
@@ -925,6 +930,10 @@ class Viewer {
         this.controls.addEventListener('change', () => {
             this.set_dirty()
         });
+    }
+
+    set_camera_target(value) {
+        this.controls.target.set(value[0], value[1], value[2]);
     }
 
     set_camera_from_json(data) {
@@ -1040,6 +1049,8 @@ class Viewer {
                 animation.path = split_path(animation.path);
             });
             this.set_animation(cmd.animations, cmd.options);
+        } else if (cmd.type == "set_target") {
+            this.set_camera_target(cmd.value);
         } else if (cmd.type == "set_control") {
             this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
         } else if (cmd.type == "set_control_value") {
@@ -1047,7 +1058,11 @@ class Viewer {
         } else if (cmd.type == "delete_control") {
             this.delete_control(cmd.name);
         } else if (cmd.type == "capture_image") {
-            let imgdata = this.capture_image();
+            let w = cmd.xres || 1920;
+            let h = cmd.yres || 1080;
+            w = w / this.renderer.getPixelRatio();
+            h = h / this.renderer.getPixelRatio();
+            let imgdata = this.capture_image(w, h);
             this.connection.send(JSON.stringify({
                 'type': 'img',
                 'data': imgdata
