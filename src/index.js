@@ -127,7 +127,17 @@ function handle_special_geometry(geom) {
 //     using the THREE.js native mesh loaders
 //   * Converting "_text" textures into text by drawing the
 //     requested text onto a canvas.
+//
+// This class also differs from the standard ObjectLoader
+// in that it caches geometry and materials by UUID, enabling
+// reuse of geometries across multiple JSON parses.
 class ExtensibleObjectLoader extends THREE.ObjectLoader {
+    constructor( manager ) {
+        super( manager );
+        this.geometries = {};
+        this.materials = {};
+    }
+    
     delegate(special_handler, base_handler, json, additional_objects) {
         let result = {};
         if (json === undefined) {
@@ -158,6 +168,9 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
     }
 
     parseObject(json, geometries, materials) {
+        // Merge these geometries and materials into our cache.
+        Object.assign(this.geometries, geometries);
+        Object.assign(this.materials, materials);
         if (json.type == "_meshfile_object") {
             let geometry;
             let material;
@@ -241,7 +254,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
 
             return object;
         } else {
-            return super.parseObject(json, geometries, materials);
+            return super.parseObject(json, this.geometries, this.materials);
         }
     }
 }
@@ -717,6 +730,9 @@ function gradient_texture(top_color, bottom_color) {
 class Viewer {
     constructor(dom_element, animate, renderer) {
         this.dom_element = dom_element;
+
+        this.loader = new ExtensibleObjectLoader();
+        
         if (renderer === undefined) {
             this.renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
             this.renderer.shadowMap.enabled = true;
@@ -928,8 +944,7 @@ class Viewer {
     }
 
     set_camera_from_json(data) {
-        let loader = new ExtensibleObjectLoader();
-        loader.parse(data, (obj) => {
+        this.loader.parse(data, (obj) => {
             this.set_camera(obj);
         });
     }
@@ -943,9 +958,8 @@ class Viewer {
     }
 
     set_object_from_json(path, object_json) {
-        let loader = new ExtensibleObjectLoader();
-        loader.onTextureLoad = () => {this.set_dirty();}
-        loader.parse(object_json, (obj) => {
+        this.loader.onTextureLoad = () => {this.set_dirty();}
+        this.loader.parse(object_json, (obj) => {
             if (obj.geometry !== undefined && obj.geometry.type == "BufferGeometry") {
                 if ((obj.geometry.attributes.normal === undefined) || obj.geometry.attributes.normal.count === 0) {
                     obj.geometry.computeVertexNormals();
@@ -1088,10 +1102,9 @@ class Viewer {
     }
 
     load_scene_from_json(json) {
-        let loader = new ExtensibleObjectLoader();
-        loader.onTextureLoad = () => {this.set_dirty();}
+        this.loader.onTextureLoad = () => {this.set_dirty();}
         this.scene_tree.dispose_recursive();
-        this.scene = loader.parse(json);
+        this.scene = this.loader.parse(json);
         this.show_background();
         this.create_scene_tree();
         let cam_node = this.scene_tree.find(["Cameras", "default", "rotated", "<object>"]);
