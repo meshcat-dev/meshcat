@@ -689,17 +689,14 @@ function gradient_texture(top_color, bottom_color) {
     let width = 1;
     let height = 2;
     let size = width * height;
-    var data = new Uint8Array(3 * size);
-    for (let row = 0; row < height; row++) {
-        let color = colors[row];
-        for (let col = 0; col < width; col++) {
-            let i = 3 * (row * width + col);
-            for (let j = 0; j < 3; j++) {
-                data[i + j] = color[j];
-            }
-        }
+    var data = new Uint8Array(4 * size);
+    for (let i = 0; i < 3; ++i) {
+        data[i] = bottom_color[i];
+	data[4 + i] = top_color[i];
     }
-    var texture = new THREE.DataTexture(data, width, height, THREE.RGBFormat);
+    data[3] = data[7] = 255; // Alpha = 1.0
+
+    var texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
     texture.magFilter = THREE.LinearFilter;
     texture.encoding = THREE.LinearEncoding;
     // By default, the points in our texture map to the center of
