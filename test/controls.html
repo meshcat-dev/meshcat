@@ -14,18 +14,35 @@
             viewer.set_control("TestButton", () => {});
             // Prove that we can reset a control with the same name.
             viewer.set_control("TestButton", () => { 
-                console.log("TestButton pressed");
-            });
-            // A second control.
-            viewer.set_control("TestButton2", () => {
+                console.log("TestButton pressed"); },
+                value=undefined, min=undefined, max=undefined, step=undefined,
+              keycode1="KeyB");
+            // A second control.  This can also be "pressed" by pressing the
+            // "b" key.
+            viewer.set_control("TestButton2", 
+              () => {
                 console.log("TestButton2 pressed");
-            });
+              }, 
+              value=undefined, min=undefined, max=undefined, step=undefined,
+              keycode1="KeyB");
             // Delete the first.  Only the second should remain in the gui.
             viewer.delete_control("TestButton");
 
+            // A third control. Both buttons 2 and 3 should fire when the "b"
+            // key is pressed.
+            viewer.set_control("TestButton3", 
+              () => {
+                console.log("TestButton3 pressed");
+              }, 
+              value=undefined, min=undefined, max=undefined, step=undefined,
+              keycode1="KeyB");
+
+            // The slider can value can also be descreased and increased using
+            // the left and right arrow keys, repsectively.
             viewer.set_control("TestSlider", (value) => {
                 console.log("TestSlider = " + value);
-            }, .5, 0, 1, 0.01);
+            }, value=.5, min=0, max=1, step=0.01, 
+            keycode1="ArrowLeft", keycode2="ArrowRight");
             viewer.set_control_value("TestSlider", .2);
 
             // Make sure nothing goes wrong here.
@@ -39,6 +56,8 @@
             viewer.set_control("Test button with a really long name", () => {
                 console.log("Test button with a really long name pressed");
             });
+
+//            viewer.keydown_callbacks[38] = ((e) => { console.log("Key pressed" + e.keyCode); });
         </script>
 
 

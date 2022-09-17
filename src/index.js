@@ -595,11 +595,12 @@ class Animator {
         folder.add(this, "pause");
         folder.add(this, "reset");
 
-        // Note, for some reason when you call `.max()` on a slider controller it does
-        // correctly change how the slider behaves but does not change the range of values
-        // that can be entered into the text box attached to the slider. Oh well. We work
-        // around this by creating the slider with an unreasonably huge range and then calling
-        // `.min()` and `.max()` on it later.
+        // Note, for some reason when you call `.max()` on a slider controller
+        // it does correctly change how the slider behaves but does not change
+        // the range of values that can be entered into the text box attached
+        // to the slider. Oh well. We work around this by creating the slider
+        // with an unreasonably huge range and then calling `.min()` and
+        // `.max()` on it later.
         this.time_scrubber = folder.add(this, "time", 0, 1e9, 0.001);
         this.time_scrubber.onChange((value) => this.seek(value));
 
@@ -729,6 +730,7 @@ class Viewer {
 
         this.scene = create_default_scene();
         this.gui_controllers = {};
+        this.keydown_callbacks = {};
         this.create_scene_tree();
 
         this.add_default_scene_elements();
@@ -740,11 +742,20 @@ class Viewer {
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
+        window.addEventListener('keydown', (evt) => {this.on_keydown(evt);}); 
 
         requestAnimationFrame(() => this.set_3d_pane_size());
         if (animate || animate === undefined) {
             this.animate();
         }
+    }
+
+    on_keydown(e) {
+      if (e.code in this.keydown_callbacks) {
+        for (const o of this.keydown_callbacks[e.code]) {
+          o["callback"](e);
+        }
+      }
     }
 
     hide_background() {
@@ -994,21 +1005,55 @@ class Viewer {
         this.animator.load(animations, options);
     }
 
-    set_control(name, callback, value, min, max, step) {
+    // keycode1 and keycode2 are the KeyboardEvent.code values, e.g. "KeyB",
+    // https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_code_values
+    // Buttons have at most one keycode assigned to them (which causes the
+    // button to callback to fire).  Sliders have two keycodes assigned to
+    // them; one to decrease the value by step, the other to increase it.
+    set_control(name, callback, value, min, max, step,
+                keycode1, keycode2) {
+        let my_callback = eval(callback);
         let handler = {};
         if (name in this.gui_controllers) {
             this.gui.remove(this.gui_controllers[name]);
         }
         if (value !== undefined) {
-            handler[name] = value;
+          handler[name] = value;
             this.gui_controllers[name] = this.gui.add(
                 handler, name, min, max, step);
-            this.gui_controllers[name].onChange(eval(callback));
+            this.gui_controllers[name].onChange(my_callback);
+            function add_callback(viewer, keycode, increment) {
+              if (keycode != undefined) {
+                let keydown_callback = {name: name, callback: () => {
+                  // Decrease value by step (within limits), and trigger
+                  // callback.
+                  value = viewer.gui_controllers[name].getValue();
+                  let new_value = 
+                    Math.min(Math.max(value + increment, min), max);
+                  viewer.gui_controllers[name].setValue(new_value);
+                }};
+                if (keycode in viewer.keydown_callbacks) {
+                  viewer.keydown_callbacks[keycode].push(keydown_callback);
+                } else {
+                  viewer.keydown_callbacks[keycode] = [keydown_callback];
+                }
+              }
+            }
+            add_callback(this, keycode1, -step);
+            add_callback(this, keycode2, +step);
         } else {
-            handler[name] = eval(callback);
+            handler[name] = my_callback;
             this.gui_controllers[name] = this.gui.add(handler, name);
             // The default layout for dat.GUI buttons is broken, with the button name artificially truncated at the same width that slider names are truncated.  We fix that here.
             this.gui_controllers[name].domElement.parentElement.querySelector('.property-name').style.width="100%";
+            if (keycode1 != undefined) {
+              let keydown_callback = {name: name, callback: my_callback};
+              if (keycode1 in this.keydown_callbacks) {
+                this.keydown_callbacks[keycode1].push(keydown_callback);
+              } else {
+                this.keydown_callbacks[keycode1] = [keydown_callback];
+              }
+            }
         }
     }
 
@@ -1028,6 +1073,15 @@ class Viewer {
         if (name in this.gui_controllers) {
             this.gui.remove(this.gui_controllers[name]);
             delete this.gui_controllers[name];
+        }
+        // Remove any callbacks associated with this name.
+        for (let code in this.keydown_callbacks) {
+          let i=this.keydown_callbacks[code].length;
+          while (i--) {
+            if (this.keydown_callbacks[code][i]["name"] == name) {
+              this.keydown_callbacks[code].splice(i, 1);
+            }
+          }
         }
     }
 
@@ -1052,7 +1106,7 @@ class Viewer {
         } else if (cmd.type == "set_target") {
             this.set_camera_target(cmd.value);
         } else if (cmd.type == "set_control") {
-            this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step);
+            this.set_control(cmd.name, cmd.callback, cmd.value, cmd.min, cmd.max, cmd.step, cmd.keycode1, cmd.keycode2);
         } else if (cmd.type == "set_control_value") {
             this.set_control_value(cmd.name, cmd.value, cmd.invoke_callback);
         } else if (cmd.type == "delete_control") {
