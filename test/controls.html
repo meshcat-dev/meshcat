@@ -36,6 +36,22 @@
               }, 
               value=undefined, min=undefined, max=undefined, step=undefined,
               keycode1="KeyB");
+            // A fourth button, which registers a "c" key handler (which will
+            // be removed just below).
+            viewer.set_control("TestButton4", 
+              () => {
+                console.log("TestButton4 pressed");
+              }, 
+              value=undefined, min=undefined, max=undefined, step=undefined,
+              keycode1="KeyC");
+            // Setting the same button again, with a different keypress handler
+            // (or no handler as here), should remove the original keypress
+            // handler. The 'c' button should do nothing.
+            viewer.set_control("TestButton4", 
+              () => {
+                console.log("TestButton4 pressed");
+              }, 
+              value=undefined, min=undefined, max=undefined, step=undefined);
 
             // The slider can value can also be descreased and increased using
             // the left and right arrow keys, repsectively.

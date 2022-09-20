@@ -1015,7 +1015,7 @@ class Viewer {
         let my_callback = eval(callback);
         let handler = {};
         if (name in this.gui_controllers) {
-            this.gui.remove(this.gui_controllers[name]);
+            this.delete_control(name);
         }
         if (value !== undefined) {
           handler[name] = value;
