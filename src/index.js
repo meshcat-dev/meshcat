@@ -1,4 +1,4 @@
-var THREE = require('three');
+import * as THREE from 'three';
 var msgpack = require('msgpack-lite');
 var dat = require('dat.gui').default; // TODO: why is .default needed?
 import {mergeBufferGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
