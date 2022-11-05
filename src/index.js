@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-var msgpack = require('msgpack-lite');
+var msgpack = require('@msgpack/msgpack');
 var dat = require('dat.gui').default; // TODO: why is .default needed?
 import {mergeBufferGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {OBJLoader2, MtlObjBridge} from 'wwobjloader2'
@@ -8,6 +8,43 @@ import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 require('ccapture.js');
+
+// We must implement extension types 0x16 and 0x17. The trick to
+// decoding them is they must be converted from littleEndian.
+const extensionCodec = new msgpack.ExtensionCodec();
+// Uint32Array
+extensionCodec.register({
+  type: 0x16,
+  encode: (obj) => {
+    console.error("Uint32Array encode not implemented")
+    return null;
+  },
+  decode: (data) => {
+    const to_return = new Uint32Array(data.byteLength / 4);
+    let dataview = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    for (let i = 0; i < to_return.length; i++) {
+      to_return[i] = dataview.getUint32(i * 4, true);  // true b.c. littleEndian
+    }
+    return to_return
+  },
+});
+   +
+// Float32Array
+extensionCodec.register({
+  type: 0x17,
+  encode: (obj) => {
+    console.error("Float32Array encode not implemented")
+    return null;
+  },
+  decode: (data) => {
+    const to_return = new Float32Array(data.byteLength / 4);
+    let dataview = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    for (let i = 0; i < to_return.length; i++) {
+      to_return[i] = dataview.getFloat32(i * 4, true);  // true b.c. littleEndian
+    }
+    return to_return
+  },
+});
 
 // Merges a hierarchy of collada mesh geometries into a single
 // `BufferGeometry` object:
@@ -291,6 +328,7 @@ class SceneNode {
         for (let c of this.controllers) {
             this.folder.remove(c);
         }
+        this.controllers = [];
         if (this.vis_controller !== undefined) {
             this.folder.domElement.removeChild(this.vis_controller.domElement);
         }
@@ -1124,14 +1162,14 @@ class Viewer {
         this.set_dirty();
     }
 
-    handle_command_bytearray(bytearray) {
-        let decoded = msgpack.decode(bytearray);
-        this.handle_command(decoded);
+    decode(message) {
+      return msgpack.decode(new Uint8Array(message.data), { extensionCodec });
     }
-    
+
     handle_command_message(message) {
         this.num_messages_received++;
-        this.handle_command_bytearray(new Uint8Array(message.data));
+        let decoded = this.decode(message);
+        this.handle_command(decoded);
     }
 
     connect(url) {
@@ -1225,4 +1263,4 @@ style.sheet.insertRule(`
         padding: 0 0 0 0px;
     }`);
 
-export { Viewer, THREE };
+export { Viewer, THREE, msgpack };
