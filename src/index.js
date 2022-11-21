@@ -1166,10 +1166,15 @@ class Viewer {
       return msgpack.decode(new Uint8Array(message.data), { extensionCodec });
     }
 
+    handle_command_bytearray(bytearray) {
+      let decoded = msgpack.decode(bytearray, {extensionCodec});
+      this.handle_command(decoded);
+    }
+
     handle_command_message(message) {
-        this.num_messages_received++;
-        let decoded = this.decode(message);
-        this.handle_command(decoded);
+      this.num_messages_received++;
+      let decoded = this.decode(message);
+      this.handle_command(decoded);
     }
 
     connect(url) {
