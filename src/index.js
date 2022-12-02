@@ -407,7 +407,11 @@ class SceneNode {
         } else if (property == "top_color" || property == "bottom_color") {
             this.object[property] = value.map((x) => x * 255);
         } else {
-            this.object[property] = value;
+            let v = this.object;
+            for (const p in property.split('.')) {
+                v = v[p];
+            }
+            v = value;
         }
         this.vis_controller.updateDisplay();
         this.controllers.forEach(c => c.updateDisplay());
