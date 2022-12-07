@@ -407,11 +407,18 @@ class SceneNode {
         } else if (property == "top_color" || property == "bottom_color") {
             this.object[property] = value.map((x) => x * 255);
         } else {
-            let v = this.object;
-            for (const p in property.split('.')) {
-                v = v[p];
+            function smart_set(obj, is, value) {
+                if (is.length !== 1) {
+                    return smart_set(obj[is[0]], is.slice(1), value);
+                }
+                if (value instanceof Array && obj[is[0]] instanceof THREE.Color) {
+                    return obj[is[0]].setRGB(value[0], value[1], value[2]);
+                } else if (typeof obj[is[0]].set === "function") {
+                    return obj[is[0]].set(value);
+                }
+                return obj[is[0]] = value;
             }
-            v = value;
+            smart_set(this.object, property.split('.'), value);
         }
         this.vis_controller.updateDisplay();
         this.controllers.forEach(c => c.updateDisplay());
