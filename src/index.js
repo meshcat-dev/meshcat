@@ -73,7 +73,26 @@ function merge_geometries(object, preserve_materials = false) {
             result.material = materials[0];
         }
     } else if (geometries.length > 1) {
+        // There is a known issue where mergeBufferGeometries fails when some of the geometries do not have UV textures.
+        // A workaround is to delete all UV textures. Rather than failing silently (failing to load by returning null),
+        // we will remove textures when needed.
+        let uses_uv = new Array(geometries.length).fill(false);
+        for (let i = 0; i < geometries.length; ++i) {
+            uses_uv[i] = geometries[i].attributes.hasOwnProperty('uv');
+        }
+        let all_true = uses_uv.every(v => v === true);
+        let all_false = uses_uv.every(v => v === false);
+        let broken_dae = (all_true === all_false);
+        if (broken_dae) {
+            console.warn("Broken DAE: Either all geometries need to contain uv tags or none. To circumvent failure in mergeBufferGeometries, removing all textures");
+            for (let i = 0; i < geometries.length; ++i) {
+                geometries[i].deleteAttribute("uv");
+            }
+        }
         result = mergeBufferGeometries(geometries, true);
+        if (result == null) {
+          console.error("Merging buffer geometries failed:", geometries);
+        }
         if (preserve_materials) {
             result.material = materials;
         }
