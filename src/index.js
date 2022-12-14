@@ -12,6 +12,24 @@ require('ccapture.js');
 // We must implement extension types 0x16 and 0x17. The trick to
 // decoding them is they must be converted from littleEndian.
 const extensionCodec = new msgpack.ExtensionCodec();
+
+// Uint8Array
+extensionCodec.register({
+  type: 0x12,
+  encode: (obj) => {
+    console.error("Uint8Array encode not implemented")
+    return null;
+  },
+  decode: (data) => {
+    const to_return = new Uint8Array(data.byteLength);
+    let dataview = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    for (let i = 0; i < to_return.length; i++) {
+      to_return[i] = dataview.getUint8(i, true);  // true b.c. littleEndian
+    }
+    return to_return
+  },
+});
+
 // Uint32Array
 extensionCodec.register({
   type: 0x16,
@@ -28,7 +46,7 @@ extensionCodec.register({
     return to_return
   },
 });
-   +
+
 // Float32Array
 extensionCodec.register({
   type: 0x17,
