@@ -152,16 +152,26 @@ function handle_special_geometry(geom) {
             loaded_geom.uuid = geom.uuid;
             return loaded_geom;
         } else if (geom.format == "dae") {
-            let loader = new ColladaLoader();
-            let obj = loader.parse(geom.data);
-            let result = merge_geometries(obj.scene);
-            result.uuid = geom.uuid;
-            return result;
+            try {
+                let loader = new ColladaLoader();
+                let obj = loader.parse(geom.data);
+                let result = merge_geometries(obj.scene);
+                result.uuid = geom.uuid;
+                return result;
+            } catch(e) {
+                console.error("Failure parsing DAE:", e);
+                return null;
+            }
         } else if (geom.format == "stl") {
-            let loader = new STLLoader();
-            let loaded_geom = loader.parse(geom.data.buffer);
-            loaded_geom.uuid = geom.uuid;
-            return loaded_geom;
+            try {
+                let loader = new STLLoader();
+                let loaded_geom = loader.parse(geom.data.buffer);
+                loaded_geom.uuid = geom.uuid;
+                return loaded_geom;
+            } catch (e) {
+                console.error("Failure parsing STL:", e, geom);
+                return null;
+            }
         } else {
             console.error("Unsupported mesh type:", geom);
             return null;
