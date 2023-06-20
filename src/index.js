@@ -4,6 +4,7 @@ var dat = require('dat.gui').default; // TODO: why is .default needed?
 import {mergeBufferGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {OBJLoader2, MtlObjBridge} from 'wwobjloader2'
 import {ColladaLoader} from 'three/examples/jsm/loaders/ColladaLoader.js';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
@@ -716,36 +717,42 @@ class Animator {
     }
 }
 
-// Generates a gradient texture without filling up
-// an entire canvas. We simply create a 2x1 image
-// containing only the two colored pixels and then
-// set up the appropriate magnification and wrapping
-// modes to generate the gradient automatically
-function gradient_texture(top_color, bottom_color) {
-    let colors = [bottom_color, top_color];
-
-    let width = 1;
+// Generates a gradient texture for defining the environment.
+// Because it's a linear gradient, we can rely on OpenGL to do the
+// linear interpolation between two rows of colors. However, to
+// serve as an environment texture for objects with PBR shaders,
+// it needs to be at least 64-pixels wide. We have been unable to
+// find supporting documentation for this requirement, but
+// empirically, it is obvious. Reduce the width by even one pixel
+// and any metallic surface reflects a black void.
+function env_texture(top_color, bottom_color) {
+    let width = 64;
     let height = 2;
     let size = width * height;
-    var data = new Uint8Array(4 * size);
-    for (let i = 0; i < 3; ++i) {
-        data[i] = bottom_color[i];
-	data[4 + i] = top_color[i];
+    let data = new Uint8Array(4 * size);
+    // Row 0 is all bottom; row 1 is all top.
+    let i = 0;
+    let j = width * 4;
+    for (let c = 0; c < width; ++c) {
+        for (let ch = 0; ch < 3; ++ch) {
+            data[i + ch] = bottom_color[ch];
+            data[j + ch] = top_color[ch];
+        }
+        data[i + 3] = 255;
+        data[j + 3] = 255;
+        i += 4;
+        j += 4;
     }
-    data[3] = data[7] = 255; // Alpha = 1.0
 
-    var texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat);
-    texture.magFilter = THREE.LinearFilter;
+    let texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat,
+                                        THREE.UnsignedByteType, THREE.EquirectangularReflectionMapping,
+                                        THREE.RepeatWrapping, THREE.ClampToEdgeWrapping,
+                                        THREE.LinearFilter, THREE.LinearFilter, 1,
+                                        THREE.LinearSRGBColorSpace);
+    texture.needsUpdate = true;
+    // Although both encoding and LinearEncoding are deprecated, THREE.js gets
+    // *really* cranky if you don't include it.
     texture.encoding = THREE.LinearEncoding;
-    // By default, the points in our texture map to the center of
-    // the pixels, which means that the gradient only occupies
-    // the middle half of the screen. To get around that, we just have
-    // to tweak the UV transform matrix
-    texture.matrixAutoUpdate = false;
-    texture.matrix.set(0.5, 0, 0.25,
-        0, 0.5, 0.25,
-        0, 0, 1);
-    texture.needsUpdate = true
     return texture;
 }
 
@@ -795,6 +802,7 @@ class Viewer {
 
     hide_background() {
         this.scene.background = null;
+        this.scene.environment = env_texture([255, 255, 255], [255, 255, 255]);
         this.set_dirty();
     }
 
@@ -802,7 +810,10 @@ class Viewer {
         var top_color = this.scene_tree.find(["Background"]).object.top_color;
         var bottom_color =
             this.scene_tree.find(["Background"]).object.bottom_color;
-        this.scene.background = gradient_texture(top_color, bottom_color);
+        // TODO(SeanCurtis-TRI): Rather than generating this texture every time, create it
+        // and save it.
+        this.scene.background = env_texture(top_color, bottom_color);
+        this.scene.environment = this.scene.background;
         this.set_dirty();
     }
 
@@ -998,22 +1009,59 @@ class Viewer {
     }
 
     set_object_from_json(path, object_json) {
-        let loader = new ExtensibleObjectLoader();
-        loader.onTextureLoad = () => {this.set_dirty();}
-        loader.parse(object_json, (obj) => {
-            if (obj.geometry !== undefined && obj.geometry.type == "BufferGeometry") {
-                if ((obj.geometry.attributes.normal === undefined) || obj.geometry.attributes.normal.count === 0) {
-                    obj.geometry.computeVertexNormals();
-                }
-            } else if (obj.type.includes("Camera")) {
-                this.set_camera(obj);
-                this.set_3d_pane_size();                
-            }
+        let configure_obj = (obj) => {
             obj.castShadow = true;
             obj.receiveShadow = true;
             this.set_object(path, obj);
             this.set_dirty();
-        });
+        };
+        if (object_json.object.type == "_meshfile_object" && object_json.object.format == "gltf") {
+            let loader = new GLTFLoader();
+            loader.parse(object_json.object.data, path, (gltf) => {
+                let scene = gltf.scene;
+                if (scene === null) {
+                    // TODO(SeanCurtis-TRI): What do I do in this case?
+                    console.error("Gltf parsed with no scene!");
+                } else {
+                    let json = object_json.object;
+                    if (json.matrix !== undefined) {
+                        // The GLTFLoader doesn't swap from y-up to z-up. So, we'll do that here.
+                        scene.matrix.fromArray(json.matrix);
+                        let R = new THREE.Matrix4();
+                        R = R.makeRotationX(Math.PI / 2);
+                        // The y-up to z-up rotation should happen on the right to precondition the z-up pose stored in json.matrix.
+                        scene.matrix.multiply(R);
+                        if (json.matrixAutoUpdate !== undefined) scene.matrixAutoUpdate = json.matrixAutoUpdate;
+                        if (scene.matrixAutoUpdate) scene.matrix.decompose(scene.position, scene.quaternion, scene.scale);
+
+                        // TODO(SeanCurtis-TRI): ExtensibleObjectLoader::parseObject()
+                        // does more operations on the resultant meshfile object
+                        // than just the objects matrix. It also plays with
+                        // various other render settings. They should be applied
+                        // to objects loaded from .glTF. The application act
+                        // may be more complex for configurations that aren't
+                        // inherited by scene node children; they would have
+                        // to be applied around the tree rooted at the visualzied
+                        // scene group.
+                    }
+                    configure_obj(scene);
+                }
+            });
+        } else {
+            let loader = new ExtensibleObjectLoader();
+            loader.onTextureLoad = () => { this.set_dirty(); }
+            loader.parse(object_json, (obj) => {
+                if (obj.geometry !== undefined && obj.geometry.type == "BufferGeometry") {
+                    if ((obj.geometry.attributes.normal === undefined) || obj.geometry.attributes.normal.count === 0) {
+                        obj.geometry.computeVertexNormals();
+                    }
+                } else if (obj.type.includes("Camera")) {
+                    this.set_camera(obj);
+                    this.set_3d_pane_size();
+                }
+                configure_obj(obj);
+            });
+        }
     }
 
     delete_path(path) {
