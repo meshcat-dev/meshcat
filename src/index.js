@@ -84,8 +84,6 @@ function handle_special_texture(json) {
 //   * A new `THREE.Mesh` if that json represents a special geometry
 //   * `null` otherwise
 function handle_special_geometry(geom) {
-  console.log("Hi from handle_special_geometry")
-  console.log(geom)
     if (geom.type == "_meshfile") {
         console.warn("_meshfile is deprecated. Please use _meshfile_geometry for geometries and _meshfile_object for objects with geometry and material");
         geom.type = "_meshfile_geometry";
@@ -112,50 +110,6 @@ function handle_special_geometry(geom) {
             console.error("Unsupported mesh type:", geom);
             return null;
         }
-    } else if (geom.type == "_billboard") {
-      console.log("Hi from _billboard")
-      const borderSize = 2;
-      const ctx = document.createElement('canvas').getContext('2d');
-      const font =  `${geom.size}px bold sans-serif`;
-      ctx.font = font;
-      // measure how long the name will be
-      const textWidth = ctx.measureText(geom.text).width;
-
-      const doubleBorderSize = borderSize * 2;
-      const width = geom.base_width + doubleBorderSize;
-      const height = geom.size + doubleBorderSize;
-      ctx.canvas.width = width;
-      ctx.canvas.height = height;
-
-      // need to set font again after resizing canvas
-      ctx.font = font;
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = 'center';
-
-      ctx.fillStyle = 'blue';
-      ctx.fillRect(0, 0, width, height);
-
-      // scale to fit but don't stretch
-      const scaleFactor = Math.min(1, geom.base_width / textWidth);
-      ctx.translate(width / 2, height / 2);
-      ctx.scale(scaleFactor, 1);
-      ctx.fillStyle = 'white';
-      ctx.fillText(geom.text, 0, 0);
-
-      const canvas = ctx.canvas;
-      const texture = new THREE.CanvasTexture(canvas);
-      // because our canvas is likely not a power of 2
-      // in both dimensions set the filtering appropriately.
-      texture.minFilter = THREE.LinearFilter;
-      texture.wrapS = THREE.ClampToEdgeWrapping;
-      texture.wrapT = THREE.ClampToEdgeWrapping;
-      const labelMaterial = new THREE.SpriteMaterial({
-        map: texture,
-        transparent: true,
-      });
-      const label = new THREE.Sprite(labelMaterial)
-      label.uuid = geom.uuid;
-      return label;
     }
     return null;
 }
@@ -286,7 +240,50 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
             if ( json.layers !== undefined ) object.layers.mask = json.layers;
 
             return object;
-        } else {
+        } else if (json.type == "_billboard") {
+          const borderSize = 2;
+          const ctx = document.createElement('canvas').getContext('2d');
+          const font =  `${json.size}px bold sans-serif`;
+          ctx.font = font;
+          // measure how long the name will be
+          const textWidth = ctx.measureText(json.text).width;
+
+          const doubleBorderSize = borderSize * 2;
+          const width = json.base_width + doubleBorderSize;
+          const height = json.size + doubleBorderSize;
+          ctx.canvas.width = width;
+          ctx.canvas.height = height;
+
+          // need to set font again after resizing canvas
+          ctx.font = font;
+          ctx.textBaseline = 'middle';
+          ctx.textAlign = 'center';
+
+          ctx.fillStyle = 'blue';
+          ctx.fillRect(0, 0, width, height);
+
+          // scale to fit but don't stretch
+          const scaleFactor = Math.min(1, json.base_width / textWidth);
+          ctx.translate(width / 2, height / 2);
+          ctx.scale(scaleFactor, 1);
+          ctx.fillStyle = 'white';
+          ctx.fillText(json.text, 0, 0);
+
+          const canvas = ctx.canvas;
+          const texture = new THREE.CanvasTexture(canvas);
+          // because our canvas is likely not a power of 2
+          // in both dimensions set the filtering appropriately.
+          texture.minFilter = THREE.LinearFilter;
+          texture.wrapS = THREE.ClampToEdgeWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          const labelMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true,
+          });
+          const label = new THREE.Sprite(labelMaterial)
+          label.uuid = json.uuid;
+          return label;
+        }else {
             return super.parseObject(json, geometries, materials);
         }
     }
