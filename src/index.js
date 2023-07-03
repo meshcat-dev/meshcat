@@ -260,14 +260,14 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
           ctx.textBaseline = 'middle';
           ctx.textAlign = 'center';
 
-          ctx.fillStyle = 'blue';
+          ctx.fillStyle = json.background_color || 'blue';
           ctx.fillRect(0, 0, width, height);
 
           // scale to fit but don't stretch
           const scaleFactor = Math.min(1, json.base_width / textWidth);
           ctx.translate(width / 2, height / 2);
           ctx.scale(scaleFactor, 1);
-          ctx.fillStyle = 'white';
+          ctx.fillStyle = json.text_color || 'white';
           ctx.fillText(json.text, 0, 0);
 
           const canvas = ctx.canvas;
