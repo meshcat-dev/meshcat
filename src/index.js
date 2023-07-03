@@ -241,6 +241,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
 
             return object;
         } else if (json.type == "_billboard") {
+          // Based on https://threejs.org/manual/#en/billboards
           const borderSize = 2;
           const ctx = document.createElement('canvas').getContext('2d');
           const font =  `${json.size}px bold sans-serif`;
@@ -282,6 +283,9 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
           });
           const label = new THREE.Sprite(labelMaterial)
           label.uuid = json.uuid;
+          const labelBaseScale = json.global_scale || 1.;
+          label.scale.x = canvas.width  * labelBaseScale;
+          label.scale.y = canvas.height * labelBaseScale;
           return label;
         }else {
             return super.parseObject(json, geometries, materials);
