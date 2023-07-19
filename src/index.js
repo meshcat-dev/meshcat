@@ -1009,9 +1009,19 @@ class Viewer {
     }
 
     set_object_from_json(path, object_json) {
+        // Recursively walk the tree rooted at node and enable shadows for all
+        // Mesh nodes.
+        let meshes_cast_shadows = (node) => {
+            if (node.type === "Mesh") {
+                node.castShadow = true;
+                node.receiveShadow = true;
+            }
+            for (let i = 0; i < node.children.length; ++i) {
+                meshes_cast_shadows(node.children[i]);
+            }
+        };
         let configure_obj = (obj) => {
-            obj.castShadow = true;
-            obj.receiveShadow = true;
+            meshes_cast_shadows(obj);
             this.set_object(path, obj);
             this.set_dirty();
         };
@@ -1041,7 +1051,7 @@ class Viewer {
                         // to objects loaded from .glTF. The application act
                         // may be more complex for configurations that aren't
                         // inherited by scene node children; they would have
-                        // to be applied around the tree rooted at the visualzied
+                        // to be applied around the tree rooted at the visualized
                         // scene group.
                     }
                     configure_obj(scene);
