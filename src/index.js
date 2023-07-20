@@ -284,6 +284,90 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
     }
 }
 
+class Background extends THREE.Object3D {
+    constructor() {
+        super();
+        this.isBackground = true;
+        this.type = 'Background';
+
+        // The controllable properties that can be set either via control or
+        // set_property().
+        this.top_color = new dat.color.Color(135, 206, 250);  // lightskyblue
+        this.bottom_color = new dat.color.Color(25, 25, 112);  // midnightlblue
+        this.render_environment_map = true;
+        this.environment_map = null;
+        this.visible = true;
+
+        // The textures associated with the background: either the map, the
+        // gradient, or a white texture (for when the background isn't visible).
+        this.textures = {
+            "map": null,  // no default environment.
+            "gradient": env_texture(this.top_color, this.bottom_color),
+            "white": env_texture([255, 255, 255], [255, 255, 255])
+        };
+        // The state values that contributed to the current values of
+        // scene.background and scene.environment. When the controllable
+        // properties get twiddled, this state will be compared with that state
+        // to determine the work necessary to update the background.
+        this.state = {
+            "top_color": null,
+            "bottom_color": null,
+            "environment_map": null,
+            "render_map": null,
+            "visible": true
+        };
+    }
+
+    // Updates the background's state in the scene based on its requested
+    // properties, its internal state, and the indication of whether the
+    // background is visible or not.
+    update(scene, is_visible) {
+        // TODO: If the background simply isn't visible, defer the work until
+        // it is visible, perhaps?
+        this.state.visible = is_visible;
+        this.state.render_map = this.render_environment_map;
+        // If the named environment map has changed, we need to load appropriately.
+        if (this.environment_map !== this.state.environment_map) {
+            if (this.environment_map == "" || this.environment_map == null) {
+                this.environment_map = this.state.environment_map = null;
+                this.textures.map = null;
+            } else {
+                this.textures.map = load_env_texture(this.environment_map, this, scene, is_visible);
+                if (this.textures.map == null) {
+                    this.state.environment_map = this.environment_map = null;
+                } else {
+                    this.state.environment_map = this.environment_map;
+                }
+            }
+        }
+        // If we don't have an environment, or it's not the background, update
+        // the gradient based on changes.
+        if (!this.render_environment_map || this.textures.map == null &&
+            (this.top_color !== this.state.top_color ||
+             this.bottom_color !== this.state.bottom_color)) {
+            this.state.top_color = this.top_color;
+            this.state.bottom_color = this.bottom_color;
+            let t = [this.state.top_color.r, this.state.top_color.g, this.state.top_color.b];
+            let b = [this.state.bottom_color.r, this.state.bottom_color.g, this.state.bottom_color.b];
+            this.textures.gradient = env_texture(t, b);
+        }
+        // Both background and environment are white if the background isn't
+        // visible.
+        // A visible background is either the environment map or the gradient:
+        //  To be the map, the map must be defined, and state.render_map is true.
+        //  Otherwise gradient.
+        scene.background = this.state.visible ?
+                              (this.state.render_map && this.textures.map != null ?
+                                   this.textures.map : this.textures.gradient) :
+                              this.textures.white;
+        // The environment follows a similar logic, but it doesn't depend on
+        // state.render_map.
+        scene.environment = this.state.visible ?
+                                (this.textures.map != null ?
+                                    this.textures.map : this.textures.gradient) :
+                                this.textures.white;
+    }
+}
 
 class SceneNode {
     constructor(object, folder, on_update) {
@@ -377,6 +461,27 @@ class SceneNode {
             });
             this.controllers.push(controller);
         }
+        if (this.object.isEnvironment) {
+            let intensity_controller = this.folder.add(this.object, "intensity").min(0).step(0.1).max(100);
+            intensity_controller.onChange(() => this.on_update());
+            this.controllers.push(intensity_controller);
+        }
+        if (this.object.isBackground) {
+            // Changing the background gradient is cheap, so we'll change the
+            // color in the onChange() callback (instead of the onChangeFinished)
+            // callback -- it makes a more interactive experience.
+            let top_controller = this.folder.addColor(this.object, "top_color");
+            top_controller.onChange(() => this.on_update());
+            this.controllers.push(top_controller);
+
+            let bottom_controller = this.folder.addColor(this.object, "bottom_color");
+            bottom_controller.onChange(() => this.on_update());
+            this.controllers.push(bottom_controller);
+
+            let map_controller = this.folder.add(this.object, "render_environment_map");
+            map_controller.onChange(() => this.on_update());
+            this.controllers.push(map_controller);
+        }
     }
 
     set_property(property, value) {
@@ -404,11 +509,16 @@ class SceneNode {
                     setNodeColor(child, value);
                 }
             }
-            setNodeColor(this.object, value)
+            setNodeColor(this.object, value);
         } else if (property == "top_color" || property == "bottom_color") {
-            this.object[property] = value.map((x) => x * 255);
+            // Top/bottom colors are stored as dat.color.Color
+            this.object[property] = new dat.color.Color(value.map((x) => x * 255));
         } else {
             this.object[property] = value;
+        }
+        if (this.object.isBackground) {
+            // If we've set values on the Background, we need to fire it on_update()).
+            this.on_update();
         }
         this.vis_controller.updateDisplay();
         this.controllers.forEach(c => c.updateDisplay());
@@ -726,6 +836,7 @@ class Animator {
 // empirically, it is obvious. Reduce the width by even one pixel
 // and any metallic surface reflects a black void.
 function env_texture(top_color, bottom_color) {
+    if (top_color == null || bottom_color == null) return null;
     let width = 64;
     let height = 2;
     let size = width * height;
@@ -753,6 +864,24 @@ function env_texture(top_color, bottom_color) {
     // Although both encoding and LinearEncoding are deprecated, THREE.js gets
     // *really* cranky if you don't include it.
     texture.encoding = THREE.LinearEncoding;
+    return texture;
+}
+
+function load_env_texture(path, background, scene, is_visible) {
+    // let has_error = false;
+    let texture = new THREE.TextureLoader().load( path, undefined, undefined, () => {
+        // onError; if, ultimately, there is a problem in loading this map, we
+        // need to revert the environment map to being undefined.
+        console.error(
+            "Failure to load the requested environment map; reverting to none.",
+            background.environment_map);
+        background.environment_map = null;
+        background.update(scene, is_visible);
+     });
+    if (texture != null) {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+    }
     return texture;
 }
 
@@ -800,20 +929,11 @@ class Viewer {
       }
     }
 
-    hide_background() {
-        this.scene.background = null;
-        this.scene.environment = env_texture([255, 255, 255], [255, 255, 255]);
-        this.set_dirty();
-    }
-
-    show_background() {
-        var top_color = this.scene_tree.find(["Background"]).object.top_color;
-        var bottom_color =
-            this.scene_tree.find(["Background"]).object.bottom_color;
-        // TODO(SeanCurtis-TRI): Rather than generating this texture every time, create it
-        // and save it.
-        this.scene.background = env_texture(top_color, bottom_color);
-        this.scene.environment = this.scene.background;
+    update_background() {
+        let bg_parent = this.scene_tree.find(["Background"]);
+        let bg = this.scene_tree.find(["Background", "<object>"]);
+        let is_visible = bg_parent.object.visible && bg.object.visible;
+        bg.object.update(this.scene, is_visible);
         this.set_dirty();
     }
 
@@ -895,6 +1015,16 @@ class Viewer {
         this.set_object(["Axes"], axes);
     }
 
+    strip_visibility_control(node) {
+        for (let c of node.controllers) {
+            node.folder.remove(c);
+        }
+        node.controllers = [];
+        if (node.vis_controller !== undefined) {
+            node.folder.domElement.removeChild(node.vis_controller.domElement);
+        }
+    }
+
     create_scene_tree() {
         if (this.gui) {
             this.gui.destroy();
@@ -915,18 +1045,17 @@ class Viewer {
         save_folder.add(this, 'save_image');
         this.animator = new Animator(this);
         this.gui.close();
-
-        this.set_property(["Background"],
-            "top_color", [135/255, 206/255, 250/255]); // lightskyblue
-        this.set_property(["Background"],
-            "bottom_color", [25/255, 25/255, 112/255]); // midnightblue
+        
+        this.set_object(["Background"], new Background());
+        // Set the callbacks on "/Background" and "/Background/<object>" so that
+        // toggling either path's visibility will affect the rendering.
         this.scene_tree.find(["Background"]).on_update = () => {
-            if (this.scene_tree.find(["Background"]).object.visible)
-                this.show_background();
-            else
-                this.hide_background();
+            this.update_background();
         };
-        this.show_background();
+        this.scene_tree.find(["Background", "<object>"]).on_update = () => {
+            this.update_background();
+        }
+        this.update_background();
     }
 
     set_3d_pane_size(w, h) {
@@ -1083,11 +1212,13 @@ class Viewer {
     }
 
     set_property(path, property, value) {
-        this.scene_tree.find(path).set_property(property, value);
-        if (path[0] === "Background") {
-            // The background is not an Object3d, so needs a little help.
-            this.scene_tree.find(path).on_update();
+        if (path.length === 1 && path[0] === "Background") {
+            console.warn('To set Background properties, use the path "/Background/<object>" instead of just "/Background".');
+            // We need to forward setting properties on Background to
+            // Background/<object>.
+            path = [path[0], "<object>"];
         }
+        this.scene_tree.find(path).set_property(property, value);
         // if (path[0] === "Cameras") {
         //     this.camera.updateProjectionMatrix();
         // }
