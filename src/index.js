@@ -943,16 +943,11 @@ class Viewer {
 
     hide_background() {
         this.set_property(["Background"], "visible", false);
-        // Setting "Background" visible via property does *not* fire off its
-        // onUpdate() to update the background; we'll have to do it explicitly.
-        this.update_background();
     }
 
     show_background() {
         this.set_property(["Background"], "visible", true);
         this.set_property(["Background", "<object>"], "visible", true);
-        // Setting visible on Background/<object> does fire off onUpdate(), so
-        // no further actions is required.
     }
 
     set_dirty() {
@@ -1057,7 +1052,12 @@ class Viewer {
         this.set_object(["Background"], new Background());
         // Set the callbacks on "/Background" and "/Background/<object>" so that
         // toggling either path's visibility will affect the rendering.
-        this.scene_tree.find(["Background"]).on_update = () => {
+        let bg_folder = this.scene_tree.find(["Background"]);
+        // In SceneNode::set_property, we detect if a property of the background
+        // has been set and call the callback. This makes changing the
+        // visibility of the folder behave like the visibility of its <object>.
+        bg_folder.object.isBackground = true;
+        bg_folder.on_update = () => {
             this.update_background();
         };
         this.scene_tree.find(["Background", "<object>"]).on_update = () => {
