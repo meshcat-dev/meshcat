@@ -250,7 +250,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
           const textWidth = ctx.measureText(json.text).width;
 
           const doubleBorderSize = borderSize * 2;
-          const width = json.base_width + doubleBorderSize;
+          const width = Math.min(textWidth, json.base_width) + doubleBorderSize;
           const height = json.size + doubleBorderSize;
           ctx.canvas.width = width;
           ctx.canvas.height = height;
@@ -264,11 +264,9 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
           ctx.fillRect(0, 0, width, height);
 
           // scale to fit but don't stretch
-          const scaleFactor = Math.min(1, json.base_width / textWidth);
           ctx.translate(width / 2, height / 2);
-          ctx.scale(scaleFactor, 1);
           ctx.fillStyle = json.text_color || 'white';
-          ctx.fillText(json.text, 0, 0);
+          ctx.fillText(json.text, 0, 0, width - doubleBorderSize);
 
           const canvas = ctx.canvas;
           const texture = new THREE.CanvasTexture(canvas);
