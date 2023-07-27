@@ -243,6 +243,7 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
         } else if (json.type == "_billboard") {
           // Based on https://threejs.org/manual/#en/billboards
           const borderSize = 2;
+          const offsetFrom0 = 20;  // How much to move from annotated point
           const ctx = document.createElement('canvas').getContext('2d');
           const font =  `${json.size}px bold sans-serif`;
           ctx.font = font;
@@ -252,8 +253,8 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
           const doubleBorderSize = borderSize * 2;
           const width = Math.min(textWidth, json.base_width) + doubleBorderSize;
           const height = json.size + doubleBorderSize;
-          ctx.canvas.width = width;
-          ctx.canvas.height = height;
+          ctx.canvas.width = width + offsetFrom0;  // Space for line
+          ctx.canvas.height = height + offsetFrom0;
 
           // need to set font again after resizing canvas
           ctx.font = font;
@@ -261,10 +262,18 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
           ctx.textAlign = 'center';
 
           ctx.fillStyle = json.background_color || 'blue';
-          ctx.fillRect(0, 0, width, height);
+          ctx.fillRect(offsetFrom0, 0, width, height);
+
+          // Draw line to center
+          ctx.beginPath(); // Start a new path
+          ctx.moveTo(0, height + offsetFrom0); // Location to annotate
+          ctx.lineTo(offsetFrom0, height); // Line under text
+          ctx.lineTo(width + offsetFrom0, height);
+          ctx.lineWidth = 2;
+          ctx.stroke(); // Render the path
 
           // scale to fit but don't stretch
-          ctx.translate(width / 2, height / 2);
+          ctx.translate(width / 2 + offsetFrom0, height / 2);
           ctx.fillStyle = json.text_color || 'white';
           ctx.fillText(json.text, 0, 0, width - doubleBorderSize);
 
@@ -282,8 +291,9 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
           const label = new THREE.Sprite(labelMaterial)
           label.uuid = json.uuid;
           const labelBaseScale = json.global_scale || 1.;
-          label.scale.x = canvas.width  * labelBaseScale;
+          label.scale.x = canvas.width * labelBaseScale;
           label.scale.y = canvas.height * labelBaseScale;
+          label.center.set(0., 0.);  // Such that sprite lower left at indicated position
           return label;
         }else {
             return super.parseObject(json, geometries, materials);
