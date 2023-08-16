@@ -301,9 +301,15 @@ class Background extends THREE.Object3D {
         // The textures associated with the background: either the map, the
         // gradient, or a white texture (for when the background isn't visible).
         this.textures = {
-            "map": null,  // no default environment.
-            "gradient": env_texture(this.top_color, this.bottom_color),
-            "white": env_texture([255, 255, 255], [255, 255, 255])
+            "env_map": null,  // no default environment.
+            "flat": {
+                "gradient": env_texture(this.top_color, this.bottom_color, true),
+                "white": env_texture([255, 255, 255], [255, 255, 255], true)
+            },
+            "round": {
+                "gradient": env_texture(this.top_color, this.bottom_color, false),
+                "white": env_texture([255, 255, 255], [255, 255, 255], false)
+            }
         };
         // The state values that contributed to the current values of
         // scene.background and scene.environment. When the controllable
@@ -321,7 +327,11 @@ class Background extends THREE.Object3D {
     // Updates the background's state in the scene based on its requested
     // properties, its internal state, and the indication of whether the
     // background is visible or not.
-    update(scene, is_visible) {
+    //
+    // Changes to underlying maps (e.g., gradient or environment map) happen
+    // regardless of the type of camera. However, the textures applied to
+    // scene.background depend on whether the camera is perspective or not.
+    update(scene, is_visible, is_perspective) {
         // TODO(SeanCurtis-TRI): If the background simply isn't visible, defer
         // the work until it is visible, perhaps?
         this.state.visible = is_visible;
@@ -330,42 +340,65 @@ class Background extends THREE.Object3D {
         if (this.environment_map !== this.state.environment_map) {
             if (this.environment_map == "" || this.environment_map == null) {
                 this.environment_map = this.state.environment_map = null;
-                this.textures.map = null;
+                this.textures.env_map = null;
             } else {
-                this.textures.map = load_env_texture(this.environment_map, this, scene, is_visible);
-                if (this.textures.map == null) {
+                this.textures.env_map =
+                    load_env_texture(this.environment_map, this, scene,
+                                     is_visible, is_perspective);
+                if (this.textures.env_map == null) {
                     this.state.environment_map = this.environment_map = null;
                 } else {
                     this.state.environment_map = this.environment_map;
                 }
             }
         }
-        // If we don't have an environment, or it's not the background, update
-        // the gradient based on changes.
-        if (!this.render_environment_map || this.textures.map == null &&
+        // Possibly update the gradient textures if requested top/bottom colors
+        // are different from the current state. But only if we're *using*
+        // the gradient. Note: "using" is not the same as obviously drawing it
+        // as a background. We use the gradient in the following circumstances:
+        //
+        //    - The background is visible and
+        //         - there is no environment map (using gradient as environment) or
+        //         - the state has been requested to not draw the env map as
+        //           background, or
+        //         - the camera is orthographic (can't use env_map as background).
+        let using_gradient = !is_perspective ||
+                             !this.render_environment_map ||
+                             this.textures.env_map == null;
+        if (is_visible && using_gradient &&
             (this.top_color !== this.state.top_color ||
              this.bottom_color !== this.state.bottom_color)) {
             this.state.top_color = this.top_color;
             this.state.bottom_color = this.bottom_color;
-            let t = [this.state.top_color.r, this.state.top_color.g, this.state.top_color.b];
-            let b = [this.state.bottom_color.r, this.state.bottom_color.g, this.state.bottom_color.b];
-            this.textures.gradient = env_texture(t, b);
+            let t = [this.state.top_color.r, this.state.top_color.g,
+                     this.state.top_color.b];
+            let b = [this.state.bottom_color.r, this.state.bottom_color.g,
+                     this.state.bottom_color.b];
+            this.textures.flat.gradient = env_texture(t, b, false);
+            this.textures.round.gradient = env_texture(t, b, true);
         }
         // Both background and environment are white if the background isn't
         // visible.
+
         // A visible background is either the environment map or the gradient:
-        //  To be the map, the map must be defined, and state.render_map is true.
-        //  Otherwise gradient.
-        scene.background = this.state.visible ?
-                              (this.state.render_map && this.textures.map != null ?
-                                   this.textures.map : this.textures.gradient) :
-                              this.textures.white;
-        // The environment follows a similar logic, but it doesn't depend on
-        // state.render_map.
-        scene.environment = this.state.visible ?
-                                (this.textures.map != null ?
-                                    this.textures.map : this.textures.gradient) :
-                                this.textures.white;
+        // To be the map, the map must be defined, state.render_map is true,
+        // and the camera is perspective. Otherwise gradient.
+        let cam_key = is_perspective ? "round" : "flat";
+        scene.background =
+            this.state.visible ?
+                (this.state.render_map && this.textures.env_map != null && is_perspective ?
+                    this.textures.env_map : this.textures[cam_key].gradient) :
+                    this.textures[cam_key].white;
+        // The environment logic is simpler. It only depends on the background
+        // being visible and an environment map being defined. We'll always
+        // use an available environment map for illumination, regardless of
+        // camera projection type.
+        scene.environment =
+            this.state.visible ?
+                (this.textures.env_map != null ?
+                    this.textures.env_map :
+                    this.textures.round.gradient) :
+                this.textures.round.white;
     }
 }
 
@@ -835,7 +868,7 @@ class Animator {
 // find supporting documentation for this requirement, but
 // empirically, it is obvious. Reduce the width by even one pixel
 // and any metallic surface reflects a black void.
-function env_texture(top_color, bottom_color) {
+function env_texture(top_color, bottom_color, is_perspective) {
     if (top_color == null || bottom_color == null) return null;
     let width = 64;
     let height = 2;
@@ -859,11 +892,27 @@ function env_texture(top_color, bottom_color) {
     // that can make the *actual* colors in the background different from the
     // specified colors. Typically, saturation is lower. This may be due to
     // hdr vs ldr images. This needs investigation.
+
+    // When we are using an orthographic camera, we can't use environment
+    // mapping. It must be UVMapping so it covers the screen.
+    let mapping = is_perspective ? THREE.EquirectangularReflectionMapping :
+                                   THREE.UVMapping;
     let texture = new THREE.DataTexture(data, width, height, THREE.RGBAFormat,
-                                        THREE.UnsignedByteType, THREE.EquirectangularReflectionMapping,
+                                        THREE.UnsignedByteType, mapping,
                                         THREE.RepeatWrapping, THREE.ClampToEdgeWrapping,
                                         THREE.LinearFilter, THREE.LinearFilter, 1,
                                         THREE.LinearSRGBColorSpace);
+    if (!is_perspective) {
+        // By default, the points in our texture map to the center of
+        // the pixels, which means that the gradient only occupies
+        // the middle half of the screen. To get around that, we just have
+        // to tweak the UV transform matrix
+        texture.matrixAutoUpdate = false;
+        texture.matrix.set(0.5, 0, 0.25,
+            0, 0.5, 0.25,
+            0, 0, 1);
+        texture.needsUpdate = true
+    }
     texture.needsUpdate = true;
     // Although both encoding and LinearEncoding are deprecated, THREE.js gets
     // *really* cranky if you don't include it.
@@ -871,7 +920,7 @@ function env_texture(top_color, bottom_color) {
     return texture;
 }
 
-function load_env_texture(path, background, scene, is_visible) {
+function load_env_texture(path, background, scene, is_visible, is_perspective) {
     // let has_error = false;
     let texture = new THREE.TextureLoader().load( path, undefined, undefined, () => {
         // onError; if, ultimately, there is a problem in loading this map, we
@@ -880,7 +929,7 @@ function load_env_texture(path, background, scene, is_visible) {
             "Failure to load the requested environment map; reverting to none.",
             background.environment_map);
         background.environment_map = null;
-        background.update(scene, is_visible);
+        background.update(scene, is_visible, is_perspective);
      });
     if (texture != null) {
         texture.colorSpace = THREE.SRGBColorSpace;
@@ -914,6 +963,8 @@ class Viewer {
         this.create_camera();
         this.num_messages_received = 0;
 
+        this.is_perspective = true;
+
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
@@ -937,7 +988,7 @@ class Viewer {
         let bg_parent = this.scene_tree.find(["Background"]);
         let bg = this.scene_tree.find(["Background", "<object>"]);
         let is_visible = bg_parent.object.visible && bg.object.visible;
-        bg.object.update(this.scene, is_visible);
+        bg.object.update(this.scene, is_visible, this.is_perspective);
         this.set_dirty();
     }
 
@@ -1125,6 +1176,8 @@ class Viewer {
         this.controls.addEventListener('change', () => {
             this.set_dirty()
         });
+        this.is_perspective = this.camera.isPerspectiveCamera === true;
+        this.update_background()
     }
 
     set_camera_target(value) {
