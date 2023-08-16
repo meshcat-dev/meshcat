@@ -1033,7 +1033,8 @@ class Viewer {
             this.gui.destroy();
         }
         this.gui = new dat.GUI({
-            autoPlace: false
+            autoPlace: false,
+            resizable: true
         });
         this.dom_element.parentElement.appendChild(this.gui.domElement);
         this.gui.domElement.style.position = "absolute";
