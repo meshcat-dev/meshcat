@@ -45,44 +45,68 @@
 
             var message_dom = document.getElementById("test-message");
 
+            var background_visible = true;
             var has_environment_map = false;
             var is_orthographic = false;
 
             let update_message = () => {
-                if (is_orthographic) {
-                    message_dom.innerText =
-                        "Orthographic cameras display only render background \
-                        gradients (if Background is visible) or white if \
-                        invisible. The gradient is always mapped to the \
-                        screen; the top color rendered at the top of the \
-                        screen, the bottom color at the bottom of the screen, \
-                        regardless of orientation.";
-                    if (has_environment_map) {
-                        message_dom.innerText +=
-                            "\n\nOrthographic cameras will never display \
-                            environment maps. The environment map will still \
-                            contribute to the illumination of objects with PBR \
-                            materials.";
+                if (background_visible) {
+                    if (is_orthographic) {
+                        message_dom.innerText =
+                            "Orthographic cameras display only render \
+                            background gradients (if Background is visible) or \
+                            white if invisible. The gradient is always mapped \
+                            to the screen; the top color rendered at the top \
+                            of the screen, the bottom color at the bottom of \
+                            the screen, regardless of orientation.";
+                        if (has_environment_map) {
+                            message_dom.innerText +=
+                                "\n\nOrthographic cameras will never display \
+                                environment maps. The environment map will \
+                                still contribute to the illumination of \
+                                objects with PBR materials.";
+                        }
+                    } else {
+                        if (has_environment_map) {
+                            message_dom.innerText =
+                                "Perspective cameras will display the \
+                                environment map so long as \
+                                \Background\<object>'s render_environment_map \
+                                is true. The map is rendered as a surrounding \
+                                environment map. The map will contribute to \
+                                the illumination of objects with PBR materials."
+                        } else {
+                            message_dom.innerText =
+                                "Perspective cameras will display the visible \
+                                background gradient (if it is visible) as a \
+                                surrounding environment map. The gradient \
+                                will contribute to the illumination of objects \
+                                with PBR materials."
+                        }
                     }
                 } else {
-                    if (has_environment_map) {
-                        message_dom.innerText =
-                            "Perspective cameras will display the environment \
-                            map so long as \Background\<object>'s \
-                            render_environment_map is true. The map is \
-                            rendered as a surrounding environment map. The map \
-                            will contribute to the illumination of objects \
-                            with PBR materials."
-                    } else {
-                        message_dom.innerText =
-                            "Perspective cameras will display the visible \
-                            background gradient (if it is visible) as a \
-                            surrounding environment map. The gradient will \
-                            contribute to the illumination of objects with  \
-                            PBR materials."
-                    }
+                    console.info("Should be setting to invisible bg");
+                    message_dom.innerText =
+                        "When the background isn't visible, a white screen is \
+                        rendered as background and in the environment map, \
+                        regardless of camera projection type or definition of \
+                        an environment map. The white field still serves as \
+                        environment map, so the box should be brightly lit."
                 }
             }
+
+            // We're going to hijack the Background.update() method so we can
+            // detect when the visibility of the background is toggled and
+            // amend the message text accordingly.
+            bg = viewer.scene_tree.find(["Background", "<object>"]).object;
+            var bg_update = bg.update;
+            bg.update = (scene, is_visible, is_perspective) => {
+                if (background_visible !== is_visible) {
+                    background_visible = is_visible;
+                    update_message();
+                }
+                bg_update.call(bg, scene, is_visible, is_perspective);
+            };
 
             // Allow the user to play with orthographic cameras and environment
             // maps dynamically.

@@ -302,11 +302,11 @@ class Background extends THREE.Object3D {
         // gradient, or a white texture (for when the background isn't visible).
         this.textures = {
             "env_map": null,  // no default environment.
-            "flat": {
+            "round": {
                 "gradient": env_texture(this.top_color, this.bottom_color, true),
                 "white": env_texture([255, 255, 255], [255, 255, 255], true)
             },
-            "round": {
+            "flat": {
                 "gradient": env_texture(this.top_color, this.bottom_color, false),
                 "white": env_texture([255, 255, 255], [255, 255, 255], false)
             }
@@ -387,8 +387,9 @@ class Background extends THREE.Object3D {
         scene.background =
             this.state.visible ?
                 (this.state.render_map && this.textures.env_map != null && is_perspective ?
-                    this.textures.env_map : this.textures[cam_key].gradient) :
-                    this.textures[cam_key].white;
+                    this.textures.env_map :
+                    this.textures[cam_key].gradient) :
+                this.textures[cam_key].white;
         // The environment logic is simpler. It only depends on the background
         // being visible and an environment map being defined. We'll always
         // use an available environment map for illumination, regardless of
