@@ -290,6 +290,47 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
     </dd>
 </dl>
 
+### Setting opacity
+
+Objects can have their opacity changed in the obvious way, i.e.:
+
+<pre>
+{
+    type: "set_property",
+    path: "/path/to/my/geometry",
+    property: "opacity",
+    value: 0.5
+}
+</pre>
+
+This would assign the opacity value 0.5 to *all* of the materials found rooted
+at `"/path/to/my/geometry"`. (That means using the path `"/path"` could affect
+many geometries). However, this will irretrievably overwrite whatever opacity
+the geometry had inherently (i.e., from the material defined in the mesh file).
+
+Meshcat offers a pseudo property "modulated_opacity". By setting this value,
+meshcat remembers an objects inherent opacity and sets the rendered opacity to
+be the product of the inherent and modulated opacity value. The corresponding
+command would be:
+
+<pre>
+{
+    type: "set_property",
+    path: "/path/to/my/geometry",
+    property: "modulated_opacity",
+    value: 0.5
+}
+</pre>
+
+Setting `"modulated_opacity"` to 1 will restored the geometry's original
+opacity. This does *not* introduce a queryable `modulated_opacity` property to
+any material. This is what makes it a "pseudo" property. The same tree-based
+approach applies to `"modulated_opacity"` (and also the `"color"` property).
+
+Meshcat *always* remembers the inherent opacity value. So, if you've overwritten
+the value (via setting `"opacity"` or `"color"`), you can restore it by setting
+the `"modulated_opacity"` value to 1.0.
+
 ### Useful Paths
 
 The default MeshCat scene comes with a few objects at pre-set paths. You can replace, delete, or transform these objects just like anything else in the scene.
