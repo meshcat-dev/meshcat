@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset=utf-8>
+    <title>MeshCat - setting opacity</title>
+</head>
+
+<body>
+    <div id="test-message">
+        There are four tetrahedra and one box.
+        <ul>
+            <li>Blue, opaque, single-sided (move the camera inside, you will not
+                see blue faces).</li>
+            <li>Green, opaque, double-sided (move the camera inside, and you
+                will still see its green faces).</li>
+            <li>Red, transparent, double-sided (you can see back faces through
+                the front faces).</li>
+            <li>Yellow, transparent, single-sided (no faces are visible through
+                the transparent front faces).</li>
+            <li>Purple, opaque, single-sided box (you can look through the walls
+                from the outside).
+            </li>
+          </ul>
+
+          There are two sliders: "Modulated opacity" and "opacity". Changing
+          their values will change the opacity of the meshes.
+          <ul>
+            <li>Modulated opacity: the final opacity of each tet is the product
+                of the slider value and the original transparency.</li>
+            <li>Opacity: the final opacity is this slider's value, regardless
+                of the original transparency.</li>
+          </ul>
+          Either slider can be manipulated at any time. The last slider
+          modified determines the opacity rule currently exhibited.
+          <br><br>
+          <em>Note: when transparent objects lie within transparent objects,
+            there are view-dependent artifacts (visibility and color changes).
+          </em>
+          <br><br>
+          <div id="status-message">
+            Opacity shown: glTF transparency.
+          </div>
+        </div>
+        <div id="meshcat-pane">
+        </div>
+
+        <script src="main.min.js"></script>
+        <script>
+            var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+
+            let gltf_pyramids = `{"asset":{"generator":"Khronos glTF Blender I/O v3.6.27","version":"2.0"},"scene":0,"scenes":[{"name":"Scene","nodes":[0,1,2,3]}],"nodes":[{"mesh":0,"name":"OpaqueDoubleTet","translation":[0,0,0]},{"mesh":1,"name":"TransparentDoubleTet","translation":[2,0,0]},{"mesh":2,"name":"OpaqueSingleTet","translation":[-2,0,0]},{"mesh":3,"name":"TransparentSingleTet","translation":[0,2,0]}],"materials":[{"doubleSided":true,"name":"OpaqueDoubleMMat","pbrMetallicRoughness":{"baseColorFactor":[0,1,0,1]}},{"alphaMode":"BLEND","doubleSided":true,"name":"TransparentDoubleMat","pbrMetallicRoughness":{"baseColorFactor":[1,0,0,0.5]}},{"doubleSided":false,"name":"OpaqueSingleMat","pbrMetallicRoughness":{"baseColorFactor":[0,0,1,1]}},{"alphaMode":"BLEND","doubleSided":false,"name":"TransparentSingleMat","pbrMetallicRoughness":{"baseColorFactor":[1,1,0,0.5]}}],"meshes":[{"name":"OpaqueDoubleMesh","primitives":[{"attributes":{"POSITION":0,"NORMAL":1},"indices":2,"material":0}]},{"name":"TransparentDoubleMesh","primitives":[{"attributes":{"POSITION":0,"NORMAL":1},"indices":2,"material":1}]},{"name":"OpaqueSingleMesh","primitives":[{"attributes":{"POSITION":0,"NORMAL":1},"indices":2,"material":2}]},{"name":"TransparentSingleMesh","primitives":[{"attributes":{"POSITION":0,"NORMAL":1},"indices":2,"material":3}]}],"accessors":[{"bufferView":0,"componentType":5126,"count":12,"max":[1.1620713472366333,1,1.11544668674469],"min":[-0.6132463216781616,-1,-1.11544668674469],"type":"VEC3"},{"bufferView":1,"componentType":5126,"count":12,"type":"VEC3"},{"bufferView":2,"componentType":5123,"count":12,"type":"SCALAR"}],"bufferViews":[{"buffer":0,"byteLength":144,"byteOffset":0,"target":34962},{"buffer":0,"byteLength":144,"byteOffset":144,"target":34962},{"buffer":0,"byteLength":24,"byteOffset":288,"target":34963}],"buffers":[{"byteLength":312,"uri":"data:application/octet-stream;base64,AAAAAAAAgD8AAACAAAAAAAAAgD8AAACAAAAAAAAAgD8AAACAwb6UPwAAgL8AAACAwb6UPwAAgL8AAACAwb6UPwAAgL8AAACAtv0cvwAAgL/1xo6/tv0cvwAAgL/1xo6/tv0cvwAAgL/1xo6/tv0cvwAAgL/1xo4/tv0cvwAAgL/1xo4/tv0cvwAAgL/1xo4/CsB0v4Mclj4AAACAAcdlPbFq9j7W8F+/AcdlPbFq9j7W8F8/AAAAAAAAgL8AAACAo+ODPcASAT+/dly/o+ODPcASAT+/dlw/CsB0v4Mclj4AAACAAAAAAAAAgL8AAACApUhqPXob+D6QdF+/CsB0v4Mclj4AAACAAAAAAAAAgL8AAACApUhqPXob+D6QdF8/BQACAAsACQAAAAYABwADAAoACAABAAQA"}]}`;
+            let gltf_room = '{"asset":{"generator":"Khronos glTF Blender I/O v3.6.27","version":"2.0"},"scene":0,"scenes":[{"name":"Scene","nodes":[0]}],"nodes":[{"mesh":0,"name":"Room"}],"materials":[{"doubleSided":false,"name":"RoomMat","pbrMetallicRoughness":{"baseColorFactor":[0.7,0.1,0.7,1]}}],"meshes":[{"name":"RoomMesh","primitives":[{"attributes":{"POSITION":0,"NORMAL":1},"indices":2,"material":0}]}],"accessors":[{"bufferView":0,"componentType":5126,"count":24,"max":[3.4859066009521484,3.4859066009521484,3.4859066009521484],"min":[-3.4859066009521484,-3.4859066009521484,-3.4859066009521484],"type":"VEC3"},{"bufferView":1,"componentType":5126,"count":24,"type":"VEC3"},{"bufferView":2,"componentType":5123,"count":36,"type":"SCALAR"}],"bufferViews":[{"buffer":0,"byteLength":288,"byteOffset":0,"target":34962},{"buffer":0,"byteLength":288,"byteOffset":288,"target":34962},{"buffer":0,"byteLength":72,"byteOffset":576,"target":34963}],"buffers":[{"byteLength":648,"uri":"data:application/octet-stream;base64,GBlfwBgZX8AYGV9AGBlfwBgZX8AYGV9AGBlfwBgZX8AYGV9AGBlfwBgZX0AYGV9AGBlfwBgZX0AYGV9AGBlfwBgZX0AYGV9AGBlfwBgZX8AYGV/AGBlfwBgZX8AYGV/AGBlfwBgZX8AYGV/AGBlfwBgZX0AYGV/AGBlfwBgZX0AYGV/AGBlfwBgZX0AYGV/AGBlfQBgZX8AYGV9AGBlfQBgZX8AYGV9AGBlfQBgZX8AYGV9AGBlfQBgZX0AYGV9AGBlfQBgZX0AYGV9AGBlfQBgZX0AYGV9AGBlfQBgZX8AYGV/AGBlfQBgZX8AYGV/AGBlfQBgZX8AYGV/AGBlfQBgZX0AYGV/AGBlfQBgZX0AYGV/AGBlfQBgZX0AYGV/AAAAAAAAAAAAAAIC/AAAAAAAAgD8AAACAAACAPwAAAAAAAACAAAAAAAAAgL8AAACAAAAAAAAAAAAAAIC/AACAPwAAAAAAAACAAAAAAAAAAAAAAIA/AAAAAAAAgD8AAACAAACAPwAAAAAAAACAAAAAAAAAgL8AAACAAAAAAAAAAAAAAIA/AACAPwAAAAAAAACAAACAvwAAAAAAAACAAAAAAAAAAAAAAIC/AAAAAAAAgD8AAACAAACAvwAAAAAAAACAAAAAAAAAgL8AAACAAAAAAAAAAAAAAIC/AACAvwAAAAAAAACAAAAAAAAAAAAAAIA/AAAAAAAAgD8AAACAAACAvwAAAAAAAACAAAAAAAAAgL8AAACAAAAAAAAAAAAAAIA/AgAIAAsAAgALAAUABgATABcABgAXAAoAEgAMAA8AEgAPABUADQAAAAQADQAEABEABwABAA4ABwAOABQAFgAQAAMAFgADAAkA"}]}';
+
+            viewer.handle_command({
+                type: "set_object",
+                path: "/meshcat/pyramids",
+                object: {
+                    metadata: {version: 4.5, type: "Object"},
+                    geometries: [],
+                    materials: [],
+                    object: {
+                        uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+                        type: "_meshfile_object",
+                        format: "gltf",
+                        data: gltf_pyramids
+                    }
+                }
+            });
+            viewer.handle_command({
+                type: "set_object",
+                path: "/meshcat/room",
+                object: {
+                    metadata: {version: 4.5, type: "Object"},
+                    geometries: [],
+                    materials: [],
+                    object: {
+                        uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+                        type: "_meshfile_object",
+                        format: "gltf",
+                        data: gltf_room
+                    }
+                }
+            });
+            // Why do these require a y-up to z-up rotation?
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/meshcat/pyramids",
+                matrix: [1, 0, 0, 0,
+                        0, 0, 1, 0,
+                        0, -1, 0, 0,
+                        0, 0, 0, 1]
+            });
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/meshcat/room",
+                matrix: [1, 0, 0, 0,
+                        0, 0, 1, 0,
+                        0, -1, 0, 0,
+                        0, 0, 0, 1]
+            });
+            var status_dom = document.getElementById("status-message");
+            let modulate_opacity = (value) => {
+                status_dom.innerText =
+                    "Opacity shown: modulated opacity - " + value;
+                viewer.set_property(["meshcat","pyramids"], "modulated_opacity",
+                                    value);
+                viewer.set_property(["meshcat","room"], "modulated_opacity",
+                                    value);
+                viewer.set_dirty();
+            };
+            let set_opacity = (value) => {
+                status_dom.innerText =
+                    "Opacity shown: absolute opacity - " + value;
+                viewer.set_property(["meshcat","pyramids"], "opacity", value);
+                viewer.set_property(["meshcat","room"], "opacity", value);
+                viewer.set_dirty();
+            };
+            viewer.set_control(
+                "Modulated opacity", modulate_opacity, 1.0, 0.02, 1.0, 0.02);
+            viewer.set_control(
+                "Absolute opacity", set_opacity, 1.0, 0.02, 1.0, 0.02);
+
+        </script>
+
+         <style>
+            body {
+                margin: 0;
+            }
+
+            #meshcat-pane {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            #test-message{
+                width: 75vw;
+                text-align: left;
+                background-color: rgb(232, 232, 232);
+                position: fixed;
+                left: 0%;
+                display: block;
+                padding: 10px;
+            }
+
+            #status-message{
+                font-size:large;
+                font-weight:bold;
+            }
+        </style>
+    </body>
+</html>
