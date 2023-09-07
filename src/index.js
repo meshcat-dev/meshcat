@@ -518,6 +518,40 @@ class SceneNode {
         }
     }
 
+    // To *modulate* opacity, we need to store the baseline value. This should
+    // be called before the "opacity" property of a Material is written to.
+    cache_original_opacity(material) {
+        if (material.meshcat_base_opacity === undefined) {
+            material.meshcat_base_opacity = material.opacity;
+        }
+    }
+
+    // Changing opacity involves coordinating multiple properties.
+    set_opacity(material, opacity) {
+        this.cache_original_opacity(material);
+        material.opacity = opacity;
+        material.transparent = opacity < 1;
+        material.depthWrite = true;
+        // Transparency changes may require changes to the compiled shaders.
+        // Setting needsUpdate will trigger that. See
+        // https://github.com/mrdoob/three.js/issues/25307#issuecomment-1398151913
+        material.needsUpdate = true;
+    }
+
+    // Visits all the materials in the graph rooted at node (including if node
+    // is, itself, a material). For each material, applies the mat_operator
+    // to that material.
+    visit_materials(node, mat_operator) {
+        if (node.isMaterial) {
+            mat_operator(node);
+        } else if (node.material) {
+            mat_operator(node.material);
+        }
+        for (let child of node.children) {
+            this.visit_materials(child, mat_operator);
+        }
+    }
+
     set_property(property, value) {
         if (property === "position") {
             this.object.position.set(value[0], value[1], value[2]);
@@ -526,24 +560,27 @@ class SceneNode {
         } else if (property === "scale") {
             this.object.scale.set(value[0], value[1], value[2]);
         } else if (property === "color") {
-            function setNodeColor(node, value) {
-                if (node.material) {
-                    node.material.color.setRGB(value[0], value[1], value[2])
-
-                    let alpha = value[3]
-                    node.material.opacity = alpha 
-                    if(alpha != 1.) {
-                       node.material.transparent = true
-                    } 
-                    else {
-                        node.material.transparent = false
-                    }
-                }
-                for (let child of node.children) {
-                    setNodeColor(child, value);
-                }
-            }
-            setNodeColor(this.object, value);
+            var _this = this;
+            function setNodeColor(mat) {
+                mat.color.setRGB(value[0], value[1], value[2]);
+                _this.set_opacity(mat, value[3]);
+            };
+            this.visit_materials(this.object, setNodeColor);
+        } else if (property == "opacity") {
+            var _this = this;
+            function setNodeOpacity(mat) {
+                _this.set_opacity(mat, value);
+            };
+            this.visit_materials(this.object, setNodeOpacity);
+        } else if (property == "modulated_opacity") {
+            var _this = this;
+            function setModulatedNodeOpacity(mat) {
+                // In case set_opacity() has never been called before, we'll
+                // call cache_original_opacity() to be safe.
+                _this.cache_original_opacity(mat);
+                _this.set_opacity(mat, mat.meshcat_base_opacity * value);
+            };
+            this.visit_materials(this.object, setModulatedNodeOpacity);
         } else if (property == "top_color" || property == "bottom_color") {
             // Top/bottom colors are stored as dat.color.Color
             this.object[property] = new dat.color.Color(value.map((x) => x * 255));
