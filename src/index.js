@@ -8,6 +8,9 @@ import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
+import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory';
 require('ccapture.js');
 
 // We must implement extension types 0x16 and 0x17. The trick to
@@ -1003,10 +1006,12 @@ class Viewer {
 
         this.is_perspective = true;
 
+        this.xr_or_vr_enabled = false;
+
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
-        window.addEventListener('keydown', (evt) => {this.on_keydown(evt);}); 
+        window.addEventListener('keydown', (evt) => {this.on_keydown(evt);});
 
         requestAnimationFrame(() => this.set_3d_pane_size());
         if (animate || animate === undefined) {
@@ -1138,7 +1143,7 @@ class Viewer {
         save_folder.add(this, 'save_image');
         this.animator = new Animator(this);
         this.gui.close();
-        
+
         this.set_object(["Background"], new Background());
         // Set the callbacks on "/Background" and "/Background/<object>" so that
         // toggling either path's visibility will affect the rendering.
@@ -1353,7 +1358,7 @@ class Viewer {
                   // Decrease value by step (within limits), and trigger
                   // callback.
                   value = viewer.gui_controllers[name].getValue();
-                  let new_value = 
+                  let new_value =
                     Math.min(Math.max(value + increment, min), max);
                   viewer.gui_controllers[name].setValue(new_value);
                 }};
@@ -1383,10 +1388,10 @@ class Viewer {
     }
 
     set_control_value(name, value, invoke_callback=true) {
-        if (name in this.gui_controllers && this.gui_controllers[name] 
+        if (name in this.gui_controllers && this.gui_controllers[name]
             instanceof dat.controllers.NumberController) {
             if (invoke_callback) {
-              this.gui_controllers[name].setValue(value);              
+              this.gui_controllers[name].setValue(value);
             } else {
               this.gui_controllers[name].object[name] = value;
               this.gui_controllers[name].updateDisplay();
@@ -1448,7 +1453,12 @@ class Viewer {
             }));
         } else if (cmd.type == "save_image") {
             this.save_image()
+        } else if (cmd.type == "enable_webxr") {
+            this.enable_webxr(cmd.use_vr);
+        } else if (cmd.type == "build_vr_controller"){
+            this.build_vr_controllers();
         }
+
         this.set_dirty();
     }
 
@@ -1529,6 +1539,92 @@ class Viewer {
         }, false);
         input.click();
         input.remove();
+    }
+    // Adds controllers to the VR/XR scene.
+    // TODO(WawasCode): Create a VR UI.
+    build_vr_controllers() {
+        const controllerModelFactory = new XRControllerModelFactory();
+
+        const pointing_ray_vectors = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, -1)
+        ]);
+
+        const pointing_ray = new THREE.Line(pointing_ray_vectors);
+        pointing_ray.scale.z = 5;  // Limit the length of the ray.
+
+        const controllers = [];
+        // Loop through all controllers. If there are less than 2 Controllers
+        // it gets handeled by XRControllerModelFactory in the background.
+        for (let i = 0; i < 2; i++) {
+            const controller = this.renderer.xr.getController(i);
+            controller.add(pointing_ray.clone());
+
+            // Create a wrapper group for the controller
+            // and undo the rotation since
+            // the world is rotate by -90° around x.
+            const controllerWrapper = new THREE.Group();
+            controllerWrapper.rotation.x = Math.PI / 2;
+            controllerWrapper.add(controller);
+            this.scene.add(controllerWrapper);
+            controllers.push(controllerWrapper);
+
+            const grip = this.renderer.xr.getControllerGrip(i);
+            // Undo the rotation of the grip.
+            const gripWrapper = new THREE.Group();
+            gripWrapper.rotation.x = Math.PI / 2;
+            gripWrapper.add(grip);
+            this.scene.add(gripWrapper);
+
+            const model = controllerModelFactory.createControllerModel(grip);
+            grip.add(model);
+        }
+
+        return controllers;
+    }
+
+    // Enables webXR and all its functionalities.
+    // If use_vr == true, then we enable the VRButton.
+    // If use_vr == false, then we enable the XRButton.
+    // When in XR/VR mode the meshcat controlls are disabled.
+    enable_webxr(use_vr = false) {
+        if (this.xr_or_vr_enabled) {
+            console.warn("A WebXR/VR has already been enabled.");
+            return;
+        }
+
+        this.xr_or_vr_enabled = true;
+        this.renderer.xr.enabled = true;
+        let xr_button = null;
+        if (use_vr){
+            xr_button = VRButton.createButton(this.renderer);
+        } else{
+            xr_button = XRButton.createButton(this.renderer);
+        }
+
+        document.body.appendChild(xr_button);
+
+        const original_update_projection_matrix = this.camera.updateProjectionMatrix;
+
+        this.renderer.xr.addEventListener('sessionstart', () => {
+            // Starts the VR/XR Session at the current camera position.
+            const base_reference_space = this.renderer.xr.getReferenceSpace();
+            const camera_position = this.camera.position.clone().multiplyScalar(-1);
+            const transform = new XRRigidTransform(camera_position, new THREE.Quaternion());
+            const teleport_space_offset = base_reference_space.getOffsetReferenceSpace(transform);
+            this.renderer.xr.setReferenceSpace(teleport_space_offset);
+
+            this.camera.updateProjectionMatrix = () => {
+                console.warn("Updating the camera projection matrix is disallowed in immersive mode.");
+            };
+            this.renderer.setAnimationLoop(() => {
+                this.renderer.render(this.scene, this.camera);
+            });
+        });
+
+        this.renderer.xr.addEventListener('sessionend', () => {
+            this.camera.updateProjectionMatrix = original_update_projection_matrix;
+        });
     }
 }
 
