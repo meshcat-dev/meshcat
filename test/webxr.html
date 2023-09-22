@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeshCat WebXR</title>
+    <style>
+        #meshcat-viewer {
+            width: 800px;
+            height: 600px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="meshcat-viewer"></div>
+    <script src="../dist/main.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const viewerElement = document.getElementById("meshcat-viewer");
+            const viewer = new MeshCat.Viewer(viewerElement);
+            const renderer = viewer.renderer
+            const scene = viewer.scene;
+            const camera = viewer.camera;
+            // Add a simple test object (e.g., a box) to the viewer.
+            const boxGeometry = new MeshCat.THREE.BoxGeometry(1, 1, 1);
+            const boxMaterial = new MeshCat.THREE.MeshBasicMaterial({ color: 0x00ff00 });
+            const boxMesh = new MeshCat.THREE.Mesh(boxGeometry, boxMaterial);
+            viewer.scene.add(boxMesh);
+            viewer.enable_xr(); // You can also call viewer.enable_vr() to enable VR.
+            viewer.build_vr_controllers();
+        });
+        // To test on a local network with a VR device, use a custom SSL certificate.
+        // WebXR requires HTTPS; otherwise, the VRButton will be unresponsive.
+        // Create a self-signed SSL certificate using the following OpenSSL command:
+        // openssl req -x509 -nodes -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365
+        // Serve using the following command:
+        // serve --ssl-cert <your-path>/cert.pem --ssl-key <your-path>/key.pem -l tcp://0.0.0.0:5000
+        // Alternatively, use a different service like Node.js for hosting.
+        // Execute the serve command outside of the /meshcat/test directory.
+
+    </script>
+</body>
+</html>
