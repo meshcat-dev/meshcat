@@ -8,6 +8,9 @@ import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
+import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory';
 require('ccapture.js');
 
 // We must implement extension types 0x16 and 0x17. The trick to
@@ -1530,6 +1533,68 @@ class Viewer {
         input.click();
         input.remove();
     }
+    // Adds controllers to the VR/XR scene. 
+    // TODO(WawasCode): Create a VR UI.
+    build_vr_controllers() {
+        const controllerModelFactory = new XRControllerModelFactory();
+    
+        const pointing_ray_vectors = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, -1)
+        ]);
+    
+        const pointing_ray = new THREE.Line(pointing_ray_vectors);
+        pointing_ray.scale.z = 5;  // Limit the length of the ray.
+        
+        const controllers = [];
+        // Loop through all controllers.
+        for (let i = 0; i < this.renderer.xr.controllers.length; i++) {
+            const controller = this.renderer.xr.getController(i);
+            controller.add(pointing_ray.clone());
+            controller.userData.selectPressed = false;
+            controller.userData.selectPressedPrev = false;
+
+            // Create a wrapper group for the controller 
+            // and undo the rotation since 
+            // the world is rotate by -90° around x.
+            const controllerWrapper = new THREE.Group();
+            controllerWrapper.rotation.x = Math.PI / 2;
+            controllerWrapper.add(controller);
+            this.scene.add(controllerWrapper);
+            controllers.push(controllerWrapper);
+            
+            const grip = this.renderer.xr.getControllerGrip(i); 
+            // Undo the rotation of the grip.
+            const gripWrapper = new THREE.Group();
+            gripWrapper.rotation.x = Math.PI / 2;
+            gripWrapper.add(grip);
+            this.scene.add(gripWrapper);
+
+            const model = controllerModelFactory.createControllerModel(grip);
+            grip.add(model);
+        }
+    
+        return controllers;
+    } 
+    // Enables the VR Button and all its functionalities.
+    enable_vr() { 
+        this.renderer.xr.enabled = true;
+        document.body.appendChild(VRButton.createButton(this.renderer));
+        this.renderer.setAnimationLoop(() => {
+            this.renderer.render(this.scene, this.camera);
+        });
+        
+    }
+    // Enables the XR Button and all its functionalities.
+    enable_xr() {    
+        this.renderer.xr.enabled = true;
+        document.body.appendChild(XRButton.createButton(this.renderer));
+        this.renderer.setAnimationLoop(() => {
+            this.renderer.render(this.scene, this.camera);
+        });
+        
+    }
+    
 }
 
 function split_path(path_str) {
