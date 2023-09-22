@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeshCat WebXR</title>
+</head>
+<body>
+    <div id="meshcat-viewer"></div>
+    <script src="../dist/main.min.js"></script>
+    <script>
+        function make_cube(size, color, position) {
+            let geo = new MeshCat.THREE.BoxGeometry(size, size, size);
+            let mat = new MeshCat.THREE.MeshLambertMaterial({ color: color});
+            let mesh = new MeshCat.THREE.Mesh(geo, mat);
+            mesh.position.fromArray(position);
+            return mesh;
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            const viewerElement = document.getElementById("meshcat-viewer");
+            const viewer = new MeshCat.Viewer(viewerElement);
+            const renderer = viewer.renderer
+            const scene = viewer.scene;
+            const camera = viewer.camera;
+
+            // Add a trio of boxes so we can see recognize alignment and
+            // consistency as we being/end XR sessions.
+            viewer.scene.add(make_cube(1, 0x00ff00, [0, 0, 0]));
+            viewer.scene.add(make_cube(0.5, 0xff0000, [0.75, 0, 0]));
+            viewer.scene.add(make_cube(0.5, 0x0000ff, [-0.75, 0, 0]));
+
+            // Use the commands to enable WebXR and controllers. This implicitly
+            // tests Viewer's corresponding methods.
+
+            console.info("Invoking 'enable_webxr' with bad mode.");
+            viewer.handle_command({
+                type: "enable_webxr",
+                mode: "bad"
+            });
+
+            console.info("Invoking 'enable_webxr' with good mode; should work.");
+            viewer.handle_command({
+                type: "enable_webxr",
+                mode: "ar"  // Alternatively pass "vr" for VR only.
+            });
+
+            console.info("Invoking 'enable_webxr' (already enabled); should warn.");
+            viewer.handle_command({
+                type: "enable_webxr",
+                mode: "vr"
+            });
+
+            viewer.handle_command({
+                type: "build_vr_controllers"
+            });
+        });
+        // To test on a local network with a VR device, use a custom SSL certificate.
+        // WebXR requires HTTPS; otherwise, the VRButton will be unresponsive.
+        // Create a self-signed SSL certificate using the following OpenSSL command:
+        // openssl req -x509 -nodes -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365
+        // Serve using the following command:
+        // serve --ssl-cert <your-path>/cert.pem --ssl-key <your-path>/key.pem -l tcp://0.0.0.0:5000
+        // Alternatively, use a different service like Node.js for hosting.
+        // Execute the serve command outside of the /meshcat/test directory.
+        // If you don't have a VR/AR Device you can use WebXR API Emulator for testing.
+
+    </script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #meshcat-viewer {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+    </style>
+</body>
+</html>

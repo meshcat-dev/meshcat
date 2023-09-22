@@ -8,6 +8,9 @@ import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
+import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory';
 require('ccapture.js');
 
 // We must implement extension types 0x16 and 0x17. The trick to
@@ -1006,7 +1009,7 @@ class Viewer {
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
-        window.addEventListener('keydown', (evt) => {this.on_keydown(evt);}); 
+        window.addEventListener('keydown', (evt) => {this.on_keydown(evt);});
 
         requestAnimationFrame(() => this.set_3d_pane_size());
         if (animate || animate === undefined) {
@@ -1138,7 +1141,7 @@ class Viewer {
         save_folder.add(this, 'save_image');
         this.animator = new Animator(this);
         this.gui.close();
-        
+
         this.set_object(["Background"], new Background());
         // Set the callbacks on "/Background" and "/Background/<object>" so that
         // toggling either path's visibility will affect the rendering.
@@ -1353,7 +1356,7 @@ class Viewer {
                   // Decrease value by step (within limits), and trigger
                   // callback.
                   value = viewer.gui_controllers[name].getValue();
-                  let new_value = 
+                  let new_value =
                     Math.min(Math.max(value + increment, min), max);
                   viewer.gui_controllers[name].setValue(new_value);
                 }};
@@ -1383,10 +1386,10 @@ class Viewer {
     }
 
     set_control_value(name, value, invoke_callback=true) {
-        if (name in this.gui_controllers && this.gui_controllers[name] 
+        if (name in this.gui_controllers && this.gui_controllers[name]
             instanceof dat.controllers.NumberController) {
             if (invoke_callback) {
-              this.gui_controllers[name].setValue(value);              
+              this.gui_controllers[name].setValue(value);
             } else {
               this.gui_controllers[name].object[name] = value;
               this.gui_controllers[name].updateDisplay();
@@ -1448,7 +1451,12 @@ class Viewer {
             }));
         } else if (cmd.type == "save_image") {
             this.save_image()
+        } else if (cmd.type == "enable_webxr") {
+            this.enable_webxr(cmd.mode);
+        } else if (cmd.type == "build_vr_controller"){
+            this.build_vr_controllers();
         }
+
         this.set_dirty();
     }
 
@@ -1529,6 +1537,126 @@ class Viewer {
         }, false);
         input.click();
         input.remove();
+    }
+    // Adds controllers to the VR/XR scene.
+    // TODO(WawasCode): Create a VR UI.
+    build_vr_controllers() {
+        const controllerModelFactory = new XRControllerModelFactory();
+
+        const pointing_ray_vectors = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, -1)
+        ]);
+
+        const pointing_ray = new THREE.Line(pointing_ray_vectors);
+        pointing_ray.scale.z = 5;  // Limit the length of the ray.
+
+        const controllers = [];
+        // Loop through all controllers. If there are less than 2 Controllers
+        // it gets handeled by XRControllerModelFactory in the background.
+        for (let i = 0; i < 2; i++) {
+            const controller = this.renderer.xr.getController(i);
+            controller.add(pointing_ray.clone());
+
+            // Create a wrapper group for the controller
+            // and undo the rotation since
+            // the world is rotate by -90° around x.
+            const controllerWrapper = new THREE.Group();
+            controllerWrapper.rotation.x = Math.PI / 2;
+            controllerWrapper.add(controller);
+            this.scene.add(controllerWrapper);
+            controllers.push(controllerWrapper);
+
+            const grip = this.renderer.xr.getControllerGrip(i);
+            // Undo the rotation of the grip.
+            const gripWrapper = new THREE.Group();
+            gripWrapper.rotation.x = Math.PI / 2;
+            gripWrapper.add(grip);
+            this.scene.add(gripWrapper);
+
+            const model = controllerModelFactory.createControllerModel(grip);
+            grip.add(model);
+        }
+
+        return controllers;
+    }
+
+    // Enables webXR and all its functionalities.
+    // If mode == "vr", then we enable the VRButton.
+    // If mode == "ar", then we enable the XRButton.
+    // All other strins report an error.
+    // When in XR/VR mode the meshcat controls are disabled.
+    enable_webxr(mode = "ar") {
+        if (this.renderer.xr.enabled) {
+            console.warn("A WebXR/VR has already been enabled.");
+            return;
+        }
+
+        let xr_button = null;
+        if (mode == "ar") {
+            xr_button = VRButton.createButton(this.renderer);
+        } else if (mode == "vr") {
+            xr_button = XRButton.createButton(this.renderer);
+        } else {
+            console.error(
+                `enable_webxr takes either "ar" or "vr" as arguments. Given "${mode}".`);
+            return;
+        }
+
+        this.renderer.xr.enabled = true;
+
+        document.body.appendChild(xr_button);
+
+        const original_update_projection_matrix = this.camera.updateProjectionMatrix;
+
+        this.renderer.xr.addEventListener('sessionstart', () => {
+            /* When the current session starts, we want the VR camera at the
+             position of the scene's camera but not exactly the same rotation.
+             We want it pointing along the same heading, but if the headset
+             is level, the camera should be looking in a direction parallel with
+             the world ground plane.
+
+             If the user has positioned the camera so it is looking up or down
+             at a significant angle, after switching to VR/AR mode, the user
+             will have to tilt their head up/down a comparable angle to
+             reproduce the equivalent view. */
+            this.renderer.xr.getSession().requestReferenceSpace("local")
+                                         .then((refSpace) => {
+                let Cz_W = new THREE.Vector3();
+                Cz_W.setFromMatrixColumn(this.camera.matrixWorld, 2);
+                if (Math.abs(Cz_W.y) > 0.5) {
+                    console.warn("The view camera was pointed up or down a " +
+                                 "significant amount when entering XR mode. " +
+                                 "Tilt the headset the same amount to see " +
+                                 "the camera's original target.");
+                }
+                let heading_W = new THREE.Vector3(Cz_W.x, 0, Cz_W.z);
+                heading_W.normalize();
+                let Wz = new THREE.Vector3(0, 0, 1);
+                let quat_CW = new THREE.Quaternion();
+                quat_CW.setFromUnitVectors(heading_W, Wz);
+
+                /* This gets *initialized* as p_CW_W, we'll rotate it in place
+                 to make it *truly* p_CW_C. */
+                const p_CW_C = this.camera.position.clone().negate();
+                p_CW_C.applyQuaternion(quat_CW);
+
+                let transform = new XRRigidTransform(p_CW_C, quat_CW);
+                this.renderer.xr.setReferenceSpace(
+                    refSpace.getOffsetReferenceSpace(transform));
+            });
+
+            this.camera.updateProjectionMatrix = () => {
+                console.warn("Updating the camera projection matrix is disallowed in immersive mode.");
+            };
+            this.renderer.setAnimationLoop(() => {
+                this.renderer.render(this.scene, this.camera);
+            });
+        });
+
+        this.renderer.xr.addEventListener('sessionend', () => {
+            this.camera.updateProjectionMatrix = original_update_projection_matrix;
+        });
     }
 }
 
