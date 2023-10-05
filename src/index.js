@@ -1006,8 +1006,6 @@ class Viewer {
 
         this.is_perspective = true;
 
-        this.xr_or_vr_enabled = false;
-
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
@@ -1454,7 +1452,7 @@ class Viewer {
         } else if (cmd.type == "save_image") {
             this.save_image()
         } else if (cmd.type == "enable_webxr") {
-            this.enable_webxr(cmd.use_vr);
+            this.enable_webxr(cmd.mode);
         } else if (cmd.type == "build_vr_controller"){
             this.build_vr_controllers();
         }
@@ -1584,35 +1582,69 @@ class Viewer {
     }
 
     // Enables webXR and all its functionalities.
-    // If use_vr == true, then we enable the VRButton.
-    // If use_vr == false, then we enable the XRButton.
-    // When in XR/VR mode the meshcat controlls are disabled.
-    enable_webxr(use_vr = false) {
-        if (this.xr_or_vr_enabled) {
+    // If mode == "vr", then we enable the VRButton.
+    // If mode == "ar", then we enable the XRButton.
+    // All other strins report an error.
+    // When in XR/VR mode the meshcat controls are disabled.
+    enable_webxr(mode = "ar") {
+        if (this.renderer.xr.enabled) {
             console.warn("A WebXR/VR has already been enabled.");
             return;
         }
 
-        this.xr_or_vr_enabled = true;
-        this.renderer.xr.enabled = true;
         let xr_button = null;
-        if (use_vr){
+        if (mode == "ar") {
             xr_button = VRButton.createButton(this.renderer);
-        } else{
+        } else if (mode == "vr") {
             xr_button = XRButton.createButton(this.renderer);
+        } else {
+            console.error(
+                `enable_webxr takes either "ar" or "vr" as arguments. Given "${mode}".`);
+            return;
         }
+
+        this.renderer.xr.enabled = true;
 
         document.body.appendChild(xr_button);
 
         const original_update_projection_matrix = this.camera.updateProjectionMatrix;
 
         this.renderer.xr.addEventListener('sessionstart', () => {
-            // Starts the VR/XR Session at the current camera position.
-            const base_reference_space = this.renderer.xr.getReferenceSpace();
-            const camera_position = this.camera.position.clone().multiplyScalar(-1);
-            const transform = new XRRigidTransform(camera_position, new THREE.Quaternion());
-            const teleport_space_offset = base_reference_space.getOffsetReferenceSpace(transform);
-            this.renderer.xr.setReferenceSpace(teleport_space_offset);
+            /* When the current session starts, we want the VR camera at the
+             position of the scene's camera but not exactly the same rotation.
+             We want it pointing along the same heading, but if the headset
+             is level, the camera should be looking in a direction parallel with
+             the world ground plane.
+
+             If the user has positioned the camera so it is looking up or down
+             at a significant angle, after switching to VR/AR mode, the user
+             will have to tilt their head up/down a comparable angle to
+             reproduce the equivalent view. */
+            this.renderer.xr.getSession().requestReferenceSpace("local")
+                                         .then((refSpace) => {
+                let Cz_W = new THREE.Vector3();
+                Cz_W.setFromMatrixColumn(this.camera.matrixWorld, 2);
+                if (Math.abs(Cz_W.y) > 0.5) {
+                    console.warn("The view camera was pointed up or down a " +
+                                 "significant amount when entering XR mode. " +
+                                 "Tilt the headset the same amount to see " +
+                                 "the camera's original target.");
+                }
+                let heading_W = new THREE.Vector3(Cz_W.x, 0, Cz_W.z);
+                heading_W.normalize();
+                let Wz = new THREE.Vector3(0, 0, 1);
+                let quat_CW = new THREE.Quaternion();
+                quat_CW.setFromUnitVectors(heading_W, Wz);
+
+                /* This gets *initialized* as p_CW_W, we'll rotate it in place
+                 to make it *truly* p_CW_C. */
+                const p_CW_C = this.camera.position.clone().negate();
+                p_CW_C.applyQuaternion(quat_CW);
+
+                let transform = new XRRigidTransform(p_CW_C, quat_CW);
+                this.renderer.xr.setReferenceSpace(
+                    refSpace.getOffsetReferenceSpace(transform));
+            });
 
             this.camera.updateProjectionMatrix = () => {
                 console.warn("Updating the camera projection matrix is disallowed in immersive mode.");
