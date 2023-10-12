@@ -6,6 +6,13 @@
     <title>MeshCat WebXR</title>
 </head>
 <body>
+    <div id="test-message">
+      Various commands will be sent to the viewer; it will affect what is
+      presented on the screen and printed in the console.
+      <ul id="test-steps">
+
+      </ul>
+    </div>
     <div id="meshcat-viewer"></div>
     <script src="../dist/main.min.js"></script>
     <script>
@@ -32,45 +39,93 @@
             // Use the commands to enable WebXR and controllers. This implicitly
             // tests Viewer's corresponding methods.
 
-            console.info("Invoking 'enable_webxr' with bad mode.");
-            viewer.handle_command({
-                type: "enable_webxr",
-                mode: "bad"
-            });
+            // We'll document what is happening and what the expected otucome
+            // should be.
+            var step_list = document.getElementById("test-steps");
 
-            viewer.set_camera(orthcam);
-            viewer.set_object(["Cameras", "default", "rotated"], orthcam);
-            console.info("Invoking 'enable_webxr' with good mode but bad camera; should not work");
-            viewer.handle_command({
-                type: "enable_webxr",
-                mode: "ar"  // Alternatively pass "vr" for VR only.
-            });
+            var log_message = (message, i) => {
+                var li = document.createElement("li");
+                var formatted = `Step ${i}: ${message}`;
+                console.info(formatted);
+                li.appendChild(document.createTextNode(formatted));
+                step_list.appendChild(li);
+            }
 
-            viewer.create_camera();
-            console.info("Invoking 'enable_webxr' with good mode and good camera; should work");
-            viewer.handle_command({
-                type: "enable_webxr",
-                mode: "ar"
-            });
+            var actions = [
+                (i) => {
+                    log_message("Invoking 'enable_webxr' with bad mode. No XR button " +
+                               "gets added but there is a console error message " +
+                               "about 'bad' argument", i);
+                    viewer.handle_command({
+                        type: "enable_webxr",
+                        mode: "bad"
+                    });
+                },
+                (i) => {
+                    log_message("Changing camera to orthographic camera. The " +
+                                "camera is poorly posed; you won't see anything.", i);
+                    viewer.set_camera(orthcam);
+                    viewer.set_object(["Cameras", "default", "rotated"], orthcam);
+                },
+                (i) => {
+                    log_message("Invoking 'enable_webxr' (with orthographic camera). " +
+                        "An XR button gets added but it is disabled and its label " +
+                        "indicates the reason", i);
+                    viewer.handle_command({
+                        type: "enable_webxr",
+                        mode: "ar"  // Alternatively pass "vr" for VR only.
+                    });
+                },
+                (i) => {
+                    log_message("Restoring to perspective camera (this may lead to a " +
+                        "squashed or stretched appearance, but that doesn't " +
+                        "matter for this test). The button's text is updated. " +
+                        "What the text is and whether it us enabled depends on " +
+                        "whether your browser supports WebXR.", i)
+                    viewer.create_camera();
+                },
+                (i) => {
+                    log_message("Invoking 'enable_webxr' while already enabled; the " +
+                                "console should display a warning about being " +
+                                "'already enabled'.", i);
+                    viewer.handle_command({
+                        type: "enable_webxr",
+                        mode: "vr"
+                    });
+                },
+                (i) => {
+                    log_message("Enabling controller visualization. No log message " +
+                                "and the controllers will only be visible in the " +
+                                "VR/AR session.", i)
+                    viewer.handle_command({
+                        type: "visualize_vr_controllers"
+                    });
+                },
+                (i) => {
+                    log_message("Switching to orthographic camera with WebXR "+
+                                "enabled. The button will become disabled again " +
+                                "and the button text will explain the reason.", i);
+                    viewer.set_camera(orthcam);
+                    viewer.set_object(["Cameras", "default", "rotated"], orthcam)
+                },
+                (i) => {
+                    log_message("Restoring a perspective camera. The WebXR button " +
+                                "is restored to its original state.", i);
+                    viewer.create_camera();
+                },
+                (i) => {
+                    log_message("Test done!", i);
+                }
+            ];
 
-            console.info("Invoking 'enable_webxr' (already enabled); should warn.");
-            viewer.handle_command({
-                type: "enable_webxr",
-                mode: "vr"
-            });
-
-            viewer.handle_command({
-                type: "visualize_vr_controllers"
-            });
-            // You should see the WebXR button get disabled and after four secondes enabled again
-            // WebXR is not available with an orthograpic camera. This is testing that.
-            setTimeout(function() {
-                viewer.set_camera(orthcam);
-                viewer.set_object(["Cameras", "default", "rotated"], orthcam)
-            }, 3000);
-            setTimeout(function() {
-                viewer.create_camera();
-            }, 7000);
+            var run_actions = (step) => {
+                if (step >= actions.length) {
+                    return;
+                }
+                actions[step](step + 1);
+                setTimeout(() => { run_actions(step + 1)}, 2500);
+            };
+            run_actions(0);
         });
         // To test on a local network with a VR device, use a custom SSL certificate.
         // WebXR requires HTTPS; otherwise, the VRButton will be unresponsive.
@@ -93,6 +148,16 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
+        }
+
+        #test-message{
+            width: 75vw;
+            text-align: left;
+            background-color: rgb(232, 232, 232);
+            position: fixed;
+            left: 0%;
+            display: block;
+            padding: 10px;
         }
     </style>
 </body>
