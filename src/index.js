@@ -986,6 +986,36 @@ function load_env_texture(path, background, scene, is_visible, is_perspective) {
     return texture;
 }
 
+// Utility function for waiting on the definition of an DOM element's child
+// property. Given the element object and the name of the child property
+// it will detect when it is *not* null and satisfies the given predicate.
+// E.g., we can use this to wait until the value this.xr_button.textContent
+// has been initialized by three.js. target_node = this.xr_button,
+// property = "textContent", and the predicate tests for non-zero length.
+function wait_for_property(target_node, property, predicate) {
+    return new Promise(resolve => {
+        const callback = () => {
+            // We won't test the observes mutation, we'll simply use the fact
+            // of the mutation to test the desired property directly.
+            var prop_object = target_node[property];
+            if (prop_object != null && predicate(prop_object)) {
+                observer.disconnect();
+                resolve();
+            }
+        };
+
+        const observer = new MutationObserver(callback);
+        observer.observe(target_node, { childList: true });
+
+        // Just in case we have a race condition and it changed between the
+        // invocation of this function and the dispatch of the observer.
+        var prop_object = target_node[property];
+        if (prop_object != null && predicate(prop_object)) {
+            observer.disconnect();
+            return resolve();
+        }
+    });
+}
 
 class Viewer {
     constructor(dom_element, animate, renderer) {
@@ -1012,8 +1042,6 @@ class Viewer {
         this.create_camera();
         this.num_messages_received = 0;
 
-        this.is_perspective = true;
-
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
@@ -1037,8 +1065,12 @@ class Viewer {
         let bg_parent = this.scene_tree.find(["Background"]);
         let bg = this.scene_tree.find(["Background", "<object>"]);
         let is_visible = bg_parent.object.visible && bg.object.visible;
-        bg.object.update(this.scene, is_visible, this.is_perspective);
+        bg.object.update(this.scene, is_visible, this.is_perspective());
         this.set_dirty();
+    }
+
+    is_perspective() {
+        return this.camera && this.camera.isPerspectiveCamera;
     }
 
     hide_background() {
@@ -1553,40 +1585,37 @@ class Viewer {
     }
 
     update_webxr_buttons(){
-        this.is_perspective = this.camera.isPerspectiveCamera === true;
         const xrButton = document.getElementById('XRButton');
         const vrButton = document.getElementById('VRButton');
-        if (!this.is_perspective) {
-            if (xrButton) {
-                // When loading the site for the first time, the text of the buttons gets
-                // updated somewhere by three.js. Since we can't control the order
-                // of execution, we have an extra onload to cover the text change for the first time load.
-                window.onload = function() {
-                    xrButton.textContent = "AR/VR Disabled for Orthographic Cameras";
-                }
-                xrButton.textContent = "AR/VR Disabled for Orthographic Cameras";
-                xrButton.disabled = true;
-                console.warn("WebXR and VR Buttons are disabled because the camera is in Orthographic view.");
-            } else if (vrButton) {
-                window.onload = function() {
-                    vrButton.textContent = "AR/VR Disabled for Orthographic Cameras";
-                }
-                vrButton.textContent = "AR/VR Disabled for Orthographic Cameras";
-                vrButton.disabled = true;
-                console.warn("WebXR and VR Buttons are disabled because the camera is in Orthographic view.");
-            }
-        }
-        else {
-            if (xrButton) {
-                    xrButton.textContent = "START XR";
-                    xrButton.disabled = false;
+        const button = xrButton || vrButton;
 
-            } else if (vrButton) {
-                    vrButton.textContent = "START VR";
-                    vrButton.disabled = false;
-            }
+        // If we have no button defined or the button label hasn't been defined
+        // yet, we have no work to do.
+        if (button == null ||
+            button.textContent == null ||
+            button.textContent.length == 0) {
+            return;
         }
 
+        // If original_content has a value, we've already cached the
+        // original values and we won't do it again.
+        if (button.original_content == null) {
+            button.original_content = button.textContent;
+            button.original_disabled = button.disabled;
+        }
+        if (this.is_perspective()) {
+            // There's only work to do if we've got cached values.
+            if (button.original_content != null) {
+                button.textContent = button.original_content
+                button.disabled = button.original_disabled
+                // Upon restoring the cached values, clear the cache.
+                button.original_content = null;
+                button.original_disabled = null;
+            }
+        } else {
+            button.disabled = true;
+            button.textContent = "AR/VR Disabled for Orthographic Cameras";
+        }
     }
 
     // Adds controllers to the VR/XR scene.
@@ -1642,11 +1671,6 @@ class Viewer {
             console.warn("WebXR/VR has already been enabled.");
             return;
         }
-        if (!this.camera.isPerspectiveCamera)
-        {
-            console.error("Can't enable webxr with an orthographic camera.");
-            return;
-        }
         if (mode == "vr") {
             this.xr_button = VRButton.createButton(this.renderer);
         } else if (mode == "ar") {
@@ -1659,9 +1683,12 @@ class Viewer {
         this.renderer.xr.enabled = true;
 
         document.body.appendChild(this.xr_button);
+        wait_for_property(this.xr_button, "textContent",
+                          (value) => { return value.length > 0; }).then(() => {
+                             this.update_webxr_buttons(); });
 
         const original_update_projection_matrix = this.camera.updateProjectionMatrix;
-        this.update_webxr_buttons();
+
         this.renderer.xr.addEventListener('sessionstart', () => {
             /* When the current session starts, we want the VR camera at the
              position of the scene's camera but not exactly the same rotation.
