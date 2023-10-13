@@ -8,6 +8,9 @@ import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
+import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
+import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
+import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory';
 require('ccapture.js');
 
 // We must implement extension types 0x16 and 0x17. The trick to
@@ -297,6 +300,7 @@ class Background extends THREE.Object3D {
         this.render_environment_map = true;
         this.environment_map = null;
         this.visible = true;
+        this.use_ar_background = false;
 
         // The textures associated with the background: either the map, the
         // gradient, or a white texture (for when the background isn't visible).
@@ -383,13 +387,19 @@ class Background extends THREE.Object3D {
         // A visible background is either the environment map or the gradient:
         // To be the map, the map must be defined, state.render_map is true,
         // and the camera is perspective. Otherwise gradient.
+        // In immersive AR mode, we need the background to be transparent (so
+        // that the camera comes through). So, we set the background to null,
+        // but leave the normal semantics for environment so things keep
+        // rendering the same.
         let cam_key = is_perspective ? "round" : "flat";
         scene.background =
-            this.state.visible ?
-                (this.state.render_map && this.textures.env_map != null && is_perspective ?
-                    this.textures.env_map :
-                    this.textures[cam_key].gradient) :
-                this.textures[cam_key].white;
+            this.use_ar_background ?
+                null :
+                this.state.visible ?
+                    (this.state.render_map && this.textures.env_map != null && is_perspective ?
+                        this.textures.env_map :
+                        this.textures[cam_key].gradient) :
+                    this.textures[cam_key].white;
         // The environment logic is simpler. It only depends on the background
         // being visible and an environment map being defined. We'll always
         // use an available environment map for illumination, regardless of
@@ -976,6 +986,36 @@ function load_env_texture(path, background, scene, is_visible, is_perspective) {
     return texture;
 }
 
+// Utility function for waiting on the definition of an DOM element's child
+// property. Given the element object and the name of the child property
+// it will detect when it is *not* null and satisfies the given predicate.
+// E.g., we can use this to wait until the value this.xr_button.textContent
+// has been initialized by three.js. target_node = this.xr_button,
+// property = "textContent", and the predicate tests for non-zero length.
+function wait_for_property(target_node, property, predicate) {
+    return new Promise(resolve => {
+        const callback = () => {
+            // We won't test the observes mutation, we'll simply use the fact
+            // of the mutation to test the desired property directly.
+            var prop_object = target_node[property];
+            if (prop_object != null && predicate(prop_object)) {
+                observer.disconnect();
+                resolve();
+            }
+        };
+
+        const observer = new MutationObserver(callback);
+        observer.observe(target_node, { childList: true });
+
+        // Just in case we have a race condition and it changed between the
+        // invocation of this function and the dispatch of the observer.
+        var prop_object = target_node[property];
+        if (prop_object != null && predicate(prop_object)) {
+            observer.disconnect();
+            return resolve();
+        }
+    });
+}
 
 class Viewer {
     constructor(dom_element, animate, renderer) {
@@ -989,7 +1029,8 @@ class Viewer {
             this.renderer = renderer;
         }
         this.renderer.setPixelRatio(window.devicePixelRatio);
-
+        this.webxr_session_active = false;
+        this.xr_button = null;
         this.scene = create_default_scene();
         this.gui_controllers = {};
         this.keydown_callbacks = {};
@@ -1001,12 +1042,10 @@ class Viewer {
         this.create_camera();
         this.num_messages_received = 0;
 
-        this.is_perspective = true;
-
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
-        window.addEventListener('keydown', (evt) => {this.on_keydown(evt);}); 
+        window.addEventListener('keydown', (evt) => {this.on_keydown(evt);});
 
         requestAnimationFrame(() => this.set_3d_pane_size());
         if (animate || animate === undefined) {
@@ -1026,8 +1065,12 @@ class Viewer {
         let bg_parent = this.scene_tree.find(["Background"]);
         let bg = this.scene_tree.find(["Background", "<object>"]);
         let is_visible = bg_parent.object.visible && bg.object.visible;
-        bg.object.update(this.scene, is_visible, this.is_perspective);
+        bg.object.update(this.scene, is_visible, this.is_perspective());
         this.set_dirty();
+    }
+
+    is_perspective() {
+        return this.camera && this.camera.isPerspectiveCamera;
     }
 
     hide_background() {
@@ -1138,7 +1181,7 @@ class Viewer {
         save_folder.add(this, 'save_image');
         this.animator = new Animator(this);
         this.gui.close();
-        
+
         this.set_object(["Background"], new Background());
         // Set the callbacks on "/Background" and "/Background/<object>" so that
         // toggling either path's visibility will affect the rendering.
@@ -1204,6 +1247,11 @@ class Viewer {
     }
 
     set_camera(obj) {
+        if (this.webxr_session_active) {
+            console.warn("Can't set camera during an active WebXR session.");
+            return;
+        }
+
         this.camera = obj;
         this.controls = new OrbitControls(obj, this.dom_element);
         this.controls.enableKeys = false;
@@ -1214,7 +1262,7 @@ class Viewer {
         this.controls.addEventListener('change', () => {
             this.set_dirty()
         });
-        this.is_perspective = this.camera.isPerspectiveCamera === true;
+        this.update_webxr_buttons();
         this.update_background()
     }
 
@@ -1353,7 +1401,7 @@ class Viewer {
                   // Decrease value by step (within limits), and trigger
                   // callback.
                   value = viewer.gui_controllers[name].getValue();
-                  let new_value = 
+                  let new_value =
                     Math.min(Math.max(value + increment, min), max);
                   viewer.gui_controllers[name].setValue(new_value);
                 }};
@@ -1383,10 +1431,10 @@ class Viewer {
     }
 
     set_control_value(name, value, invoke_callback=true) {
-        if (name in this.gui_controllers && this.gui_controllers[name] 
+        if (name in this.gui_controllers && this.gui_controllers[name]
             instanceof dat.controllers.NumberController) {
             if (invoke_callback) {
-              this.gui_controllers[name].setValue(value);              
+              this.gui_controllers[name].setValue(value);
             } else {
               this.gui_controllers[name].object[name] = value;
               this.gui_controllers[name].updateDisplay();
@@ -1448,7 +1496,12 @@ class Viewer {
             }));
         } else if (cmd.type == "save_image") {
             this.save_image()
+        } else if (cmd.type == "enable_webxr") {
+            this.enable_webxr(cmd.mode);
+        } else if (cmd.type == "visualize_vr_controller"){
+            this.visualize_vr_controllers();
         }
+
         this.set_dirty();
     }
 
@@ -1529,6 +1582,176 @@ class Viewer {
         }, false);
         input.click();
         input.remove();
+    }
+
+    update_webxr_buttons(){
+        const xrButton = document.getElementById('XRButton');
+        const vrButton = document.getElementById('VRButton');
+        const button = xrButton || vrButton;
+
+        // If we have no button defined or the button label hasn't been defined
+        // yet, we have no work to do.
+        if (button == null ||
+            button.textContent == null ||
+            button.textContent.length == 0) {
+            return;
+        }
+
+        // If original_content has a value, we've already cached the
+        // original values and we won't do it again.
+        if (button.original_content == null) {
+            button.original_content = button.textContent;
+            button.original_disabled = button.disabled;
+        }
+        if (this.is_perspective()) {
+            // There's only work to do if we've got cached values.
+            if (button.original_content != null) {
+                button.textContent = button.original_content
+                button.disabled = button.original_disabled
+                // Upon restoring the cached values, clear the cache.
+                button.original_content = null;
+                button.original_disabled = null;
+            }
+        } else {
+            button.disabled = true;
+            button.textContent = "AR/VR Disabled for Orthographic Cameras";
+        }
+    }
+
+    // Adds controllers to the VR/XR scene.
+    // TODO(WawasCode): Create a VR UI.
+    visualize_vr_controllers() {
+        const controllerModelFactory = new XRControllerModelFactory();
+
+        const pointing_ray_vectors = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, -1)
+        ]);
+
+        const pointing_ray = new THREE.Line(pointing_ray_vectors);
+        pointing_ray.scale.z = 5;  // Limit the length of the ray.
+
+        const controllers = [];
+        // Loop through all controllers. If there are fewer than 2 Controllers
+        // it gets handled by XRControllerModelFactory in the background.
+        for (let i = 0; i < 2; i++) {
+            const controller = this.renderer.xr.getController(i);
+            controller.add(pointing_ray.clone());
+
+            // Create a wrapper group for the controller
+            // and undo the rotation since
+            // the world is rotate by -90° around x.
+            const controllerWrapper = new THREE.Group();
+            controllerWrapper.rotation.x = Math.PI / 2;
+            controllerWrapper.add(controller);
+            this.scene.add(controllerWrapper);
+            controllers.push(controllerWrapper);
+
+            const grip = this.renderer.xr.getControllerGrip(i);
+            // Undo the rotation of the grip.
+            const gripWrapper = new THREE.Group();
+            gripWrapper.rotation.x = Math.PI / 2;
+            gripWrapper.add(grip);
+            this.scene.add(gripWrapper);
+
+            const model = controllerModelFactory.createControllerModel(grip);
+            grip.add(model);
+        }
+
+        return controllers;
+    }
+
+    // Enables webXR and all its functionalities.
+    // If mode == "vr", then we enable the VRButton.
+    // If mode == "ar", then we enable the XRButton.
+    // All other strings report an error.
+    // When in XR/VR mode the meshcat controls are disabled.
+    enable_webxr(mode = "ar") {
+        if (this.renderer.xr.enabled) {
+            console.warn("WebXR/VR has already been enabled.");
+            return;
+        }
+        if (mode == "vr") {
+            this.xr_button = VRButton.createButton(this.renderer);
+        } else if (mode == "ar") {
+            this.xr_button = XRButton.createButton(this.renderer);
+        } else {
+            console.error(
+                `enable_webxr takes either "ar" or "vr" as arguments. Given "${mode}".`);
+            return;
+        }
+        this.renderer.xr.enabled = true;
+
+        document.body.appendChild(this.xr_button);
+        wait_for_property(this.xr_button, "textContent",
+                          (value) => { return value.length > 0; }).then(() => {
+                             this.update_webxr_buttons(); });
+
+        var original_update_projection_matrix = null;
+        this.renderer.xr.addEventListener('sessionstart', () => {
+            original_update_projection_matrix = this.camera.updateProjectionMatrix;
+            /* When the current session starts, we want the VR camera at the
+             position of the scene's camera but not exactly the same rotation.
+             We want it pointing along the same heading, but if the headset
+             is level, the camera should be looking in a direction parallel with
+             the world ground plane.
+
+             If the user has positioned the camera so it is looking up or down
+             at a significant angle, after switching to VR/AR mode, the user
+             will have to tilt their head up/down a comparable angle to
+             reproduce the equivalent view. */
+            /*
+            Note: Requesting an "AR" session does not guarantee an AR session will be initiated.
+            The request could automatically devolve to a VR session if AR isn’t fully supported on the system,
+            but VR is. There's potential for a discrepancy between the requested and the actual mode.
+            */
+            if (mode == "ar"){
+                this.set_property(["Background"], "use_ar_background", true);
+            }
+            this.webxr_session_active = true;
+            console.info("Immersive session starting, controls are being removed.")
+            this.renderer.xr.getSession().requestReferenceSpace("local")
+                                         .then((refSpace) => {
+                let Cz_W = new THREE.Vector3();
+                Cz_W.setFromMatrixColumn(this.camera.matrixWorld, 2);
+                if (Math.abs(Cz_W.y) > 0.5) {
+                    console.warn("The view camera was pointed up or down a " +
+                                 "significant amount when entering XR mode. " +
+                                 "Tilt the headset the same amount to see " +
+                                 "the camera's original target.");
+                }
+                let heading_W = new THREE.Vector3(Cz_W.x, 0, Cz_W.z);
+                heading_W.normalize();
+                let Wz = new THREE.Vector3(0, 0, 1);
+                let quat_CW = new THREE.Quaternion();
+                quat_CW.setFromUnitVectors(heading_W, Wz);
+
+                /* This gets *initialized* as p_CW_W, we'll rotate it in place
+                 to make it *truly* p_CW_C. */
+                const p_CW_C = this.camera.position.clone().negate();
+                p_CW_C.applyQuaternion(quat_CW);
+
+                let transform = new XRRigidTransform(p_CW_C, quat_CW);
+                this.renderer.xr.setReferenceSpace(
+                    refSpace.getOffsetReferenceSpace(transform));
+            });
+
+            this.camera.updateProjectionMatrix = () => {
+                console.warn("Updating the camera projection matrix is disallowed in immersive mode.");
+            };
+            this.renderer.setAnimationLoop(() => {
+                this.renderer.render(this.scene, this.camera);
+            });
+        });
+
+        this.renderer.xr.addEventListener('sessionend', () => {
+            this.webxr_session_active = false;
+            if (mode == "ar"){
+                this.set_property(["Background"], "use_ar_background", false);
+            }
+            this.renderer.setAnimationLoop(null); // Reset the animation loop to its default state (null).
+            this.camera.updateProjectionMatrix = original_update_projection_matrix;
+        });
     }
 }
 
