@@ -475,7 +475,8 @@ class SceneNode {
             }
         });
         if (this.object.isLight) {
-            let intensity_controller = this.folder.add(this.object, "intensity").min(0).step(0.01);
+            let intensity_controller = this.folder.add(this.object, "intensity")
+                .min(0).step(0.01).name("intensity (cd)");
             intensity_controller.onChange(() => this.on_update());
             this.controllers.push(intensity_controller);
             if (this.object.castShadow !== undefined){
@@ -936,11 +937,6 @@ function env_texture(top_color, bottom_color, is_perspective) {
         j += 4;
     }
 
-    // TODO(SeanCurtis-TRI): There is something about equirectangular mapping
-    // that can make the *actual* colors in the background different from the
-    // specified colors. Typically, saturation is lower. This may be due to
-    // hdr vs ldr images. This needs investigation.
-
     // When we are using an orthographic camera, we can't use environment
     // mapping. It must be UVMapping so it covers the screen.
     let mapping = is_perspective ? THREE.EquirectangularReflectionMapping :
@@ -949,7 +945,7 @@ function env_texture(top_color, bottom_color, is_perspective) {
                                         THREE.UnsignedByteType, mapping,
                                         THREE.RepeatWrapping, THREE.ClampToEdgeWrapping,
                                         THREE.LinearFilter, THREE.LinearFilter, 1,
-                                        THREE.LinearSRGBColorSpace);
+                                        THREE.SRGBColorSpace);
     if (!is_perspective) {
         // By default, the points in our texture map to the center of
         // the pixels, which means that the gradient only occupies
@@ -962,9 +958,6 @@ function env_texture(top_color, bottom_color, is_perspective) {
         texture.needsUpdate = true
     }
     texture.needsUpdate = true;
-    // Although both encoding and LinearEncoding are deprecated, THREE.js gets
-    // *really* cranky if you don't include it.
-    texture.encoding = THREE.LinearEncoding;
     return texture;
 }
 
@@ -1098,8 +1091,20 @@ class Viewer {
         camera.position.set(3, 1, 0);
     }
 
+    upgrade_intensity(legacy_intensity) {
+        // When we upgraded three.js from 0.149 to 0.156 we inherited a host of
+        // changes to lighting. See
+        // https://discourse.threejs.org/t/updates-to-lighting-in-three-js-r155/53733
+        // We're taking the old legacy values (which are *not* physical) and
+        // simply scaling them to be *functionally* equivalent as advised above.
+        // For point and spot lights this is insufficient. Those lights decay
+        // and will not be physically correct.
+        return legacy_intensity * Math.PI;
+    }
+
     create_default_spot_light() {
-        var spot_light = new THREE.SpotLight(0xffffff, 0.8);
+        var spot_light = new THREE.SpotLight(0xffffff,
+                                             this.upgrade_intensity(0.8));
         spot_light.position.set(1.5, 1.5, 2);
         // Make light not cast shadows by default (effectively
         // disabling them, as there are no shadow-casting light
@@ -1121,7 +1126,8 @@ class Viewer {
         // it's primarily used for casting detailed shadows
         this.set_property(["Lights", "SpotLight"], "visible", false);
 
-        var point_light_px = new THREE.PointLight(0xffffff, 0.4);
+        var point_light_px = new THREE.PointLight(0xffffff,
+                                                  this.upgrade_intensity(0.4));
         point_light_px.position.set(1.5, 1.5, 2);
         point_light_px.castShadow = false;
         point_light_px.distance = 10.0;
@@ -1132,7 +1138,8 @@ class Viewer {
         point_light_px.shadow.bias = -0.001;      // Default 0
         this.set_object(["Lights", "PointLightNegativeX"], point_light_px);
 
-        var point_light_nx = new THREE.PointLight(0xffffff, 0.4);
+        var point_light_nx = new THREE.PointLight(0xffffff,
+                                                  this.upgrade_intensity(0.4));
         point_light_nx.position.set(-1.5, -1.5, 2);
         point_light_nx.castShadow = false;
         point_light_nx.distance = 10.0;
@@ -1143,11 +1150,13 @@ class Viewer {
         point_light_nx.shadow.bias = -0.001;      // Default 0
         this.set_object(["Lights", "PointLightPositiveX"], point_light_nx);
 
-        var ambient_light = new THREE.AmbientLight(0xffffff, 0.3);
+        var ambient_light = new THREE.AmbientLight(0xffffff,
+                                                   this.upgrade_intensity(0.3));
         ambient_light.intensity = 0.6;
         this.set_object(["Lights", "AmbientLight"], ambient_light);
 
-        var fill_light = new THREE.DirectionalLight(0xffffff, 0.4);
+        var fill_light = new THREE.DirectionalLight(0xffffff,
+                                                    this.upgrade_intensity(0.4));
         fill_light.position.set(-10, -10, 0);
         this.set_object(["Lights", "FillLight"], fill_light);
 
