@@ -1271,30 +1271,48 @@ class Viewer {
         this.controls.addEventListener('change', () => {
             this.set_dirty();
         });
-        this.camera_pose_callback = null;
+        this.camera_pose_callback_state = {
+            accepting: false,
+            on_start: () => {},
+            on_change: () => {},
+            on_end: () => {}
+        };
         this.set_camera_pose_callback();
         this.update_webxr_buttons();
         this.update_background()
     }
 
     set_camera_pose_callback(callback) {
-        // Note: experience has shown that the change event can produce some
-        // erratic values for camera position. There is no guarantee that the
-        // camera position is stable when the event is handled. However, by
-        // only dispatching it at the *end* of an interactive manipulation,
-        // we won't be fighting the input stream and we'll get a reliable
-        // camera pose.
-        this.controls.removeEventListener('end', this.camera_pose_callback);
+        this.controls.removeEventListener(
+            'start', this.camera_pose_callback_state.on_start);
+        this.controls.removeEventListener(
+            'change', this.camera_pose_callback_state.on_change);
+        this.controls.removeEventListener(
+            'end', this.camera_pose_callback_state.on_end);
+
         var my_callback = eval(callback);
-        // We'll always have a callback to handle event handling race conditions,
-        // even it's a no-op.
-        this.camera_pose_callback = callback == null ?
-            () => {} :
-            () => { my_callback(this); };
-        this.controls.addEventListener('end', this.camera_pose_callback);
+        if (my_callback == null) {
+            // We'll always have a callback to handle event handling race
+            // conditions, even it's a no-op.
+            my_callback = () => {};
+        };
+
+        this.camera_pose_callback_state = {
+            accepting: false,
+            on_start: () => { this.camera_pose_callback_state.accepting = true; },
+            on_change: () => { if (this.camera_pose_callback_state.accepting) { my_callback(this); } },
+            on_end: () => { this.camera_pose_callback_state.accepting = false; my_callback(this); }
+        }
+
+        this.controls.addEventListener(
+            'start', this.camera_pose_callback_state.on_start);
+        this.controls.addEventListener(
+            'change', this.camera_pose_callback_state.on_change);
+        this.controls.addEventListener(
+            'end', this.camera_pose_callback_state.on_end);
         // We'll call the callback upon registration, so that we get the pose
         // even if we don't move the camera.
-        this.camera_pose_callback(this);
+        my_callback(this);
     }
 
     set_camera_target(value) {
