@@ -1282,7 +1282,7 @@ class Viewer {
         this.update_background()
     }
 
-    set_camera_pose_callback(callback) {
+    set_camera_pose_callback(callback, on_end_only) {
         this.controls.removeEventListener(
             'start', this.camera_pose_callback_state.on_start);
         this.controls.removeEventListener(
@@ -1300,9 +1300,15 @@ class Viewer {
         this.camera_pose_callback_state = {
             accepting: false,
             on_start: () => { this.camera_pose_callback_state.accepting = true; },
-            on_change: () => { if (this.camera_pose_callback_state.accepting) { my_callback(this); } },
-            on_end: () => { this.camera_pose_callback_state.accepting = false; my_callback(this); }
-        }
+            on_change: on_end_only ?
+                () => {} :
+                () => {
+                    if (this.camera_pose_callback_state.accepting) {
+                        my_callback(this); }},
+            on_end: () => {
+                this.camera_pose_callback_state.accepting = false;
+                my_callback(this); }
+        };
 
         this.controls.addEventListener(
             'start', this.camera_pose_callback_state.on_start);
@@ -1550,7 +1556,7 @@ class Viewer {
         } else if (cmd.type == "visualize_vr_controller"){
             this.visualize_vr_controllers();
         } else if (cmd.type == "set_camera_pose_callback") {
-            this.set_camera_pose_callback(cmd.callback);
+            this.set_camera_pose_callback(cmd.callback, cmd.on_end_only);
         }
 
         this.set_dirty();

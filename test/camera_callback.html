@@ -9,12 +9,12 @@
           Open the console in developer tools (F12).<br>
           Click the button below to turn on/off display of camera pose in the console.
           <br>
-          <div id="camera-pose">Camera pose not being echoed</div>
+          <div id="camera-pose">[If you read this, the page is broken]</div>
         </div>
 
         <div id="meshcat-pane">
 
-        </div><button id="camera-button">Start Echoing Camera Position</button>
+        </div><button id="camera-button">[If you read this, the page is broken]</button>
 
         <script src="main.min.js"></script>
         <script>
@@ -34,30 +34,43 @@
             }
             viewer.scene.add(make_cube(1, 0x00ff00, [0, 0, 0]));
 
-            var callback_active = false;
+            // Callback state:
+            //   0: No callback.
+            //   1: Callback on interaction end.
+            //   2: Callback on all changes.
+            var callback_state = 0;
             // We'll execute the API directly here.
             viewer.set_camera_pose_callback(null);
 
+            var button_messages = [
+                "Click to enable camera callback on interaction end",
+                "Click to enable camera callback on all changes",
+                "Click to disable camera callback",
+            ];
+            var feedback_messages = [
+                "No callback registered",
+                "Callback prints pose to console at the end of an interaction" +
+                " (mouse up or mouse wheel)",
+                "Callback prints pose for all changes"
+            ];
             var button = document.getElementById("camera-button");
             var pose_div = document.getElementById("camera-pose");
+            pose_div.innerText = feedback_messages[callback_state];
+            button.innerText = button_messages[callback_state];
+
             var toggle_display = () => {
                 // Execute the API via the command here.
+                callback_state = (callback_state + 1) % 3;
                 viewer.handle_command({
                     type: "set_camera_pose_callback",
-                    callback: callback_active ?
+                    callback: callback_state == 0 ?
                         null :
                         `() => {
-                            console.info("X_WC", this.camera.matrixWorld);}`
+                            console.info("X_WC", this.camera.matrixWorld);}`,
+                    on_end_only: callback_state == 1
                 });
-                callback_active = !callback_active;
-                pose_div.innerText = callback_active ?
-                    "Camera pose echoed in console at end of interaction " +
-                        "(mouse up or mouse wheel)" :
-                    "Camera pose not being echoed";
-                button.innerText = (callback_active ?
-                        "Stop Echoing" :
-                        "Start Echoing")
-                    + " Camera Position";
+                pose_div.innerText = feedback_messages[callback_state];
+                button.innerText = button_messages[callback_state];
             };
             button.addEventListener("click", toggle_display);
         </script>
