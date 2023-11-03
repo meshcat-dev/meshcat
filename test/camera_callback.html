@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<title>MeshCat</title>
+	</head>
+	<body>
+        <div id="test-message">
+          Open the console in developer tools (F12).<br>
+          Click the button below to turn on/off display of camera pose in the console.
+          <br>
+          <div id="camera-pose">Camera pose not being echoed</div>
+        </div>
+
+        <div id="meshcat-pane">
+
+        </div><button id="camera-button">Start Echoing Camera Position</button>
+
+        <script src="main.min.js"></script>
+        <script>
+            function make_cube(size, color, position) {
+                let geo = new MeshCat.THREE.BoxGeometry(size, size, size);
+                let mat = new MeshCat.THREE.MeshLambertMaterial({ color: color });
+                let mesh = new MeshCat.THREE.Mesh(geo, mat);
+                mesh.position.fromArray(position);
+                return mesh;
+            }
+
+            var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+            try {
+                viewer.connect();
+            } catch (e) {
+                console.info("Not connected to MeshCat websocket server: ", e);
+            }
+            viewer.scene.add(make_cube(1, 0x00ff00, [0, 0, 0]));
+
+            var callback_active = false;
+            // We'll execute the API directly here.
+            viewer.set_camera_pose_callback(null);
+
+            var button = document.getElementById("camera-button");
+            var pose_div = document.getElementById("camera-pose");
+            var toggle_display = () => {
+                // Execute the API via the command here.
+                viewer.handle_command({
+                    type: "set_camera_pose_callback",
+                    callback: callback_active ?
+                        null :
+                        `() => {
+                            console.info("X_WC", this.camera.matrixWorld);}`
+                });
+                callback_active = !callback_active;
+                pose_div.innerText = callback_active ?
+                    "Camera pose echoed in console at end of interaction " +
+                        "(mouse up or mouse wheel)" :
+                    "Camera pose not being echoed";
+                button.innerText = (callback_active ?
+                        "Stop Echoing" :
+                        "Start Echoing")
+                    + " Camera Position";
+            };
+            button.addEventListener("click", toggle_display);
+        </script>
+
+
+         <style>
+            body {
+                margin: 0;
+            }
+
+            #meshcat-pane {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            #test-message{
+                width: 75vw;
+                text-align: left;
+                background-color: rgb(232, 232, 232);
+                position: fixed;
+                left: 0%;
+                display: block;
+                padding: 10px;
+            }
+            #camera-button {
+                width: 90vw;
+                position: fixed;
+                left: 5vw;
+                bottom: 10px;
+            }
+        </style>
+        <script id="embedded-json"></script>
+	</body>
+</html>
