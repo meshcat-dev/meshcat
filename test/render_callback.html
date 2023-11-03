@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset=utf-8>
+        <title>MeshCat</title>
+    </head>
+    <body>
+        <div id="test-message">
+          Open the console in developer tools (F12).
+          <br><br>
+          Click the button below to turn on/off camera tracking.
+          <br><br>
+          This webpage uses the render callback mechanism to simply print the
+          camera's world transform whenever the scene gets rendered. As you
+          pan the camera (or change the visibility of objects) a new message
+          gets written to the console including the camera's pose.
+          <br><br>
+          Initially, the callback is a no-op. Click the button below to toggle
+          the callback behavior.
+          <br><br>
+          Even without moving the camera or changing the scene, simply enabling
+          a callback should evaluate it; when you click the button, the camera
+          pose should be printed to the console immediately.
+          <br><br>
+          <div id="camera-pose">[If you read this, the page is broken]</div>
+        </div>
+
+        <div id="meshcat-pane">
+
+        </div><button id="camera-button">[If you read this, the page is broken]</button>
+
+        <script src="main.min.js"></script>
+        <script>
+            function make_cube(size, color, position) {
+                let geo = new MeshCat.THREE.BoxGeometry(size, size, size);
+                let mat = new MeshCat.THREE.MeshLambertMaterial({ color: color });
+                let mesh = new MeshCat.THREE.Mesh(geo, mat);
+                mesh.position.fromArray(position);
+                return mesh;
+            }
+
+            var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+            try {
+                viewer.connect();
+            } catch (e) {
+                console.info("Not connected to MeshCat websocket server: ", e);
+            }
+            viewer.scene.add(make_cube(1, 0x00ff00, [0, 0, 0]));
+
+            // Callback state:
+            //   0: No callback.
+            //   1: Callback registered.
+            var callback_state = 0;
+            // We'll execute the API directly here.
+            viewer.set_render_callback(null);
+
+            var button_messages = [
+                "Click to enable render callback",
+                "Click to disable camera callback",
+            ];
+            var feedback_messages = [
+                "No callback registered.",
+                "Callback prints camera pose to console each time the scene " +
+                "is rendered."
+            ];
+            var button = document.getElementById("camera-button");
+            var pose_div = document.getElementById("camera-pose");
+            pose_div.innerText = feedback_messages[callback_state];
+            button.innerText = button_messages[callback_state];
+
+            var toggle_display = () => {
+                // Execute the API via the command here.
+                callback_state = (callback_state + 1) % 2;
+                viewer.handle_command({
+                    type: "set_render_callback",
+                    callback: callback_state == 0 ?
+                        null :
+                        `(viewer) => {
+                            console.info("X_WC", viewer.camera.matrixWorld);
+                        }`
+                });
+
+                pose_div.innerText = feedback_messages[callback_state];
+                button.innerText = button_messages[callback_state];
+            };
+            button.addEventListener("click", toggle_display);
+        </script>
+
+
+         <style>
+            body {
+                margin: 0;
+            }
+
+            #meshcat-pane {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            #test-message{
+                width: 90vw;
+                text-align: left;
+                background-color: rgb(232, 232, 232);
+                position: fixed;
+                left: 0%;
+                display: block;
+                padding: 10px;
+            }
+            #camera-button {
+                width: 90vw;
+                position: fixed;
+                left: 5vw;
+                bottom: 10px;
+            }
+        </style>
+        <script id="embedded-json"></script>
+	</body>
+</html>

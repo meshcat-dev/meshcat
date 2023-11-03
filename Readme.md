@@ -275,6 +275,36 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 </pre>
                 This sets the camera target to `(0, 1, 0)`
             </dd>
+            <dt><code>set_render_callback</code></dt>
+            <dd>
+                Each render loop updates the camera, renders the scene and updates
+                animation. Between updating the camera and rendering the scene,
+                the Viewer invokes a user-configurable callback. This callback
+                can be used to execute arbitrary code per rendered frame.
+                <br><br>
+                The callback is passed the `viewer` doing the rendering and the
+                full Viewer api is available for exercise. In declaring the
+                command, the callback should be a *string* that gets evaluated
+                into a function. Passing the string "null" will restore the
+                render callback to being its default no-op function.
+            <pre>
+{
+    "type": "set_render_callback",
+    "callback": `(viewer) => {
+        if (viewer.is_perspective()) {
+            if (viewer.connection.readyState == 1 /* OPEN */) {
+                viewer.connection.send(msgpack.encode({
+                    'type': 'camera_pose',
+                    'camera_pose': viewer.camera.matrixWorld.elements
+                }));
+            }
+        }
+    }`
+}
+            </pre>
+            This dispatches the camera's pose in the world to the websocket
+            connection.
+            </dd>
         </dl>
     </dd>
 </dl>

@@ -1027,6 +1027,7 @@ class Viewer {
         this.scene = create_default_scene();
         this.gui_controllers = {};
         this.keydown_callbacks = {};
+        this.render_callback = () => {};
         this.create_scene_tree();
 
         this.add_default_scene_elements();
@@ -1228,6 +1229,7 @@ class Viewer {
     render() {
         this.controls.update();
         this.camera.updateProjectionMatrix();
+        this.render_callback(this);
         this.renderer.render(this.scene, this.camera);
         this.animator.after_render();
         this.needs_render = false;
@@ -1269,10 +1271,15 @@ class Viewer {
             this.set_dirty()
         });
         this.controls.addEventListener('change', () => {
-            this.set_dirty()
+            this.set_dirty();
         });
         this.update_webxr_buttons();
         this.update_background()
+    }
+
+    set_render_callback(callback) {
+        var my_callback = eval(callback);
+        this.render_callback = callback == null ? () => {} : my_callback;
     }
 
     set_camera_target(value) {
@@ -1509,6 +1516,8 @@ class Viewer {
             this.enable_webxr(cmd.mode);
         } else if (cmd.type == "visualize_vr_controller"){
             this.visualize_vr_controllers();
+        } else if (cmd.type == "set_render_callback") {
+            this.set_render_callback(cmd.callback);
         }
 
         this.set_dirty();
