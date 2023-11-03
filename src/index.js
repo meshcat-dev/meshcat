@@ -1269,10 +1269,35 @@ class Viewer {
             this.set_dirty()
         });
         this.controls.addEventListener('change', () => {
-            this.set_dirty()
+            this.set_dirty();
         });
+        this.camera_pose_callback = null;
         this.update_webxr_buttons();
         this.update_background()
+    }
+
+    set_camera_pose_callback(callback) {
+        this.controls.removeEventListener("change", this.camera_pose_callback);
+        var my_callback = eval(callback);
+        var already_handling_event = false;
+        this.camera_pose_callback = my_callback == null ?
+            () => {} :
+            () => {
+                // Calling update*() causes more events to be dispatched; we
+                // only want to respond to the original event.
+                if (!already_handling_event) {
+                    already_handling_event = true;
+                    this.controls.update();
+                    this.camera.updateProjectionMatrix();
+                    my_callback(this);
+                    already_handling_event = false;
+                }
+            }
+        this.controls.addEventListener("change", this.camera_pose_callback);
+
+        // Make sure we execute the callback upon registration -- don't wait
+        // for the first camera change.
+        this.camera_pose_callback(this);
     }
 
     set_camera_target(value) {
@@ -1509,6 +1534,8 @@ class Viewer {
             this.enable_webxr(cmd.mode);
         } else if (cmd.type == "visualize_vr_controller"){
             this.visualize_vr_controllers();
+        } else if (cmd.type == "set_camera_pose_callback") {
+            this.set_camera_pose_callback(cmd.callback);
         }
 
         this.set_dirty();

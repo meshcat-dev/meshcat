@@ -275,6 +275,35 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 </pre>
                 This sets the camera target to `(0, 1, 0)`
             </dd>
+            <dt><code>set_camera_pose_callback</code></dt>
+            <dd>
+                The user can provide a callback that gets invoked when the
+                camera changes pose.
+                <br><br>
+                The callback is passed the `viewer` instance and the full Viewer
+                api is available for exercise. In declaring the command, the
+                callback should be a *string* that gets evaluated into a
+                function. Passing the string "null" will restore the camera pose
+                callback to being its default no-op function.
+            <pre>
+{
+    "type": "set_camera_pose_callback",
+    "callback": `(viewer) => {
+        if (viewer.is_perspective()) {
+            if (viewer.connection.readyState == 1 /* OPEN */) {
+                viewer.connection.send(msgpack.encode({
+                    'type': 'camera_pose',
+                    'camera_pose': viewer.camera.matrixWorld.elements
+                }));
+            }
+        }
+    }`
+}
+            </pre>
+            This dispatches the camera's pose in the world to the websocket
+            connection in a message format specified whoever dispatches the
+            command.
+            </dd>
         </dl>
     </dd>
 </dl>
