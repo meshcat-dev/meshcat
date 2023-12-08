@@ -451,3 +451,6 @@ The MeshCat javascript sources live in `src/index.js`. We use [webpack](https://
 4. Try it out! You can load the bundled `main.min.js` in your own application, or you can open up `dist/index.html` in your browser.
 
 Note that due to caching, you may need to do a hard refresh (shift+F5 or ctrl+shift+R) in your browser to reload the updated javascript bundle.
+
+To maintain consistent codestyle, we use the [JavaScript Standard Style](https://github.com/standard/standard), which is enforced by a pre-commit hook (via CI). The pre-commit can be run locally via:
+`pre-commit run --all-files`
