@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 var msgpack = require('@msgpack/msgpack');
 var dat = require('dat.gui').default; // TODO: why is .default needed?
-import {mergeBufferGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {OBJLoader2, MtlObjBridge} from 'wwobjloader2'
 import {ColladaLoader} from 'three/examples/jsm/loaders/ColladaLoader.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -77,7 +77,7 @@ function merge_geometries(object, preserve_materials = false) {
             result.material = materials[0];
         }
     } else if (geometries.length > 1) {
-        result = mergeBufferGeometries(geometries, true);
+        result = mergeGeometries(geometries, true);
         if (preserve_materials) {
             result.material = materials;
         }
