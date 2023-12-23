@@ -143,8 +143,19 @@ function merge_geometries(object, preserve_materials = false) {
         }
     } else if (geometries.length > 1) {
         result = mergeGeometries(geometries, true);
+        const ngeom = result.groups.length;
+        let mts = [];
         if (preserve_materials) {
-            result.material = materials;
+            for (let i = 0; i < ngeom; i++) {
+                const group = result.groups[i];
+                let m = materials[i];
+                if (Array.isArray(m)) {
+                    mts.push(m[m.length - 1]);
+                } else {
+                    mts.push(m);
+                }
+            }
+            result.material = mts;
         }
     } else {
         result = new THREE.BufferGeometry();
