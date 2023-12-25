@@ -717,14 +717,15 @@ terser@^5.7.0:
     source-map "~0.7.2"
     source-map-support "~0.5.19"
 
-three-wtm@^1.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/three-wtm/-/three-wtm-1.0.0.tgz#715d1317096de15b87313856befc719c176246d3"
-
 three@^0.156.1:
   version "0.156.1"
   resolved "https://registry.yarnpkg.com/three/-/three-0.156.1.tgz#bab4fec121a5b3975eb4f4d227d9c912171eb399"
   integrity sha512-kP7H0FK9d/k6t/XvQ9FO6i+QrePoDcNhwl0I02+wmUJRNSLCUIDMcfObnzQvxb37/0Uc9TDT0T1HgsRRrO6SYQ==
+
+three@~0.157.0:
+  version "0.157.0"
+  resolved "https://registry.yarnpkg.com/three/-/three-0.157.0.tgz#5baac531941fc8c4ca62d45ee4265652e03318d0"
+  integrity sha512-CeAwQrf4x3z0/e+MC4F+nXLW5t0gh3pw+L6CCBqpHvOq3bGYIgRYub7Pv0j/9wR+d++OiEglyZzWyuSYbwWGOA==
 
 uri-js@^4.2.2:
   version "4.4.1"
@@ -829,9 +830,27 @@ wildcard@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/wildcard/-/wildcard-2.0.0.tgz#a77d20e5200c6faaac979e4b3aadc7b3dd7f8fec"
 
-wwobjloader2@^4.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/wwobjloader2/-/wwobjloader2-4.0.0.tgz#61304b2e09db66094a813c156c444af5718e143f"
+wtd-core@~2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/wtd-core/-/wtd-core-2.3.0.tgz#f6ee1b2aa7654e89e3d587294a4021593bb8de74"
+  integrity sha512-AIoNe2ulNED0fRynTiQsXmueV89omVYf1iJMfBZja1666IhFJu3b8sRvCw7bACGs3lfGuAma3d4FNSW/WCL3Ig==
+
+wtd-three-ext@~2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/wtd-three-ext/-/wtd-three-ext-2.3.0.tgz#f72c2654f68abd93fbae9ed78d74aba014dd095d"
+  integrity sha512-Wl80IAIuFUNKNn8U0QfgtKiKIecNPVb4+O6tyhPthuESLPD7qo9b1/0tzasJCsL9wzqs7O7r3Au4nhoBuzTEUQ==
+  dependencies:
+    three "~0.157.0"
+    wtd-core "~2.3.0"
+
+wwobjloader2@^6.1.0:
+  version "6.1.0"
+  resolved "https://registry.yarnpkg.com/wwobjloader2/-/wwobjloader2-6.1.0.tgz#8b8e0bba5ad7b89168601c1141f49f26340879d3"
+  integrity sha512-KsitJWjA/MLxb3nmb29gcFE+Kd4N3z+ZqO+XO5c4wb1O8MhjUV6bRls0l2UbZQGMFMe/SftTRdoj7GLOYYjWNw==
+  dependencies:
+    three "~0.157.0"
+    wtd-core "~2.3.0"
+    wtd-three-ext "~2.3.0"
 
 yarn@^1.22.18:
   version "1.22.18"
