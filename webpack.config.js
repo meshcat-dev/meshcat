@@ -20,6 +20,9 @@ module.exports = [{
     mode: "production",
     plugins: [
       new LicensePlugin({
+        licenseOverrides: {
+            'wwobjloader2@6.1.0': 'MIT'
+        },
         outputFilename: "main.min.js.THIRD_PARTY_LICENSES.json"
     })
     ],
