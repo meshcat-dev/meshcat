@@ -451,3 +451,5 @@ The MeshCat javascript sources live in `src/index.js`. We use [webpack](https://
 4. Try it out! You can load the bundled `main.min.js` in your own application, or you can open up `dist/index.html` in your browser.
 
 Note that due to caching, you may need to do a hard refresh (shift+F5 or ctrl+shift+R) in your browser to reload the updated javascript bundle.
+
+When preparing a pull request to land on master, run `rebuild/rebuild.sh` to hermetically regenerate the `dist` files. The very first time you run it, it might take a little time to download all of the relevant files. Subsequent runs should be much faster (~10 seconds).
