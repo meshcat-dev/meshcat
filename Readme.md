@@ -443,6 +443,33 @@ To move the camera itself to the point `[1, 2, 3]` and lock its controls, we sug
 
 The MeshCat javascript sources live in `src/index.js`. We use [webpack](https://webpack.js.org/) to bundle up MeshCat with its Three.js dependencies into a single javascript bundle. If you want to edit the MeshCat source, you'll need to regenerate that bundle. Fortunately, it's pretty easy:
 
+### Option 1: Use Docker
+
+If you have Docker + BuildKit installed, then you can run `rebuild/rebuild.sh`
+to hermetically regenerate the `dist` files. The very first time you run it, it
+might take a little time to download all of the relevant files. Subsequent runs
+should be much faster (~5-10 seconds).
+
+This option offers the easiest way to rebuild, with the drawback that "watch"
+mode of webpack (to automatically rebuild every time you save) is unavailable.
+
+To install Docker + BuildKit on Ubuntu, run:
+
+```
+sudo apt install docker.io docker-buildx
+```
+
+To run as non-root, you will probably also need to update the `docker` group
+permissions:
+
+https://docs.docker.com/engine/install/linux-postinstall/
+
+### Option 2: Install Yarn + NPM tools
+
+This option offers a convenient "watch" mode during an edit-test development
+cycle, but if you're not careful when installing the yarn+node+npm tools you
+might damage other software on your computer.
+
 1. Install [yarn](https://yarnpkg.com/en/docs/install). This should also install `node` and `npm`. Try running `yarn -v` and `npm -v` to make sure those programs are installed.
 2. Run `yarn`
     * This will read the `project.json` file and install all the necessary javascript dependencies.
