@@ -43,7 +43,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                     <li>Within the inner <code>object</code> stanza (i.e., the object with a uuid, not the object argument to set_object), the <code>type</code> field can be set to <code>"_meshfile_object"</code> to parse using a mesh file format. In this case, the <code>geometries</code> and <code>materials</code> and <code>geometry: {uuid}</code> and <code>material: {uuid}</code> are all ignored, and the object must have a field named <code>format</code> set to one of <code>"obj"</code> or <code>"dae"</code> or <code>"stl"</code> and a field named <code>"data"</code> with the string contents of the file. When the format is obj, the object may also have a field named <code>mtl_library</code> with the string contents of the associated mtl file.
                     </ul>
                 </dl>
-                Example (nominal format):
+                <p>Example (nominal format):
                 <pre>
 {
     type: "set_object",
@@ -81,6 +81,24 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
 }
                 </pre>
                 Note the somewhat indirect way in which geometries and materials are specified. Each Three.js serialized object has a list of geometries and a list of materials, each with a UUID. The actual geometry and material for a given object are simply references to those existing UUIDs. This enables easy re-use of geometries between objects in Three.js, although we don't really rely on that in MeshCat. Some information about the JSON object format can be found on the <a href="https://github.com/mrdoob/three.js/wiki/JSON-Object-Scene-format-4">Three.js wiki</a>.
+                <p>Example (<code>_meshfile_geometry</code>):
+                <pre>
+{
+TODO
+}
+                </pre>
+                <p>Example (<code>_text</code>):
+                <pre>
+{
+TODO
+}
+                </pre>
+                <p>Example (<code>_meshfile_object</code>):
+                <pre>
+{
+TODO
+}
+                </pre>
             </dd>
             <dt><code>set_transform</code></dt>
             <dd>
