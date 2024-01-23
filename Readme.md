@@ -81,6 +81,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
 }
                 </pre>
                 Note the somewhat indirect way in which geometries and materials are specified. Each Three.js serialized object has a list of geometries and a list of materials, each with a UUID. The actual geometry and material for a given object are simply references to those existing UUIDs. This enables easy re-use of geometries between objects in Three.js, although we don't really rely on that in MeshCat. Some information about the JSON object format can be found on the <a href="https://github.com/mrdoob/three.js/wiki/JSON-Object-Scene-format-4">Three.js wiki</a>.
+                <p>
                 <p>Example (<code>_meshfile_geometry</code>):
                 <pre>
 {
@@ -160,7 +161,7 @@ TODO
                         <li><code>top_color: number[3]</code> (only for the Background)
                         <li><code>bottom_color: number[3]</code> (only for the Background)
                         </ul>
-                        Properties not on the above list will be set directly on the <code>THREE.Object3D</code> object. This provides a powerful capability to customize the scene, but should be considered and advanced usage -- you're on your own to avoid any unwanted side-effects.
+                        Properties not on the above list will be set directly on the <code>THREE.Object3D</code> object. This provides a powerful capability to customize the scene, but should be considered an advanced usage -- you're on your own to avoid any unwanted side-effects.
                     </dd>
                     <dt><code>value</code></dt>
                     <dd>The new value.</dd>
