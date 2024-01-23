@@ -35,9 +35,15 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                     <dt><code>path</code></dt>
                     <dd>A <code>"/"</code>-separated string indicating the object's path in the scene tree. An object at path <code>"/foo/bar"</code> is a child of an object at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> will also affect its children.
                     <dt><code>object</code></dt>
-                    <dd>The Three.js Object, with its geometry and material, in JSON form as a JS object. The format accepted is, essentially, anything that <a href="https://threejs.org/docs/#api/loaders/ObjectLoader">ObjectLoader</a> can handle, or, similarly, anything you might get by calling the <code>toJSON()</code> method of a Three.js Object3D.
+                    <dd>The Three.js Object, with its geometry and material, in JSON form as a JS object. The nominal format accepted is anything that <a href="https://threejs.org/docs/#api/loaders/ObjectLoader">ObjectLoader</a> can handle (i.e., anything you might get by calling the <code>toJSON()</code> method of a Three.js Object3D).
+                    <p>Beyond the nominal format, Meshcat also offers a few extensions for convenience:
+                    <ul>
+                    <li>Within the <code>geometries</code> stanza, the <code>type</code> field can be set to <code>"_meshfile_geometry"</code> to parse using a mesh file format. In this case, the geometry must also have a field named <code>format</code> set to one of <code>"obj"</code> or <code>"dae"</code> or <code>"stl"</code> and a field named <code>"data"</code> with the string contents of the file.
+                    <li>Within the <code>materials</code> stanza, the <code>type</code> field can be set to <code>"_text"</code> to use a string as the texture (i.e., a font rendered onto an image). In this case, the material must also have fields named <code>font_size</code> (in pixels), <code>font_face</code> (a string), and <code>text</code> (the words to render into a texture).
+                    <li>Within the inner <code>object</code> stanza (i.e., the object with a uuid, not the object argument to set_object), the <code>type</code> field can be set to <code>"_meshfile_object"</code> to parse using a mesh file format. In this case, the <code>geometries</code> and <code>materials</code> and <code>geometry: {uuid}</code> and <code>material: {uuid}</code> are all ignored, and the object must have a field named <code>format</code> set to one of <code>"obj"</code> or <code>"dae"</code> or <code>"stl"</code> and a field named <code>"data"</code> with the string contents of the file. When the format is obj, the object may also have a field named <code>mtl_library</code> with the string contents of the associated mtl file.
+                    </ul>
                 </dl>
-                Example:
+                Example (nominal format):
                 <pre>
 {
     type: "set_object",
