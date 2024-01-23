@@ -123,7 +123,21 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>property</code></dt>
-                    <dd>The name of the property to set, as a string.</dd>
+                    <dd>
+                        The name of the property to set, as a string. The following properties are supported:
+                        <ul>
+                        <li><code>visible: bool</code>
+                        <li><code>position: number[3]</code>
+                        <li><code>quaternion: number[4]</code>
+                        <li><code>scale: number[3]</code>
+                        <li><code>color: number[4]</code>
+                        <li><code>opacity: number</code> (this is the same as the 4th element of <code>color</code>)
+                        <li><code>modulated_opacity: number</code>
+                        <li><code>top_color: number[3]</code> (only for the Background)
+                        <li><code>bottom_color: number[3]</code> (only for the Background)
+                        </ul>
+                        Properties not on the above list will be set directly on the <code>THREE.Object3D</code> object. This provides a powerful capability to customize the scene, but should be considered and advanced usage -- you're on your own to avoid any unwanted side-effects.
+                    </dd>
                     <dt><code>value</code></dt>
                     <dd>The new value.</dd>
                 </dl>
