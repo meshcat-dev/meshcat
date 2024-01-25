@@ -85,7 +85,51 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 <p>Example (<code>_meshfile_geometry</code>):
                 <pre>
 {
-TODO
+    type: "set_object",
+    path: "/some/file/geometry",
+    object: {
+        metadata: {
+            version: 4.5,
+            type: "Object"
+        },
+        geometries: [
+            {
+                type: "_meshfile_geometry",
+                uuid: "4a08da6b-bbc6-11ee-b7a2-4b79088b524d",
+                format: "obj",
+                data: "v -0.06470900 ..."
+            }
+        ],
+        images: [
+            {
+                uuid: "c448fc3a-bbc6-11ee-b7a2-4b79088b524d",
+                url: "data:image/png;base64,iVBORw0KGgoAAA=="
+            }
+        ],
+        textures: [
+            {
+                uuid: "d442ea92-bbc6-11ee-b7a2-4b79088b524d",
+                wrap: [1001, 1001],
+                repeat: [1, 1],
+                image: "c448fc3a-bbc6-11ee-b7a2-4b79088b524d"
+            }
+        ],
+        materials: [
+            {
+                uuid: "4a08da6e-bbc6-11ee-b7a2-4b79088b524d",
+                type: "MeshLambertMaterial",
+                color: 16777215,
+                reflectivity: 0.5,
+                map: "d442ea92-bbc6-11ee-b7a2-4b79088b524d"
+            }
+        ],
+        object: {
+            uuid: "4a08da6f-bbc6-11ee-b7a2-4b79088b524d",
+            type: "Mesh",
+            geometry: "4a08da6b-bbc6-11ee-b7a2-4b79088b524d",
+            material: "4a08da6e-bbc6-11ee-b7a2-4b79088b524d"
+        }
+    }
 }
                 </pre>
                 <p>Example (<code>_text</code>):
