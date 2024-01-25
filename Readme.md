@@ -196,7 +196,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
     }
 }
                 </pre>
-                Check <code>test/meshfile_object_obj.html<code> for the full demo.
+                Check <code>test/meshfile_object_obj.html</code> for the full demo.
             </dd>
             <dt><code>set_transform</code></dt>
             <dd>
