@@ -91,7 +91,54 @@ TODO
                 <p>Example (<code>_text</code>):
                 <pre>
 {
-TODO
+    type: "set_object",
+    path: "/meshcat/text",
+    object: {
+        metadata: {
+            version: 4.5,
+            type: "Object"
+        },
+        geometries: [
+            {
+                uuid: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
+                type: "PlaneGeometry",
+                width: 16,
+                height: 16,
+                widthSegments: 1,
+                heightSegments: 1
+            }
+        ],
+        textures: [
+            {
+                uuid: "0c8c99a8-bba8-11ee-b7a2-4b79088b524d",
+                type: "_text",
+                text: "Hello, world!",
+                font_size: 300,
+                font_face: "sans-serif"
+            }
+        ],
+        materials: [
+            {
+                uuid: "6fe7011b-bba7-11ee-b7a2-4b79088b524d",
+                type: "MeshPhongMaterial",
+                color: 16777215,
+                reflectivity: 0.5,
+                side: 2,
+                transparent: true,
+                opacity: 1.0,
+                linewidth: 1.0,
+                wireframe: false,
+                wireframeLinewidth: 1.0,
+                vertexColors: 0,
+                map: "0c8c99a8-bba8-11ee-b7a2-4b79088b524d",
+            }
+        ],
+        object: {
+            uuid: "6fe7011c-bba7-11ee-b7a2-4b79088b524d",
+            type: "Mesh",
+            geometry: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
+            material: "6fe7011b-bba7-11ee-b7a2-4b79088b524d",
+        }
 }
                 </pre>
                 <p>Example (<code>_meshfile_object</code>):
