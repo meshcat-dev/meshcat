@@ -102,8 +102,8 @@ TODO
             {
                 uuid: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
                 type: "PlaneGeometry",
-                width: 16,
-                height: 16,
+                width: 8,
+                height: 8,
                 widthSegments: 1,
                 heightSegments: 1
             }
@@ -121,15 +121,7 @@ TODO
             {
                 uuid: "6fe7011b-bba7-11ee-b7a2-4b79088b524d",
                 type: "MeshPhongMaterial",
-                color: 16777215,
-                reflectivity: 0.5,
-                side: 2,
                 transparent: true,
-                opacity: 1.0,
-                linewidth: 1.0,
-                wireframe: false,
-                wireframeLinewidth: 1.0,
-                vertexColors: 0,
                 map: "0c8c99a8-bba8-11ee-b7a2-4b79088b524d",
             }
         ],
@@ -139,6 +131,7 @@ TODO
             geometry: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
             material: "6fe7011b-bba7-11ee-b7a2-4b79088b524d",
         }
+    }
 }
                 </pre>
                 <p>Example (<code>_meshfile_object</code>):
