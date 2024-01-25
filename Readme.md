@@ -185,8 +185,6 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
     path: "/meshcat/wavefront_file",
     object: {
         metadata: {version: 4.5, type: "Object"},
-        geometries: [],
-        materials: [],
         object: {
             uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
             type: "_meshfile_object",
