@@ -1,4 +1,4 @@
 node_modules
 dist/main.js
-dist/min.min.js.LICENSE.txt
+dist/main.min.js.LICENSE.txt
 yarn-error.log
