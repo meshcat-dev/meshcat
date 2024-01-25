@@ -137,9 +137,24 @@ TODO
                 <p>Example (<code>_meshfile_object</code>):
                 <pre>
 {
-TODO
+    type: "set_object",
+    path: "/meshcat/wavefront_file",
+    object: {
+        metadata: {version: 4.5, type: "Object"},
+        geometries: [],
+        materials: [],
+        object: {
+            uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+            type: "_meshfile_object",
+            format: "obj",
+            data: "mtllib ./cube.mtl\nusemtl material_0\nv 0.0 0.0 0.0 ...",
+            mtl_library: "newmtl material_0\nKa 0.2 0.2 0.2\n ...",
+            resources: {"cube.png": "data:image/png;base64,iV ..."}
+        }
+    }
 }
                 </pre>
+                Check <code>test/meshfile_object_obj.html<code> for the full demo.
             </dd>
             <dt><code>set_transform</code></dt>
             <dd>
