@@ -35,9 +35,15 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                     <dt><code>path</code></dt>
                     <dd>A <code>"/"</code>-separated string indicating the object's path in the scene tree. An object at path <code>"/foo/bar"</code> is a child of an object at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> will also affect its children.
                     <dt><code>object</code></dt>
-                    <dd>The Three.js Object, with its geometry and material, in JSON form as a JS object. The format accepted is, essentially, anything that <a href="https://threejs.org/docs/#api/loaders/ObjectLoader">ObjectLoader</a> can handle, or, similarly, anything you might get by calling the <code>toJSON()</code> method of a Three.js Object3D.
+                    <dd>The Three.js Object, with its geometry and material, in JSON form as a JS object. The nominal format accepted is anything that <a href="https://threejs.org/docs/#api/loaders/ObjectLoader">ObjectLoader</a> can handle (i.e., anything you might get by calling the <code>toJSON()</code> method of a Three.js Object3D).
+                    <p>Beyond the nominal format, Meshcat also offers a few extensions for convenience:
+                    <ul>
+                    <li>Within the <code>geometries</code> stanza, the <code>type</code> field can be set to <code>"_meshfile_geometry"</code> to parse using a mesh file format. In this case, the geometry must also have a field named <code>format</code> set to one of <code>"obj"</code> or <code>"dae"</code> or <code>"stl"</code> and a field named <code>"data"</code> with the string contents of the file.
+                    <li>Within the <code>materials</code> stanza, the <code>type</code> field can be set to <code>"_text"</code> to use a string as the texture (i.e., a font rendered onto an image). In this case, the material must also have fields named <code>font_size</code> (in pixels), <code>font_face</code> (a string), and <code>text</code> (the words to render into a texture).
+                    <li>Within the inner <code>object</code> stanza (i.e., the object with a uuid, not the object argument to set_object), the <code>type</code> field can be set to <code>"_meshfile_object"</code> to parse using a mesh file format. In this case, the <code>geometries</code> and <code>materials</code> and <code>geometry: {uuid}</code> and <code>material: {uuid}</code> are all ignored, and the object must have a field named <code>format</code> set to one of <code>"obj"</code> or <code>"dae"</code> or <code>"stl"</code> and a field named <code>"data"</code> with the string contents of the file. When the format is obj, the object may also have a field named <code>mtl_library</code> with the string contents of the associated mtl file.
+                    </ul>
                 </dl>
-                Example:
+                <p>Example (nominal format):
                 <pre>
 {
     type: "set_object",
@@ -75,6 +81,122 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
 }
                 </pre>
                 Note the somewhat indirect way in which geometries and materials are specified. Each Three.js serialized object has a list of geometries and a list of materials, each with a UUID. The actual geometry and material for a given object are simply references to those existing UUIDs. This enables easy re-use of geometries between objects in Three.js, although we don't really rely on that in MeshCat. Some information about the JSON object format can be found on the <a href="https://github.com/mrdoob/three.js/wiki/JSON-Object-Scene-format-4">Three.js wiki</a>.
+                <p>
+                <p>Example (<code>_meshfile_geometry</code>):
+                <pre>
+{
+    type: "set_object",
+    path: "/some/file/geometry",
+    object: {
+        metadata: {
+            version: 4.5,
+            type: "Object"
+        },
+        geometries: [
+            {
+                type: "_meshfile_geometry",
+                uuid: "4a08da6b-bbc6-11ee-b7a2-4b79088b524d",
+                format: "obj",
+                data: "v -0.06470900 ..."
+            }
+        ],
+        images: [
+            {
+                uuid: "c448fc3a-bbc6-11ee-b7a2-4b79088b524d",
+                url: "data:image/png;base64,iVBORw0KGgoAAA=="
+            }
+        ],
+        textures: [
+            {
+                uuid: "d442ea92-bbc6-11ee-b7a2-4b79088b524d",
+                wrap: [1001, 1001],
+                repeat: [1, 1],
+                image: "c448fc3a-bbc6-11ee-b7a2-4b79088b524d"
+            }
+        ],
+        materials: [
+            {
+                uuid: "4a08da6e-bbc6-11ee-b7a2-4b79088b524d",
+                type: "MeshLambertMaterial",
+                color: 16777215,
+                reflectivity: 0.5,
+                map: "d442ea92-bbc6-11ee-b7a2-4b79088b524d"
+            }
+        ],
+        object: {
+            uuid: "4a08da6f-bbc6-11ee-b7a2-4b79088b524d",
+            type: "Mesh",
+            geometry: "4a08da6b-bbc6-11ee-b7a2-4b79088b524d",
+            material: "4a08da6e-bbc6-11ee-b7a2-4b79088b524d"
+        }
+    }
+}
+                </pre>
+                <p>Example (<code>_text</code>):
+                <pre>
+{
+    type: "set_object",
+    path: "/meshcat/text",
+    object: {
+        metadata: {
+            version: 4.5,
+            type: "Object"
+        },
+        geometries: [
+            {
+                uuid: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
+                type: "PlaneGeometry",
+                width: 8,
+                height: 8,
+                widthSegments: 1,
+                heightSegments: 1
+            }
+        ],
+        textures: [
+            {
+                uuid: "0c8c99a8-bba8-11ee-b7a2-4b79088b524d",
+                type: "_text",
+                text: "Hello, world!",
+                font_size: 300,
+                font_face: "sans-serif"
+            }
+        ],
+        materials: [
+            {
+                uuid: "6fe7011b-bba7-11ee-b7a2-4b79088b524d",
+                type: "MeshPhongMaterial",
+                transparent: true,
+                map: "0c8c99a8-bba8-11ee-b7a2-4b79088b524d",
+            }
+        ],
+        object: {
+            uuid: "6fe7011c-bba7-11ee-b7a2-4b79088b524d",
+            type: "Mesh",
+            geometry: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
+            material: "6fe7011b-bba7-11ee-b7a2-4b79088b524d",
+        }
+    }
+}
+                </pre>
+                <p>Example (<code>_meshfile_object</code>):
+                <pre>
+{
+    type: "set_object",
+    path: "/meshcat/wavefront_file",
+    object: {
+        metadata: {version: 4.5, type: "Object"},
+        object: {
+            uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+            type: "_meshfile_object",
+            format: "obj",
+            data: "mtllib ./cube.mtl\nusemtl material_0\nv 0.0 0.0 0.0 ...",
+            mtl_library: "newmtl material_0\nKa 0.2 0.2 0.2\n ...",
+            resources: {"cube.png": "data:image/png;base64,iV ..."}
+        }
+    }
+}
+                </pre>
+                Check <code>test/meshfile_object_obj.html</code> for the full demo.
             </dd>
             <dt><code>set_transform</code></dt>
             <dd>
@@ -123,7 +245,21 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>property</code></dt>
-                    <dd>The name of the property to set, as a string.</dd>
+                    <dd>
+                        The name of the property to set, as a string. The following properties are supported:
+                        <ul>
+                        <li><code>visible: bool</code>
+                        <li><code>position: number[3]</code>
+                        <li><code>quaternion: number[4]</code>
+                        <li><code>scale: number[3]</code>
+                        <li><code>color: number[4]</code>
+                        <li><code>opacity: number</code> (this is the same as the 4th element of <code>color</code>)
+                        <li><code>modulated_opacity: number</code>
+                        <li><code>top_color: number[3]</code> (only for the Background)
+                        <li><code>bottom_color: number[3]</code> (only for the Background)
+                        </ul>
+                        Properties not on the above list will be set directly on the <code>THREE.Object3D</code> object. This provides a powerful capability to customize the scene, but should be considered an advanced usage -- you're on your own to avoid any unwanted side-effects.
+                    </dd>
                     <dt><code>value</code></dt>
                     <dd>The new value.</dd>
                 </dl>

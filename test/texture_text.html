@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=utf-8>
+    <title>MeshCat - setting opacity</title>
+</head>
+<body>
+    <div id="test-message">
+        You should see "Hello, world!" standing upright,
+        approximately filling the whole screen.
+    </div>
+    <div id="meshcat-pane">
+    </div>
+    <script src="../dist/main.min.js"></script>
+    <script>
+        var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+        viewer.handle_command({
+            type: "set_object",
+            path: "/meshcat/text",
+            object: {
+                metadata: {
+                    version: 4.5,
+                    type: "Object"
+                },
+                geometries: [
+                    {
+                        uuid: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
+                        type: "PlaneGeometry",
+                        width: 8,
+                        height: 8,
+                        widthSegments: 1,
+                        heightSegments: 1
+                    }
+                ],
+                textures: [
+                    {
+                        uuid: "0c8c99a8-bba8-11ee-b7a2-4b79088b524d",
+                        type: "_text",
+                        text: "Hello, world!",
+                        font_size: 300,
+                        font_face: "sans-serif"
+                    }
+                ],
+                materials: [
+                    {
+                        uuid: "6fe7011b-bba7-11ee-b7a2-4b79088b524d",
+                        type: "MeshPhongMaterial",
+                        transparent: true,
+                        map: "0c8c99a8-bba8-11ee-b7a2-4b79088b524d",
+                        // Make the text visible front and back (double sided).
+                        side: 2
+                    }
+                ],
+                object: {
+                    uuid: "6fe7011c-bba7-11ee-b7a2-4b79088b524d",
+                    type: "Mesh",
+                    geometry: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
+                    material: "6fe7011b-bba7-11ee-b7a2-4b79088b524d"
+                }
+            }
+        });
+        viewer.handle_command({
+            type: "set_transform",
+            path: "/meshcat/text",
+            matrix: [ 0,  1,  0,  0,
+                      0,  0,  1,  0,
+                      1,  0,  0,  0,
+                      0,  0,  0,  1]
+        });
+    </script>
+    <style>
+        body {
+            margin: 0;
+        }
+        #meshcat-pane {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #test-message {
+            width: 75vw;
+            text-align: left;
+            background-color: rgb(232, 232, 232);
+            position: fixed;
+            left: 0%;
+            display: block;
+            padding: 10px;
+        }
+    </style>
+</body>
+
+</html>
