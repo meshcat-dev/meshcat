@@ -1320,7 +1320,7 @@ class Viewer {
         };
         if (object_json.object.type == "_meshfile_object" && object_json.object.format == "gltf") {
             let loader = new GLTFLoader();
-            loader.parse(object_json.object.data, path, (gltf) => {
+            loader.parse(object_json.object.data, null, (gltf) => {
                 let scene = gltf.scene;
                 if (scene === null) {
                     // TODO(SeanCurtis-TRI): What do I do in this case?
