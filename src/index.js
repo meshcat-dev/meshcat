@@ -13,9 +13,50 @@ import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory';
 require('ccapture.js');
 
-// We must implement extension types 0x16 and 0x17. The trick to
-// decoding them is they must be converted from littleEndian.
+// We implement several MessagePack extension types for arrays, inspired by the
+// conventions for msgpack-lite:
+//    https://github.com/kawanet/msgpack-lite/tree/master#extension-types
+//
+// Specifically, we support:
+// - 0x12 Uint8Array
+// - 0x15 Int32Array
+// - 0x16 Uint32Array
+// - 0x17 Float32Array
+//
+// The trick to decoding them is they must be converted from littleEndian.
 const extensionCodec = new msgpack.ExtensionCodec();
+// Uint8Array
+extensionCodec.register({
+  type: 0x12,
+  encode: (obj) => {
+    console.error("Uint8Array encode not implemented")
+    return null;
+  },
+  decode: (data) => {
+    const to_return = new Uint8Array(data.byteLength);
+    let dataview = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    for (let i = 0; i < to_return.length; i++) {
+      to_return[i] = dataview.getUint8(i);
+    }
+    return to_return
+  },
+});
+// Int32Array
+extensionCodec.register({
+  type: 0x15,
+  encode: (obj) => {
+    console.error("Int32Array encode not implemented")
+    return null;
+  },
+  decode: (data) => {
+    const to_return = new Int32Array(data.byteLength / 4);
+    let dataview = new DataView(data.buffer, data.byteOffset, data.byteLength);
+    for (let i = 0; i < to_return.length; i++) {
+      to_return[i] = dataview.getInt32(i * 4, true);  // true b.c. littleEndian
+    }
+    return to_return
+  },
+});
 // Uint32Array
 extensionCodec.register({
   type: 0x16,
@@ -32,7 +73,6 @@ extensionCodec.register({
     return to_return
   },
 });
-   +
 // Float32Array
 extensionCodec.register({
   type: 0x17,

@@ -455,7 +455,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
     <dd>
         Set up a web socket connection to a server at the given URL. The viewer will listen for messages on the socket as binary MsgPack blobs. Each message will be decoded using <code>msgpack.decode()</code> from <a href="https://github.com/msgpack/msgpack-javascript">msgpack-javascript</a> and the resulting object will be passed directly to <code>Viewer.handle_command()</code> as documented above.
         <p>
-        Note that we do support the MsgPack extension types listed in <a href="https://github.com/msgpack/msgpack-javascript#extension-types">msgpack-javascript#extension-types</a>, with additional support for the <code>Float32Array</code> type which is particularly useful for efficiently sending point data and for <code>Uint32Array</code>.
+        Note that we do support the MsgPack extension types listed in <a href="https://github.com/msgpack/msgpack-javascript#extension-types">msgpack-javascript#extension-types</a>, with additional support for the <code>Float32Array</code> type which is particularly useful for efficiently sending point data and for <code>Uint32Array</code>, <code>Uint8Array</code>, and <code>Int32Array</code>.
     </dd>
 </dl>
 
