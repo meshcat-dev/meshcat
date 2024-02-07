@@ -263,13 +263,6 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                 geometry = merge_geometries(obj, true);
                 geometry.uuid = json.uuid;
                 material = geometry.material;
-            } else if (json.format == "dae") {
-                let loader = new ColladaLoader(manager);
-                loader.onTextureLoad = this.onTextureLoad;
-                let obj = loader.parse(json.data, path);
-                geometry = merge_geometries(obj.scene, true);
-                geometry.uuid = json.uuid;
-                material = geometry.material;
             } else if (json.format == "stl") {
                 let loader = new STLLoader();
                 geometry = loader.parse(json.data.buffer, path);
@@ -1390,6 +1383,20 @@ class Viewer {
                     configure_obj(scene);
                 }
             });
+        } else if (object_json.object.type == "_meshfile_object" && object_json.object.format == "dae") {
+            let manager = new THREE.LoadingManager();
+            if (object_json.object.resources !== undefined) {
+                let resources = object_json.object.resources;
+                manager.setURLModifier(url => {
+                    if (resources[url] !== undefined) {
+                        return resources[url];
+                    }
+                    return url;
+                });
+            }
+            let loader = new ColladaLoader(manager);
+            let dae = loader.parse(object_json.object.data, "");
+            configure_obj(dae.scene);
         } else {
             let loader = new ExtensibleObjectLoader();
             loader.onTextureLoad = () => { this.set_dirty(); }
