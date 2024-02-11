@@ -23,9 +23,6 @@ const meshcat_inline_assets = {
     'basis_transcoder.wasm': new URL(
         'three/examples/jsm/libs/basis/basis_transcoder.wasm',
         import.meta.url).href,
-    'draco_decoder.js': new URL(
-        'three/examples/jsm/libs/draco/gltf/draco_decoder.js',
-        import.meta.url).href,
     'draco_decoder.wasm': new URL(
         'three/examples/jsm/libs/draco/gltf/draco_decoder.wasm',
         import.meta.url).href,
