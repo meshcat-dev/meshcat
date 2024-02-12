@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<title>MeshCat</title>
+	</head>
+	<body>
+        <div id="meshcat-pane">
+        </div>
+
+<!-- Note for developers: This is the same test as meshfile_object_gltf.html
+except that (1) the buffers are no longer embedded inside the glTF file, and
+(2) the buffers are optimized using DRACO and KTX2 compression. -->
+
+        <script src="../dist/main.min.js"></script>
+        <script>
+            var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+
+let gltf_contents = `{
+  "asset": {
+    "generator": "glTF-Transform v3.10.0",
+    "version": "2.0"
+  },
+  "accessors": [
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 36
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 24,
+      "max": [
+        1,
+        1,
+        1
+      ],
+      "min": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 24
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 24
+    },
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 6
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 4,
+      "max": [
+        1,
+        1,
+        0
+      ],
+      "min": [
+        -1,
+        -1,
+        0
+      ]
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 4
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 213
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 213,
+      "byteLength": 115
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "textures": [
+    {
+      "sampler": 0,
+      "extensions": {
+        "KHR_texture_basisu": {
+          "source": 0
+        }
+      }
+    }
+  ],
+  "images": [
+    {
+      "name": "meshcat_cube",
+      "mimeType": "image/ktx2",
+      "uri": "meshfile_object_gltf_optimized.ktx2"
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "meshfile_object_gltf_optimized.bin",
+      "byteLength": 328
+    }
+  ],
+  "materials": [
+    {
+      "name": "Default OBJ",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "roughnessFactor": 0.06363635510206223,
+        "baseColorTexture": {
+          "index": 0
+        }
+      },
+      "extensions": {
+        "KHR_materials_ior": {
+          "ior": 1.4500000476837158
+        },
+        "KHR_materials_specular": {
+          "specularColorFactor": [
+            1.7785181999206543,
+            1.7785181999206543,
+            1.7785181999206543
+          ]
+        }
+      }
+    },
+    {
+      "name": "PlaneMat",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.3505544364452362,
+          0.07363083213567734,
+          0.07363083213567734,
+          1
+        ],
+        "roughnessFactor": 0.5981309413909912,
+        "metallicFactor": 0.20000000298023224
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "meshcat_cube",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 0,
+          "extensions": {
+            "KHR_draco_mesh_compression": {
+              "bufferView": 0,
+              "attributes": {
+                "POSITION": 0,
+                "NORMAL": 1,
+                "TEXCOORD_0": 2
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Plane",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 5,
+            "NORMAL": 6
+          },
+          "mode": 4,
+          "material": 1,
+          "indices": 4,
+          "extensions": {
+            "KHR_draco_mesh_compression": {
+              "bufferView": 1,
+              "attributes": {
+                "POSITION": 0,
+                "NORMAL": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "meshcat_cube",
+      "rotation": [
+        0.43111834797335324,
+        -0.16214590328170803,
+        0.28769654695687935,
+        0.8396882615500162
+      ],
+      "mesh": 0
+    },
+    {
+      "name": "Plane",
+      "scale": [
+        2.1528782844543457,
+        2.1528782844543457,
+        2.1528782844543457
+      ],
+      "mesh": 1
+    }
+  ],
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0,
+        1
+      ]
+    }
+  ],
+  "scene": 0,
+  "extensionsUsed": [
+    "KHR_materials_ior",
+    "KHR_materials_specular",
+    "KHR_texture_basisu",
+    "KHR_draco_mesh_compression"
+  ],
+  "extensionsRequired": [
+    "KHR_texture_basisu",
+    "KHR_draco_mesh_compression"
+  ]
+}`;
+
+        viewer.handle_command({
+            type: "set_object",
+            path: "/meshcat/mesh_test",
+            object: {
+                metadata: {version: 4.5, type: "Object"},
+                geometries: [],
+                materials: [],
+                object: {
+                    uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+                    type: "_meshfile_object",
+                    format: "gltf",
+                    data: gltf_contents
+                }
+            }
+        });
+		// Enable shadows so we can see the meshes in the gltf cast and receive
+		// shadows.
+		viewer.handle_command({
+			type: "set_property",
+			path: "/Lights/PointLightNegativeX/<object>",
+			property: "castShadow",
+			value: true
+		});
+		viewer.handle_command({
+			type: "set_property",
+			path: "/Lights/PointLightPositiveX/<object>",
+			property: "castShadow",
+			value: true
+		});
+		viewer.set_property(["Background", "<object>"], "top_color", [1, 0.25, 0.25]);
+		viewer.set_property(["Background", "<object>"], "bottom_color", [0.25, 0.25, 1.0]);
+        </script>
+
+
+         <style>
+            body {
+                margin: 0;
+            }
+
+            #meshcat-pane {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+        </style>
+	</body>
+</html>
