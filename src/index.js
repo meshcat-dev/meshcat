@@ -4,7 +4,9 @@ var dat = require('dat.gui').default; // TODO: why is .default needed?
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {OBJLoader2, MtlObjBridge} from 'wwobjloader2'
 import {ColladaLoader} from 'three/examples/jsm/loaders/ColladaLoader.js';
+import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {KTX2Loader} from 'three/examples/jsm/loaders/KTX2Loader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
@@ -12,6 +14,29 @@ import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory';
 require('ccapture.js');
+
+// These are bundled as data:// URIs via our webpack.config.js.
+const meshcat_inline_assets = {
+    'basis_transcoder.js': new URL(
+        'three/examples/jsm/libs/basis/basis_transcoder.js',
+        import.meta.url).href,
+    'basis_transcoder.wasm': new URL(
+        'three/examples/jsm/libs/basis/basis_transcoder.wasm',
+        import.meta.url).href,
+    'draco_decoder.wasm': new URL(
+        'three/examples/jsm/libs/draco/gltf/draco_decoder.wasm',
+        import.meta.url).href,
+    'draco_wasm_wrapper.js': new URL(
+        'three/examples/jsm/libs/draco/gltf/draco_wasm_wrapper.js',
+        import.meta.url).href,
+};
+const meshcat_loading_manager = new THREE.LoadingManager();
+meshcat_loading_manager.setURLModifier(url => {
+    if (url in meshcat_inline_assets) {
+        return meshcat_inline_assets[url];
+    }
+    return url;
+});
 
 // We implement several MessagePack extension types for arrays, inspired by the
 // conventions for msgpack-lite:
@@ -1076,6 +1101,10 @@ class Viewer {
         this.create_camera();
         this.num_messages_received = 0;
 
+        this.draco_loader = new DRACOLoader(meshcat_loading_manager);
+        this.ktx2_loader = new KTX2Loader(meshcat_loading_manager);
+        this.ktx2_loader.detectSupport(this.renderer);
+
         // TODO: probably shouldn't be directly accessing window?
         window.onload = (evt) => this.set_3d_pane_size();
         window.addEventListener('resize', (evt) => this.set_3d_pane_size(), false);
@@ -1360,6 +1389,8 @@ class Viewer {
         };
         if (object_json.object.type == "_meshfile_object" && object_json.object.format == "gltf") {
             let loader = new GLTFLoader();
+            loader.setDRACOLoader(this.draco_loader);
+            loader.setKTX2Loader(this.ktx2_loader);
             loader.parse(object_json.object.data, null, (gltf) => {
                 let scene = gltf.scene;
                 if (scene === null) {

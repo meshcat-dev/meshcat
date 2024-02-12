@@ -18,6 +18,14 @@ module.exports = [{
     },
     watch: true,
     mode: "production",
+    module: {
+      rules: [
+        {
+          test: /\/libs\/(basis|draco)\//,
+          type: 'asset/inline'
+        }
+      ]
+    },
     plugins: [
       new LicensePlugin({
         outputFilename: "main.min.js.THIRD_PARTY_LICENSES.json",
