@@ -661,7 +661,18 @@ class SceneNode {
             // Top/bottom colors are stored as dat.color.Color
             this.object[property] = new dat.color.Color(value.map((x) => x * 255));
         } else {
-            this.object[property] = value;
+            function smart_set(obj, is, value) {
+                if (is.length !== 1) {
+                    return smart_set(obj[is[0]], is.slice(1), value);
+                }
+                if (value instanceof Array && obj[is[0]] instanceof THREE.Color) {
+                    return obj[is[0]].setRGB(value[0], value[1], value[2]);
+                } else if (typeof obj[is[0]].set === "function") {
+                    return obj[is[0]].set(value);
+                }
+                return obj[is[0]] = value;
+            }
+            smart_set(this.object, property.split('.'), value);
         }
         if (this.object.isBackground) {
             // If we've set values on the Background, we need to fire its on_update()).
