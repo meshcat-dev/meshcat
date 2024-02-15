@@ -98,6 +98,7 @@ extensionCodec.register({
     return to_return
   },
 });
+
 // Float32Array
 extensionCodec.register({
   type: 0x17,
@@ -136,20 +137,32 @@ function merge_geometries(object, preserve_materials = false) {
     }
     collectGeometries(object, root_transform);
     let result = null;
+    let material;
     if (geometries.length == 1) {
         result =  geometries[0];
         if (preserve_materials) {
-            result.material = materials[0];
+            material = materials[0];
         }
     } else if (geometries.length > 1) {
         result = mergeGeometries(geometries, true);
+        const ngeom = result.groups.length;
+        let mts = [];
         if (preserve_materials) {
-            result.material = materials;
+            for (let i = 0; i < ngeom; i++) {
+                const group = result.groups[i];
+                let m = materials[i];
+                if (Array.isArray(m)) {
+                    mts.push(m[m.length - 1]);
+                } else {
+                    mts.push(m);
+                }
+            }
+            material = mts;
         }
     } else {
         result = new THREE.BufferGeometry();
     }
-    return result;
+    return [result, material];
 }
 
 // Handler for special texture types that we want to support
@@ -194,30 +207,28 @@ function handle_special_geometry(geom) {
         console.warn("_meshfile is deprecated. Please use _meshfile_geometry for geometries and _meshfile_object for objects with geometry and material");
         geom.type = "_meshfile_geometry";
     }
+    let geometry = null;
+    let m = null;
     if (geom.type == "_meshfile_geometry") {
         if (geom.format == "obj") {
             let loader = new OBJLoader2();
             let obj = loader.parse(geom.data + "\n");
-            let loaded_geom = merge_geometries(obj);
-            loaded_geom.uuid = geom.uuid;
-            return loaded_geom;
+            [geometry, m] = merge_geometries(obj);
+            geometry.uuid = geom.uuid;
         } else if (geom.format == "dae") {
             let loader = new ColladaLoader();
             let obj = loader.parse(geom.data);
-            let result = merge_geometries(obj.scene);
-            result.uuid = geom.uuid;
-            return result;
+            [geometry, m] = merge_geometries(obj.scene);
+            geometry.uuid = geom.uuid;
         } else if (geom.format == "stl") {
             let loader = new STLLoader();
-            let loaded_geom = loader.parse(geom.data.buffer);
-            loaded_geom.uuid = geom.uuid;
-            return loaded_geom;
+            geometry = loader.parse(geom.data.buffer);
+            geometry.uuid = geom.uuid;
         } else {
             console.error("Unsupported mesh type:", geom);
-            return null;
         }
     }
-    return null;
+    return geometry;
 }
 
 // The ExtensibleObjectLoader extends the THREE.ObjectLoader
@@ -285,16 +296,14 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                     this.onTextureLoad();
                 }
                 let obj = loader.parse(json.data + "\n", path);
-                geometry = merge_geometries(obj, true);
+                [geometry, material] = merge_geometries(obj, true);
                 geometry.uuid = json.uuid;
-                material = geometry.material;
             } else if (json.format == "dae") {
                 let loader = new ColladaLoader(manager);
                 loader.onTextureLoad = this.onTextureLoad;
                 let obj = loader.parse(json.data, path);
-                geometry = merge_geometries(obj.scene, true);
+                [geometry, material] = merge_geometries(obj.scene, true);
                 geometry.uuid = json.uuid;
-                material = geometry.material;
             } else if (json.format == "stl") {
                 let loader = new STLLoader();
                 geometry = loader.parse(json.data.buffer, path);
