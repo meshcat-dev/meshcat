@@ -628,7 +628,7 @@ class SceneNode {
         }
     }
 
-    set_property(property, value) {
+    set_property(property, value, target_path) {
         if (property === "position") {
             this.object.position.set(value[0], value[1], value[2]);
         } else if (property === "quaternion") {
@@ -661,7 +661,7 @@ class SceneNode {
             // Top/bottom colors are stored as dat.color.Color
             this.object[property] = new dat.color.Color(value.map((x) => x * 255));
         } else {
-            this.object[property] = value;
+            this.set_property_chain(property, value, target_path);
         }
         if (this.object.isBackground) {
             // If we've set values on the Background, we need to fire its on_update()).
@@ -669,6 +669,60 @@ class SceneNode {
         }
         this.vis_controller.updateDisplay();
         this.controllers.forEach(c => c.updateDisplay());
+    }
+
+    set_property_chain(property, value, target_path) {
+        // Break the property `obj0.obj1[obj2].foo` into the list
+        // `[obj0, obj1, obj2]` and the property name `foo`.
+
+        // Array [x] becomes .x.
+        property = property.replace(/\[(\w+)\]/g, '.$1');
+        // Strip a leading dot.
+        property = property.replace(/^\./, '');
+        var objects = property.split(".");
+        const final_property = objects.pop();
+
+        // Traverse the object sequence.
+
+        // For loop invariant: `parent` starts as an object (by construction)
+        // the for loop only updates it to another object.
+        var error_detail = null;
+        var parent = this.object;
+        var parent_path = this.folder.name;
+        for (const child of objects) {
+            // Loop invariant: parent is object implies this test is always safe.
+            if (child in parent) {
+                parent_path += "." + child;
+                if (typeof parent[child] === 'object') {
+                    parent = parent[child];
+                    continue;
+                }
+                error_detail = `'${parent_path}' is not an Object and has no properties`;
+            } else {
+                error_detail = `'${parent_path}' has no property '${child}'`;
+            }
+            break;
+        }
+
+        // Now assign the final property value (if possible). (We know that
+        // parent is an object.)
+
+        if (error_detail === null && !(final_property in parent)) {
+            error_detail = `'${parent_path}' has no property '${final_property}'`;
+        }
+
+        if (error_detail != null) {
+            // Note: full_path may not be an exact reproduction of the path
+            // passed via msgpack.
+            const full_path = "/" + target_path.join('/');
+            const value_str = JSON.stringify(value);
+            console.error(
+                `Error in set_property("${full_path}", "${property}", ${value_str})\n` +
+                `${error_detail}. The value will not be set.`);
+            return;
+        }
+
+        parent[final_property] = value;
     }
 
     set_transform(matrix) {
@@ -1454,7 +1508,7 @@ class Viewer {
             // Background/<object>.
             path = [path[0], "<object>"];
         }
-        this.scene_tree.find(path).set_property(property, value);
+        this.scene_tree.find(path).set_property(property, value, path);
         // if (path[0] === "Cameras") {
         //     this.camera.updateProjectionMatrix();
         // }

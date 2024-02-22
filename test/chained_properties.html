@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset=utf-8>
+        <title>MeshCat</title>
+    </head>
+    <body>
+        <div id="test-message">
+            Open the developer console (F12), and monitor *all* messages. All warnings
+            and errors after "TEST START" and before "TEST END" should be predicted
+            before they happen. Predicted but missing warnings/errors should
+            be considered a defect.
+        </div>
+        <div id="meshcat-pane">
+        </div>
+
+        <script src="../dist/main.min.js"></script>
+        <script>
+        var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+
+let obj_contents = `
+mtllib ./cube.mtl
+usemtl material_0
+
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 1.0 1.0 0.0
+v 0.0 1.0 0.0
+v 0.0 0.0 1.0
+v 1.0 0.0 1.0
+v 1.0 1.0 1.0
+v 0.0 1.0 1.0
+
+vt 0.3 0.875
+vt 0.2 0.625
+vt 0.3 0.625
+vt 0.6 0.625
+vt 0.3 0.375
+vt 0.3 0.125
+
+vn 0 0 -1
+vn 0 0 1
+vn 0 -1 0
+vn 1 0 0
+vn 0 1 0
+vn -1 0 0
+
+f 3/5/1 2/5/1 1/5/1
+f 1/5/1 4/5/1 3/5/1
+f 5/1/2 6/1/2 7/1/2
+f 7/1/2 8/1/2 5/1/2
+f 1/3/3 2/3/3 6/3/3
+f 6/3/3 5/3/3 1/3/3
+f 2/4/4 3/4/4 7/4/4
+f 7/4/4 6/4/4 2/4/4
+f 3/6/5 4/6/5 8/6/5
+f 8/6/5 7/6/5 3/6/5
+f 4/2/6 1/2/6 5/2/6
+f 5/2/6 8/2/6 4/2/6
+`;
+
+        const path = "/meshcat/mesh_test";
+        viewer.handle_command({
+            type: "set_object",
+            path: path,
+            object: {
+                metadata: {version: 4.5, type: "Object"},
+                geometries: [
+                    {
+                        uuid: "cef79e52-526d-4263-b595-04fa2705974e",
+                        type: "_meshfile_geometry",
+                        format: "obj",
+                        data: obj_contents
+                    }
+                ],
+                materials: [],
+                object: {
+                    uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+                    type: "Mesh",
+                    geometry: "cef79e52-526d-4263-b595-04fa2705974e"
+                }
+            }
+        });
+        viewer.handle_command({
+            type: "set_property",
+            path: path,
+            property: "color",
+            value: [0.7, 0.1, 0.1, 0.5]
+        });
+        // Up to here, it's the same as set_color.html. We should end up with
+        // a reddish-transparent box. Now we exercise the API in various
+        // incorrect ways with expected outcome.
+
+        const object_path = path + "/<object>";
+        var box_object = viewer.scene_tree.find(object_path.split('/').filter(x => x.length > 0));
+        var set_prop = (property, value) => {
+            viewer.handle_command({
+                type: "set_property",
+                path: object_path,
+                property: property,
+                value: value
+            });
+        };
+
+        var assert_property_absent = (object) => {
+            if (object !== undefined) {
+                console.error("Value actually got set.");
+            } else {
+                console.info("Property correctly remains undefined.");
+            }
+        };
+
+        var assert_property = (property, value) => {
+            if (property !== value) {
+                console.error("The value didn't get set!");
+            } else {
+                console.info("The property has the expected value.");
+            }
+        };
+
+        console.info("\n\nTEST START\n\n");
+
+        console.info("\nAttempting to reference a non-existing property name.");
+
+        console.info("\nSetting a property that doesn't exist at all. We should " +
+                     "get a warning indicating that and the guidance that the " +
+                     "property has not been set.");
+        set_prop("test1", 42);
+        assert_property_absent(box_object.object.test1);
+
+        console.info("\nSetting a *chained* property. The intermediate property " +
+                     "doesn't exist. We should get *one* warning about " +
+                     "the missing intermediate `missing1` property. No value " +
+                     "will be assigned.");
+        set_prop("missing1.test2", "value2");
+        assert_property_absent(box_object.object.missing1);
+
+        console.info("\nReferencing an index that does not exist will fail. A " +
+                     "(slightly unhelpful) message warning message will be " +
+                     "given: 'children' doesn't have property '2'.");
+        set_prop("children[2].visible", false);
+        assert_property_absent(box_object.object.children[2]);
+
+        console.info("\nReferencing a property of a non-object.\n");
+
+        console.info("\nSetting a chained property where the penultimate name " +
+                     "is not an Object and can't accept properties. An error " +
+                     "should print, but the cube should be unchanged.");
+        set_prop("material.opacity.temp", "value3");
+
+        console.info("\nSetting a chained property where an intermediate object " +
+                     "is not an Object and can't accept properties. An error " +
+                     "should print, but the cube should be unchanged.");
+        set_prop("castShadow.bad.other", "value4");
+
+        console.info("\nSuccessful cases\n");
+
+        console.info("\nA valid use will make the cube completely opaque " +
+                     "without any warning or error.");
+        set_prop("material.opacity", 1);
+        assert_property(box_object.object.material.opacity, 1);
+
+        console.info("\nWe'll test the array access. We've added a non-Three.js " +
+                     "array to the object (so that we don't mess up the " +
+                     "rendering). We'll append an entry and assign a property " +
+                     "to that array. We'll use set_property() to change that value.");
+        box_object.object.test_array = [];
+        box_object.object.test_array[2] = {};
+        box_object.object.test_array[2].test_value = -1;
+        set_prop("test_array[2].test_value", 17);
+        assert_property(box_object.object.test_array[2].test_value, 17);
+
+        console.info("\n\nTEST END\n\n");
+        </script>
+
+
+        <style>
+            body {
+                margin: 0;
+            }
+
+            #meshcat-pane {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            #test-message{
+                width: 75vw;
+                text-align: left;
+                background-color: rgb(232, 232, 232);
+                position: fixed;
+                left: 0%;
+                display: block;
+                padding: 10px;
+            }
+        </style>
+    </body>
+</html>
