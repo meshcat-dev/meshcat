@@ -661,7 +661,35 @@ class SceneNode {
             // Top/bottom colors are stored as dat.color.Color
             this.object[property] = new dat.color.Color(value.map((x) => x * 255));
         } else {
-            this.object[property] = value;
+            var property_sequence = this.split_property(property);
+            var target = this.object;
+            var parent_path = this.folder.name;
+            for (const element of property_sequence.slice(0, -1)) {
+                var child = this.maybe_recurse_property(target, element, parent_path);
+
+                if (child === null) return;
+
+                parent_path = parent_path + `.${element}`;
+                target = child;
+            }
+            var final_property = property_sequence.slice(-1)[0];
+            try {
+                if (!(final_property in target)) {
+                    console.warn(`Trying to set the property '${property}'. ` +
+                                `However, '${parent_path}' does not have the ` +
+                                `property '${final_property}'. the value will ` +
+                                "not be set.");
+                    return;
+                }
+                target[final_property] = value;
+            } catch (error) {
+                // Note: the exception could arise either from the `in` operator
+                // or the effort to assign the property below.
+                console.error(`Trying to set the property '${property}'. ` +
+                              `However, '${parent_path}' cannot receive properties.` +
+                              `property '${final_property}'. It has type ${typeof(target)}.`+
+                              `\nError message: ${error}.`);
+            }
         }
         if (this.object.isBackground) {
             // If we've set values on the Background, we need to fire its on_update()).
@@ -669,6 +697,35 @@ class SceneNode {
         }
         this.vis_controller.updateDisplay();
         this.controllers.forEach(c => c.updateDisplay());
+    }
+
+    maybe_recurse_property(parent, child, parent_path) {
+        try {
+            if (!(child in parent)) {
+            console.warn(`When setting a chained property, '${parent_path}' doesn't ` +
+                         `have child property '${child}'; value will not be set.`);
+                // Note: even if the next property name in the property path was
+                // an index (e.g., a[1] became a.1), we can get away with adding
+                // an object, because the index will simply be treated as a
+                // property *name*. Furthermore, that property can be accessed
+                // either as a["1"] or a[1].
+                return null;
+            }
+        } catch (error) {
+            console.error("When setting a chained property, the intermediate " +
+                          `object '${parent_path}' has no property '${child}'. ` +
+                          `It has type ${typeof(parent)}.\nError message: ${error}.`);
+            return null;
+        }
+        return parent[child];
+    }
+
+    split_property(property_str) {
+        // Array [x] becomes .x.
+        property_str = property_str.replace(/\[(\w+)\]/g, '.$1');
+        // strip a leading dot
+        property_str = property_str.replace(/^\./, '');
+        return property_str.split(".");
     }
 
     set_transform(matrix) {
