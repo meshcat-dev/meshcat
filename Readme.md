@@ -246,7 +246,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 <dl>
                     <dt><code>property</code></dt>
                     <dd>
-                        The name of the property to set, as a string. The following properties are supported:
+                        The name of the property to set, as a string. The following properties are convenience properties. Meshcat provides a mapping from these *names* to various properties contained throughout its scene graph:
                         <ul>
                         <li><code>visible: bool</code>
                         <li><code>position: number[3]</code>
@@ -259,6 +259,14 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                         <li><code>bottom_color: number[3]</code> (only for the Background)
                         </ul>
                         Properties not on the above list will be set directly on the <code>THREE.Object3D</code> object. This provides a powerful capability to customize the scene, but should be considered an advanced usage -- you're on your own to avoid any unwanted side-effects.
+                        <p>
+                        Properties can be *chained*. For example, for an object with a phong material (MeshPhongMaterial), we may want to tweak its shininess, making it duller. Shininess is not a property of the object itself, but the object's material. There is no *path* to that material, but the property name can include a property name chain, e.g., `material.shininess`. While setting the property, the chained properties will be evaluated in sequence, such that the final name in the chain is the property that receives the `value`.
+                        <p>
+                        As noted, specifying a `path` that doesn't exist creates that path. However, specifying a property that doesn't exist does *not* create that property. If a name in the property chain is missing, an error message will be printed to the console and no value will be assigned. This is not a no-op per se. If the `path` led to the implicit creation of a new folder and object, that pair will still be in place.
+                        <p>
+                        More subtly, if the property name chain has an interior name (e.g., the `foo` in `material.foo.color`) that exists but is not an object and does not have properties (such as if `foo` were a `Number`), then, again, an error gets written to the console and no value will be assigned.
+                        <p>
+                        Finally, property chains can include arrays, such as `"children[1].material.specular"`. The index will be evaluated as a property (with all of the potential consequences as outlined above). In error messages, it may be reported as `children.1` instead of `children[1]`.
                     </dd>
                     <dt><code>value</code></dt>
                     <dd>The new value.</dd>
@@ -278,6 +286,15 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
     type: "set_property",
     path: "/Lights/DirectionalLight/&lt;object&gt;",
     property: "intensity",
+    value: 1.0
+}
+                </pre>
+                Example 3 (chained properties):
+                <pre>
+{
+    type: "set_property",
+    path: "/Lights/SpotLight/&lt;object&gt;",
+    property: "shadow.radius",
     value: 1.0
 }
                 </pre>
