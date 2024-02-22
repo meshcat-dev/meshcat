@@ -661,7 +661,28 @@ class SceneNode {
             // Top/bottom colors are stored as dat.color.Color
             this.object[property] = new dat.color.Color(value.map((x) => x * 255));
         } else {
-            this.object[property] = value;
+            const [objects, final_property] = this.split_property_chain(property);
+            // `target` starts non-null to satisfy maybe_recurse_property's contract.
+            var target = this.object;
+            var parent_path = this.folder.name;
+            for (const element of objects) {
+                var child = this.maybe_recurse_property(target, element, parent_path);
+
+                if (child === null) return;
+
+                parent_path = parent_path + `.${element}`;
+                target = child;
+            }
+            // The in property is valid, because maybe_recurse_property only returns
+            // non-null objects.
+            if (!(final_property in target)) {
+                console.warn(`Trying to set the property '${property}'. ` +
+                            `However, '${parent_path}' does not have the ` +
+                            `property '${final_property}'. the value will ` +
+                            "not be set.");
+                return;
+            }
+            target[final_property] = value;
         }
         if (this.object.isBackground) {
             // If we've set values on the Background, we need to fire its on_update()).
@@ -669,6 +690,36 @@ class SceneNode {
         }
         this.vis_controller.updateDisplay();
         this.controllers.forEach(c => c.updateDisplay());
+    }
+
+    maybe_recurse_property(parent, child, parent_path) {
+        // `parent` and `child` should always be objects. We assume `parent` is
+        // and only return a non-null value if parent[child] is also an object.
+        // If the first invocation has `parent` as an object, it guarantees
+        // that successive invocations will continue to function correctly.
+        if (!(child in parent)) {
+            console.warn(`When setting a chained property, '${parent_path}' doesn't ` +
+                         `have child property '${child}'; value will not be set.`);
+            return null;
+        }
+        if (typeof parent[child] !== 'object') {
+            var name = parent_path + "." + child;
+            console.error(`When setting a chained property, the intermediate ` +
+                          `name '${name}' has no properties; it is of type ` +
+                          `'${typeof parent[child]}'.`);
+            return null;
+        }
+        return parent[child];
+    }
+
+    split_property_chain(property_str) {
+        // Array [x] becomes .x.
+        property_str = property_str.replace(/\[(\w+)\]/g, '.$1');
+        // Strip a leading dot.
+        property_str = property_str.replace(/^\./, '');
+        // Return a tuple of [object names, property name].
+        var objects = property_str.split(".");
+        return [objects, objects.pop()];
     }
 
     set_transform(matrix) {
