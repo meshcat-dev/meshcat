@@ -6,8 +6,11 @@
 </head>
 <body>
     <div id="test-message">
-        You should see "Hello, world!" standing upright,
-        approximately filling the whole screen.
+        You should see a big "Hello, world!" standing upright,
+        approximately filling the whole screen -- as well as a
+        separate "Goodbye, world!" off to the right. As you pan
+	around, the "Hello, ..." stays put (you can pan behind
+        it) but the "Goodbye, ..." always faces you.
     </div>
     <div id="meshcat-pane">
     </div>
@@ -66,6 +69,44 @@
                       0,  0,  1,  0,
                       1,  0,  0,  0,
                       0,  0,  0,  1]
+        });
+        viewer.handle_command({
+            type: "set_object",
+            path: "/meshcat/sprite",
+            object: {
+                metadata: {
+                    version: 4.5,
+                    type: "Object"
+                },
+                textures: [
+                    {
+                        uuid: "0c8c99a8-bba8-11ee-b7a2-4b79088b524e",
+                        type: "_text",
+                        text: "Goodbye, world!",
+                        font_size: 300,
+                        font_face: "sans-serif"
+                    }
+                ],
+                materials: [
+                    {
+                        uuid: "6fe7011b-bba7-11ee-b7a2-4b79088b524e",
+                        type: "SpriteMaterial",
+                        transparent: true,
+                        map: "0c8c99a8-bba8-11ee-b7a2-4b79088b524e"
+                    }
+                ],
+                object: {
+                    uuid: "6fe7011c-bba7-11ee-b7a2-4b79088b524e",
+                    type: "Sprite",
+                    material: "6fe7011b-bba7-11ee-b7a2-4b79088b524e"
+                }
+            }
+        });
+        viewer.handle_command({
+            type: "set_property",
+            path: "/meshcat/sprite",
+	    property: "position",
+            value: [ 2,  1,  0.5 ]
         });
     </script>
     <style>
