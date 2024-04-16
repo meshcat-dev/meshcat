@@ -35,7 +35,7 @@ meshcat_loading_manager.setURLModifier(url => {
     if (url in meshcat_inline_assets) {
         return meshcat_inline_assets[url];
     }
-    return url;
+    return MeshCat.THREE.DefaultLoadingManager.resolveURL(url);
 });
 
 // We implement several MessagePack extension types for arrays, inspired by the
