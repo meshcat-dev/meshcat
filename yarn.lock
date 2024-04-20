@@ -329,9 +329,9 @@ dat.gui@^0.7.9:
   integrity sha512-sCNc1OHobc+Erc1HqiswYgHdVNpSJUlk/Hz8vzOCsER7rl+oF/4+v8GXFUyCgtXpoCX6+bnmg07DedLvBLwYKQ==
 
 electron-to-chromium@^1.4.668:
-  version "1.4.742"
-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.742.tgz#92a8f08f8a7cac64c20fc7e53dbfe86017093160"
-  integrity sha512-EhE+z1d5RNytAq/qnGAxPR+ie3UzKbv7qqQc0wnEbOh+KDUplgfzkGSCy9d78B+S+nVNTS42BabHXB6Ni+Ud4w==
+  version "1.4.745"
+  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.4.745.tgz#9c202ce9cbf18a5b5e0ca47145fd127cc4dd2290"
+  integrity sha512-tRbzkaRI5gbUn5DEvF0dV4TQbMZ5CLkWeTAXmpC9IrYT+GE+x76i9p+o3RJ5l9XmdQlI1pPhVtE9uNcJJ0G0EA==
 
 enhanced-resolve@^5.16.0:
   version "5.16.0"
@@ -785,7 +785,7 @@ three@^0.133.1:
   resolved "https://registry.yarnpkg.com/three/-/three-0.133.1.tgz#5606f4817d67a09d9212d4ccbd6826564774f8f4"
   integrity sha512-WydohO8ll949B0FTD6MGz59Yv2Lwj8hvObg/0Heh2r42S6+tQC1WByfCNRdmG4D7+odfGod+n8JPV1I2xrboWw==
 
-three@^0.163.0:
+three@^0.163.0, three@~0.163.0:
   version "0.163.0"
   resolved "https://registry.yarnpkg.com/three/-/three-0.163.0.tgz#cbfefbfd64a1353ab7cc8bf0fc396ddca1875a49"
   integrity sha512-HlMgCb2TF/dTLRtknBnjUTsR8FsDqBY43itYop2+Zg822I+Kd0Ua2vs8CvfBVefXkBdNDrLMoRTGCIIpfCuDew==
@@ -922,12 +922,12 @@ wtd-three-ext@~3.0.0:
     three "~0.160.0"
     wtd-core "~3.0.0"
 
-wwobjloader2@^6.2.0:
-  version "6.2.0"
-  resolved "https://registry.yarnpkg.com/wwobjloader2/-/wwobjloader2-6.2.0.tgz#7d7773c7487a10b85a4467f1d0381fa38c083f7f"
-  integrity sha512-mFOTx4tU4/esWwS/Ju3ZfKUX2WMpwzdMKgV+0euh71vdqqcly0xGHvanFC5mg5+ZtVEr9MCiytzQgVNxCi1S/g==
+wwobjloader2@^6.2.1:
+  version "6.2.1"
+  resolved "https://registry.yarnpkg.com/wwobjloader2/-/wwobjloader2-6.2.1.tgz#59513efaa46cde5e1f751279fcca31abdcb0aae9"
+  integrity sha512-/v/sfUX0PMQAI8souzCs6xsO9LR3RyL+ujnOiS/1pngUlakKyHYC5XMQvu77pTeWzY3rzNyt5Q/bg5O3RukA+g==
   dependencies:
-    three "~0.160.0"
+    three "~0.163.0"
     wtd-core "~3.0.0"
     wtd-three-ext "~3.0.0"
 
