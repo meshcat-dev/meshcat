@@ -14,9 +14,9 @@
     "@msgpack/msgpack": "^2.8.0",
     "ccapture.js": "aceslowman/ccapture.js#npm-fix",
     "dat.gui": "^0.7.9",
-    "three": "^0.160.1",
+    "three": "^0.163.0",
     "three-wtm": "^1.0",
-    "wwobjloader2": "^6.2.0",
+    "wwobjloader2": "^6.2.1",
     "yarn": "^1.22.21"
   },
   "scripts": {
