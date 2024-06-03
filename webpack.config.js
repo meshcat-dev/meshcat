@@ -6,7 +6,7 @@ module.exports = [{
   context: path.resolve(__dirname),
   entry: '/src/index.js',
   mode: "development",
-  devtool: "eval-source-map",
+  devtool: "eval-cheap-source-map",
   stats: 'errors-only',
   output: {
     library: "MeshCat",

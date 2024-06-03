@@ -1,17 +1,16 @@
-<!doctype html>
+<<!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Meshcat</title>
-  </head>
+	<head>
+		<meta charset=utf-8>
+		<title>MeshCat</title>
+	</head>
 	<body>
         <div id="meshcat-pane">
         </div>
 
         <script type="text/javascript" src="main.min.js"></script>
         <script>
-
-            var viewer = new Viewer(document.getElementById("meshcat-pane"));
+            var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
             try {
                 viewer.connect();
                 fetch('/data/starling1.stl').then(res => res.arrayBuffer()).then((res) => {
@@ -48,9 +47,6 @@
                             }
                         }
                     })
-                
-                    viewer.stl_contents
-                    console.log(res, viewer.stl_contents)
                 }).catch((e) => console.error(e));
             } catch (e) {
                 console.info("Not connected to MeshCat websocket server: ", e);
