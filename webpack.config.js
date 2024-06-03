@@ -8,15 +8,19 @@ module.exports = [{
   mode: "development",
   devtool: "eval-source-map",
   stats: 'errors-only',
+  output: {
+    library: "MeshCat",
+    libraryTarget: 'umd'
+  },
   devServer: {
     hot: true,
     liveReload: true,
-    client: {overlay: false},
+    client: { overlay: false },
     host: "127.0.0.1",
     webSocketServer: false,
     proxy: [
-      {context: ['/'], target: 'http://localhost:8080/'},
-      {context: ['/ws'], target: 'http://localhost:8080/ws'},
+      { context: ['/'], target: 'http://localhost:8080/' },
+      { context: ['/ws'], target: 'http://localhost:8080/ws' },
     ],
     port: 8081,
     static: ['/dist'],
