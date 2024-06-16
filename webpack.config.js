@@ -19,8 +19,8 @@ module.exports = [{
     host: "127.0.0.1",
     webSocketServer: false,
     proxy: [
-      { context: ['/'], target: 'http://localhost:8080/' },
-      { context: ['/ws'], target: 'http://localhost:8080/ws' },
+      { context: ['/'], target: 'http://localhost:8080/', changeOrigin: true, ws: true},
+      // { context: ['/ws'], target: 'http://localhost:8080/ws', changeOrigin: true, ws: true},
     ],
     port: 8081,
     static: ['/dist'],

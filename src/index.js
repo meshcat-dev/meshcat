@@ -210,6 +210,7 @@ function handle_special_geometry(geom) {
         } else if (geom.format == "stl") {
             console.log("Identified STL")
             let loader = new STLLoader();
+            console.log(typeof(geom.data), typeof(geom.data.buffer))
             let loaded_geom = loader.parse(geom.data.buffer);
             loaded_geom.uuid = geom.uuid;
             return loaded_geom;

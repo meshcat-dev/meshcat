@@ -7,6 +7,7 @@
   "license": "MIT",
   "devDependencies": {
     "html-webpack-plugin": "^5.6.0",
+    "license-webpack-plugin": "^4.0.2",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^5.0.4",
@@ -14,12 +15,11 @@
   },
   "dependencies": {
     "@msgpack/msgpack": "^2.8.0",
-    "ccapture.js": "^1.0.9",
+    "ccapture.js": "aceslowman/ccapture.js#npm-fix",
     "dat.gui": "^0.7.9",
     "three": "^0.163.0",
     "three-wtm": "^1.0",
-    "wwobjloader2": "^6.2.1",
-    "yarn": "^1.22.21"
+    "wwobjloader2": "^6.2.1"
   },
   "scripts": {
     "build": "webpack"
