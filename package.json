@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@msgpack/msgpack": "^2.8.0",
-    "ccapture.js": "aceslowman/ccapture.js#npm-fix",
+    "ccapture.js": "^1.0.9",
     "dat.gui": "^0.7.9",
     "three": "^0.163.0",
     "three-wtm": "^1.0",

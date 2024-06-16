@@ -11,7 +11,7 @@
         <script type="text/javascript" src="main.min.js"></script>
         <script>
             var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
-            try {
+             try {
                 viewer.connect();
                 fetch('/data/starling1.stl').then(res => res.arrayBuffer()).then((res) => {
                     viewer.handle_command({
@@ -44,7 +44,7 @@
                                 type: "Mesh",
                                 geometry: "cef79e52-526d-4263-b595-04fa2705974e",
                                 material: "396744fe-087d-11ec-9957-7fbbaaa96777",
-                            }
+                            }   
                         }
                     })
                 }).catch((e) => console.error(e));

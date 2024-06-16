@@ -208,6 +208,7 @@ function handle_special_geometry(geom) {
             result.uuid = geom.uuid;
             return result;
         } else if (geom.format == "stl") {
+            console.log("Identified STL")
             let loader = new STLLoader();
             let loaded_geom = loader.parse(geom.data.buffer);
             loaded_geom.uuid = geom.uuid;
@@ -427,7 +428,7 @@ class Background extends THREE.Object3D {
         // as a background. We use the gradient in the following circumstances:
         //
         //    - The background is visible and
-        //         - there is no environment map (using gradient as environment) or
+        //         - there is no environment map (using gradient as environmen) or
         //         - the state has been requested to not draw the env map as
         //           background, or
         //         - the camera is orthographic (can't use env_map as background).
@@ -1658,13 +1659,16 @@ class Viewer {
 
     handle_command_message(message) {
       this.num_messages_received++;
+      console.log("Received message", this.num_messages_received);
       let decoded = this.decode(message);
+      console.log("Decoded message")
       this.handle_command(decoded);
     }
 
     connect(url) {
         if (url === undefined) {
-            url = `ws://${location.host}`;
+            console.log(location.host)
+            url = `ws://${location.host}/ws`;
         }
         if (location.protocol == "https:") {
             url = url.replace("ws:", "wss:");
