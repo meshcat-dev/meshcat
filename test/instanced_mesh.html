@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset=utf-8>
+    <title>MeshCat - InstancedMesh</title>
+</head>
+
+<body>
+    <div id="meshcat-pane">
+    </div>
+
+    <script src="../dist/main.min.js"></script>
+    <script>
+        var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+
+        // Set InstancedMesh object -- a grid of 3x3x3 BoxGeometries
+        viewer.handle_command({
+            type: "set_object",
+            path: "/meshcat/instanced_cubes",
+            object: {
+                metadata: { version: 4.5, type: "Object" },
+                geometries: [
+                    {
+                        uuid: "c2afd88b-ff9e-4408-9b94-b94e2079e2c8",
+                        type: "BoxGeometry",
+                        width: 0.2,
+                        height: 0.2,
+                        depth: 0.2
+                    }
+                ],
+                materials: [
+                    {
+                        uuid: "a63e3e66-c87a-4826-adee-2cf0fc04bf70", 
+                        type: "MeshPhongMaterial",
+                        color: 0xffffff,  // white
+                        side: 2,
+                        transparent: true,
+                        opacity: 0.5
+                    }
+                ],
+                object: {
+                    uuid: "d8497b0e-2529-4c5a-a477-00fc2c815349",
+                    type: "InstancedMesh",
+                    geometry: "c2afd88b-ff9e-4408-9b94-b94e2079e2c8",
+                    material: "a63e3e66-c87a-4826-adee-2cf0fc04bf70",
+                    instanceMatrix: {
+                        type: "InstancedBufferAttribute",
+                        array: [
+                            // Each line is a 4x4 transform matrix of a cube
+                            // The 4x4 matrices are flattened in column-major order
+
+                            // z = 0 layer
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.3,0,0,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.6,0,0,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0.3,0,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.3,0.3,0,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.6,0.3,0,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0.6,0,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.3,0.6,0,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.6,0.6,0,1,
+
+                            // z = 0.3 layer
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0.3,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.3,0,0.3,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.6,0,0.3,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0.3,0.3,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.3,0.3,0.3,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.6,0.3,0.3,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0.6,0.3,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.3,0.6,0.3,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.6,0.6,0.3,1,
+
+                            // z = 0.6 layer
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0.6,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.3,0,0.6,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.6,0,0.6,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0.3,0.6,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.3,0.3,0.6,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.6,0.3,0.6,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0.6,0.6,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.3,0.6,0.6,1,
+                            1,0,0,0, 0,1,0,0, 0,0,1,0, 0.6,0.6,0.6,1
+                        ]
+                    },
+                    instanceColor: {
+                        type: "InstancedBufferAttribute",
+                        itemSize: 3,
+                        array: new Float32Array(27 * 3).fill(1)  // 27 instances * 3 components (RGB)
+                    },
+                    count: 27
+                }
+            }
+        });
+
+        // Set InstancedMesh properties.
+        // Here, we are updating the colors of the cubes.
+        viewer.handle_command({
+            type: "set_property",
+            path: "/meshcat/instanced_cubes/<object>",
+            property: "instanceColor.array",
+            value: new Float32Array([
+                    // z = 0 layer (red)
+                    1,0,0,
+                    1,0,0,
+                    1,0,0,
+                    1,0,0,
+                    1,0,0,
+                    1,0,0,
+                    1,0,0,
+                    1,0,0,
+                    1,0,0,
+                    // z = 0.3 layer (green)
+                    0,1,0,
+                    0,1,0,
+                    0,1,0,
+                    0,1,0,
+                    0,1,0,
+                    0,1,0,
+                    0,1,0,
+                    0,1,0,
+                    0,1,0,
+                    // z = 0.6 layer (blue)
+                    0,0,1,
+                    0,0,1,
+                    0,0,1,
+                    0,0,1,
+                    0,0,1,
+                    0,0,1,
+                    0,0,1,
+                    0,0,1,
+                    0,0,1
+            ])
+        });
+
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #meshcat-pane {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #test-message {
+            width: 75vw;
+            text-align: left;
+            background-color: rgb(232, 232, 232);
+            position: fixed;
+            left: 0%;
+            display: block;
+            padding: 10px;
+        }
+
+        #status-message {
+            font-size: large;
+            font-weight: bold;
+        }
+    </style>
+</body>
+
+</html>
