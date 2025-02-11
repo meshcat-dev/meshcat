@@ -45,7 +45,8 @@
                     geometry: "c2afd88b-ff9e-4408-9b94-b94e2079e2c8",
                     material: "a63e3e66-c87a-4826-adee-2cf0fc04bf70",
                     instanceMatrix: {
-                        type: "InstancedBufferAttribute",
+                        type: "Float32Array",
+                        itemSize: 16,
                         array: [
                             // Each line is a 4x4 transform matrix of a cube
                             // The 4x4 matrices are flattened in column-major order
@@ -85,7 +86,7 @@
                         ]
                     },
                     instanceColor: {
-                        type: "InstancedBufferAttribute",
+                        type: "Float32Array",
                         itemSize: 3,
                         array: new Float32Array(27 * 3).fill(1)  // 27 instances * 3 components (RGB)
                     },
