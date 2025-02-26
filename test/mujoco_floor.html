@@ -104,6 +104,18 @@
             })
             .catch(error => console.error('Error loading GLTF file:', error));
 
+        // Add reflector using set_object_from_code
+        viewer.handle_command({
+            type: "set_object_from_code",
+            path: "/meshcat/reflector",
+            uuid: "reflector",
+            code: `() => {
+                return new THREE.Mesh(
+                    new THREE.PlaneGeometry(2, 2),
+                    new THREE.MeshStandardMaterial({ color: 0x808080 })
+            )}`
+        });
+
     </script>
 
     <style>
