@@ -66,6 +66,44 @@
             path: "/meshcat/red_cube",
             matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 2, 1]
         });
+
+        // Load the floor from GLTF file
+        fetch('mujoco_floor.gltf')
+            .then(response => response.arrayBuffer())
+            .then(buffer => {
+                const decoder = new TextDecoder('utf-8');
+                const gltfContent = decoder.decode(buffer);
+                
+                viewer.handle_command({
+                    type: "set_object",
+                    path: "/meshcat/floor",
+                    object: {
+                        metadata: { version: 4.5, type: "Object" },
+                        geometries: [],
+                        materials: [],
+                        object: {
+                            uuid: "floor-mesh",
+                            type: "_meshfile_object",
+                            format: "gltf",
+                            data: gltfContent
+                        }
+                    }
+                });
+                
+                // Position the floor appropriately and rotate it 90 degrees around X-axis
+                viewer.handle_command({
+                    type: "set_transform",
+                    path: "/meshcat/floor",
+                    matrix: [
+                        1, 0, 0, 0,
+                        0, 0, 1, 0,
+                        0, -1, 0, 0,
+                        0, 0, 0, 1
+                    ]
+                });
+            })
+            .catch(error => console.error('Error loading GLTF file:', error));
+
     </script>
 
     <style>
