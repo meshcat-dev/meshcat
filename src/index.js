@@ -1503,7 +1503,6 @@ class Viewer {
         let obj;
         try {
             const THREE = MeshCat.THREE;
-            code = code.replace(/(\r\n|\n|\r)/gm, "");
             const obj_factory = eval(code);
             obj = obj_factory();
             obj.uuid = uuid;
