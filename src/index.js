@@ -1499,6 +1499,29 @@ class Viewer {
         }
     }
 
+    set_object_from_code(path, uuid, name, code) {
+        let obj;
+        try {
+            obj = eval(code);
+        } catch (error) {
+            console.error("Error creating object from raw code:", error);
+        }
+
+        let meshes_cast_shadows = (node) => {
+            if (node.type === "Mesh") {
+                node.castShadow = true;
+                node.receiveShadow = true;
+            }
+            for (let i = 0; i < node.children.length; ++i) {
+                meshes_cast_shadows(node.children[i]);
+            }
+        };
+
+        meshes_cast_shadows(obj);
+        this.set_object(path, obj);
+        this.set_dirty();
+    }
+
     delete_path(path) {
         if (path.length == 0) {
             console.error("Deleting the entire scene is not implemented")
@@ -1616,6 +1639,9 @@ class Viewer {
         } else if (cmd.type == "set_object") {
             let path = split_path(cmd.path);
             this.set_object_from_json(path, cmd.object);
+        } else if (cmd.type == "set_object_raw_code") {
+            this.set_object_from_code(path, cmd.uuid, cmd.name, cmd.code);
+        
         } else if (cmd.type == "set_property") {
             let path = split_path(cmd.path);
             this.set_property(path, cmd.property, cmd.value);
