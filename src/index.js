@@ -13,6 +13,14 @@ import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory';
+
+import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
+
+// For exporting THREE's examples that are not included in the THREE namespace.
+export const THREE_EXAMPLES = {
+    Reflector,
+};
+
 require('ccapture.js');
 
 // These are bundled as data:// URIs via our webpack.config.js.
@@ -1503,6 +1511,7 @@ class Viewer {
         let obj;
         try {
             const THREE = MeshCat.THREE;
+            const THREE_EXAMPLES = MeshCat.THREE_EXAMPLES;
             const obj_factory = eval(code);
             obj = obj_factory();
             obj.uuid = uuid;

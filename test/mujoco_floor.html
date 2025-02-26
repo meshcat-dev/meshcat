@@ -110,10 +110,13 @@
             path: "/meshcat/reflector",
             uuid: "reflector",
             code: `() => {
-                return new THREE.Mesh(
-                    new THREE.PlaneGeometry(2, 2),
-                    new THREE.MeshStandardMaterial({ color: 0x808080 })
-            )}`
+                const geometry = new THREE.PlaneGeometry(20, 20);
+                const reflector = new THREE_EXAMPLES.Reflector(geometry, {
+                    clipBias: 0.003,
+                    color: 0xffffff
+                });
+                return reflector;
+            }`
         });
 
     </script>
