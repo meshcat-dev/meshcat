@@ -108,7 +108,6 @@
         viewer.handle_command({
             type: "set_object_from_code",
             path: "/meshcat/reflector",
-            uuid: "reflector",
             code: `() => {
                 const geometry = new THREE.PlaneGeometry(20, 20);
                 const reflector = new THREE_EXAMPLES.Reflector(geometry, {

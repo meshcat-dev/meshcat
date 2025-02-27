@@ -1507,14 +1507,13 @@ class Viewer {
         }
     }
 
-    set_object_from_code(path, uuid, code) {
+    set_object_from_code(path, code) {
         let obj;
         try {
             const THREE = MeshCat.THREE;
             const THREE_EXAMPLES = MeshCat.THREE_EXAMPLES;
             const obj_factory = eval(code);
             obj = obj_factory();
-            obj.uuid = uuid;
         } catch (error) {
             console.error("Error creating object from raw code:", error);
         }
@@ -1653,7 +1652,7 @@ class Viewer {
             this.set_object_from_json(path, cmd.object);
         } else if (cmd.type == "set_object_from_code") {
             let path = split_path(cmd.path);
-            this.set_object_from_code(path, cmd.uuid, cmd.code);
+            this.set_object_from_code(path, cmd.code);
         
         } else if (cmd.type == "set_property") {
             let path = split_path(cmd.path);
