@@ -1412,14 +1412,6 @@ class Viewer {
         this.render_callback = my_callback == null ? () => {} : my_callback;
     }
 
-    execute_code(code) {
-        try {
-            eval(code);
-        } catch (error) {
-            console.error("Error executing code:", error);
-        }
-    }
-
     set_camera_target(value) {
         this.controls.target.set(value[0], value[1], value[2]);
     }
@@ -1688,8 +1680,6 @@ class Viewer {
             this.visualize_vr_controllers();
         } else if (cmd.type == "set_render_callback") {
             this.set_render_callback(cmd.callback);
-        } else if (cmd.type == "execute_code") {
-            this.execute_code(cmd.code);
         }
 
         this.set_dirty();
