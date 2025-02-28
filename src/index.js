@@ -1645,7 +1645,6 @@ class Viewer {
         } else if (cmd.type == "set_object_from_code") {
             let path = split_path(cmd.path);
             this.set_object_from_code(path, cmd.code);
-        
         } else if (cmd.type == "set_property") {
             let path = split_path(cmd.path);
             this.set_property(path, cmd.property, cmd.value);
