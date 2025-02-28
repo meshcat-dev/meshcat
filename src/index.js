@@ -13,6 +13,14 @@ import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory';
+
+import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
+
+// For exporting THREE's examples that are not included in the THREE namespace.
+export const THREE_EXAMPLES = {
+    Reflector,
+};
+
 require('ccapture.js');
 
 // These are bundled as data:// URIs via our webpack.config.js.
@@ -1491,6 +1499,32 @@ class Viewer {
         }
     }
 
+    set_object_from_code(path, code) {
+        let obj;
+        try {
+            const THREE = MeshCat.THREE;
+            const THREE_EXAMPLES = MeshCat.THREE_EXAMPLES;
+            const obj_factory = eval(code);
+            obj = obj_factory();
+        } catch (error) {
+            console.error("Error creating object from raw code:", error);
+        }
+
+        let meshes_cast_shadows = (node) => {
+            if (node.type === "Mesh") {
+                node.castShadow = true;
+                node.receiveShadow = true;
+            }
+            for (let i = 0; i < node.children.length; ++i) {
+                meshes_cast_shadows(node.children[i]);
+            }
+        };
+
+        meshes_cast_shadows(obj);
+        this.set_object(path, obj);
+        this.set_dirty();
+    }
+
     delete_path(path) {
         if (path.length == 0) {
             console.error("Deleting the entire scene is not implemented")
@@ -1608,6 +1642,9 @@ class Viewer {
         } else if (cmd.type == "set_object") {
             let path = split_path(cmd.path);
             this.set_object_from_json(path, cmd.object);
+        } else if (cmd.type == "set_object_from_code") {
+            let path = split_path(cmd.path);
+            this.set_object_from_code(path, cmd.code);
         } else if (cmd.type == "set_property") {
             let path = split_path(cmd.path);
             this.set_property(path, cmd.property, cmd.value);

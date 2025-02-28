@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset=utf-8>
+    <title>MeshCat - MuJoCo Floor</title>
+</head>
+
+<body>
+    <div id="meshcat-pane">
+    </div>
+
+    <script src="../dist/main.min.js"></script>
+    <script>
+        var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+
+        // Hide the grid
+        viewer.handle_command({
+            type: "set_property",
+            path: "/Grid",
+            property: "visible",
+            value: false
+        });
+
+        // Set the background color to white
+        viewer.set_property(["Background", "<object>"], "top_color", [0.3, 0.5, 0.7]);
+        viewer.set_property(["Background", "<object>"], "bottom_color", [0, 0, 0]);
+
+        // Create a red cube
+        viewer.handle_command({
+            type: "set_object",
+            path: "/meshcat/red_cube",
+            object: {
+                metadata: { version: 4.5, type: "Object" },
+                geometries: [
+                    {
+                        uuid: "cube-geometry",
+                        type: "BoxGeometry",
+                        width: 2,
+                        height: 2,
+                        depth: 2
+                    }
+                ],
+                materials: [
+                    {
+                        uuid: "cube-material",
+                        type: "MeshStandardMaterial",
+                        color: 0xff0000,
+                        roughness: 0.2,
+                        metalness: 0.3,
+                        side: 2
+                    }
+                ],
+                object: {
+                    uuid: "cube-mesh",
+                    type: "Mesh",
+                    geometry: "cube-geometry",
+                    material: "cube-material"
+                }
+            }
+        });
+
+        // Position the cube above the floor
+        viewer.handle_command({
+            type: "set_transform",
+            path: "/meshcat/red_cube",
+            matrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 2, 1]
+        });
+
+        // Load the floor from GLTF file
+        fetch('mujoco_floor.gltf')
+            .then(response => response.arrayBuffer())
+            .then(buffer => {
+                const decoder = new TextDecoder('utf-8');
+                const gltfContent = decoder.decode(buffer);
+                
+                viewer.handle_command({
+                    type: "set_object",
+                    path: "/meshcat/floor",
+                    object: {
+                        metadata: { version: 4.5, type: "Object" },
+                        geometries: [],
+                        materials: [],
+                        object: {
+                            uuid: "floor-mesh",
+                            type: "_meshfile_object",
+                            format: "gltf",
+                            data: gltfContent
+                        }
+                    }
+                });
+                
+                // Position the floor appropriately and rotate it 90 degrees around X-axis
+                viewer.handle_command({
+                    type: "set_transform",
+                    path: "/meshcat/floor",
+                    matrix: [
+                        1, 0, 0, 0,
+                        0, 0, 1, 0,
+                        0, -1, 0, 0,
+                        0, 0, 0, 1
+                    ]
+                });
+            })
+            .catch(error => console.error('Error loading GLTF file:', error));
+
+        // Add reflector using set_object_from_code
+        viewer.handle_command({
+            type: "set_object_from_code",
+            path: "/meshcat/reflector",
+            code: `() => {
+                const geometry = new THREE.PlaneGeometry(20, 20);
+                const reflector = new THREE_EXAMPLES.Reflector(geometry, {
+                    clipBias: 0.003,
+                    textureWidth: 2048,
+                    textureHeight: 2048,
+                    color: new THREE.Color(0.5, 0.5, 0.5),
+                });
+
+                // Position slightly below the floor
+                reflector.position.z = -0.001;
+
+                return reflector;
+            }`
+        });
+
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #meshcat-pane {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #test-message {
+            width: 75vw;
+            text-align: left;
+            background-color: rgb(232, 232, 232);
+            position: fixed;
+            left: 0%;
+            display: block;
+            padding: 10px;
+        }
+
+        #status-message {
+            font-size: large;
+            font-weight: bold;
+        }
+    </style>
+</body>
+
+</html>
