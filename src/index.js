@@ -2,7 +2,7 @@ import * as THREE from 'three';
 var msgpack = require('@msgpack/msgpack');
 var dat = require('dat.gui').default; // TODO: why is .default needed?
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import {OBJLoader2, MtlObjBridge} from 'wwobjloader2'
+import {OBJLoader} from 'three/addons/loaders/OBJLoader.js';
 import {ColladaLoader} from 'three/examples/jsm/loaders/ColladaLoader.js';
 import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -196,7 +196,7 @@ function handle_special_geometry(geom) {
     }
     if (geom.type == "_meshfile_geometry") {
         if (geom.format == "obj") {
-            let loader = new OBJLoader2();
+            let loader = new OBJLoader();
             let obj = loader.parse(geom.data + "\n");
             let loaded_geom = merge_geometries(obj);
             loaded_geom.uuid = geom.uuid;
@@ -276,11 +276,11 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                 return url;
             });
             if (json.format == "obj") {
-                let loader = new OBJLoader2(manager);
+                let loader = new OBJLoader(manager);
                 if (json.mtl_library) {
                     let mtl_loader = new MTLLoader(manager);
-                    let mtl_parse_result = mtl_loader.parse(json.mtl_library + "\n", "");
-                    let materials = MtlObjBridge.addMaterialsFromMtlLoader(mtl_parse_result);
+                    let materials = mtl_loader.parse(json.mtl_library + "\n", "");
+                    materials.preload();
                     loader.setMaterials(materials);
                     this.onTextureLoad();
                 }

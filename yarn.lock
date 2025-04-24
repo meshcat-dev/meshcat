@@ -785,15 +785,10 @@ three@^0.133.1:
   resolved "https://registry.yarnpkg.com/three/-/three-0.133.1.tgz#5606f4817d67a09d9212d4ccbd6826564774f8f4"
   integrity sha512-WydohO8ll949B0FTD6MGz59Yv2Lwj8hvObg/0Heh2r42S6+tQC1WByfCNRdmG4D7+odfGod+n8JPV1I2xrboWw==
 
-three@^0.163.0, three@~0.163.0:
-  version "0.163.0"
-  resolved "https://registry.yarnpkg.com/three/-/three-0.163.0.tgz#cbfefbfd64a1353ab7cc8bf0fc396ddca1875a49"
-  integrity sha512-HlMgCb2TF/dTLRtknBnjUTsR8FsDqBY43itYop2+Zg822I+Kd0Ua2vs8CvfBVefXkBdNDrLMoRTGCIIpfCuDew==
-
-three@~0.160.0:
-  version "0.160.1"
-  resolved "https://registry.yarnpkg.com/three/-/three-0.160.1.tgz#61fe2907312e8604b1f64187f58e047503847413"
-  integrity sha512-Bgl2wPJypDOZ1stAxwfWAcJ0WQf7QzlptsxkjYiURPz+n5k4RBDLsq+6f9Y75TYxn6aHLcWz+JNmwTOXWrQTBQ==
+three@^0.176.0:
+  version "0.176.0"
+  resolved "https://registry.yarnpkg.com/three/-/three-0.176.0.tgz#a30c1974e46db5745e4f96dd9ee2028d71e16ecf"
+  integrity sha512-PWRKYWQo23ojf9oZSlRGH8K09q7nRSWx6LY/HF/UUrMdYgN9i1e2OwJYHoQjwc6HF/4lvvYLC5YC1X8UJL2ZpA==
 
 undici-types@~5.26.4:
   version "5.26.5"
@@ -908,28 +903,6 @@ wildcard@^2.0.0:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/wildcard/-/wildcard-2.0.1.tgz#5ab10d02487198954836b6349f74fff961e10f67"
   integrity sha512-CC1bOL87PIWSBhDcTrdeLo6eGT7mCFtrg0uIJtqJUFyK+eJnzl8A1niH56uu7KMa5XFrtiV+AQuHO3n7DsHnLQ==
-
-wtd-core@~3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/wtd-core/-/wtd-core-3.0.0.tgz#bff8005de29a37df807844e16dcfb36df3c64cd9"
-  integrity sha512-LSPfAQ5ULSV5vPhipcjdQvV5xOx25QesYK23jwUOF99xOx6fuulk7CMQerERRwA4uoQooNmRd8AT6IPBwORlWQ==
-
-wtd-three-ext@~3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/wtd-three-ext/-/wtd-three-ext-3.0.0.tgz#4d12f951635bd41313d790f74908f71e9e379b2c"
-  integrity sha512-PLZJipCAiinot8D1uB4A7+XHxPAYeZXDhczbbazK7pKdqpE77zMizQH4rSZsaNbzktgnIfpgK/ODqhJTdrUjUw==
-  dependencies:
-    three "~0.160.0"
-    wtd-core "~3.0.0"
-
-wwobjloader2@^6.2.1:
-  version "6.2.1"
-  resolved "https://registry.yarnpkg.com/wwobjloader2/-/wwobjloader2-6.2.1.tgz#59513efaa46cde5e1f751279fcca31abdcb0aae9"
-  integrity sha512-/v/sfUX0PMQAI8souzCs6xsO9LR3RyL+ujnOiS/1pngUlakKyHYC5XMQvu77pTeWzY3rzNyt5Q/bg5O3RukA+g==
-  dependencies:
-    three "~0.163.0"
-    wtd-core "~3.0.0"
-    wtd-three-ext "~3.0.0"
 
 yarn@^1.22.21:
   version "1.22.22"
