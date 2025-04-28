@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset=utf-8>
+		<title>MeshCat</title>
+	</head>
+	<body>
+        <div id="meshcat-pane">
+        </div>
+
+<!-- Note for developers: This is the same test as meshfile_object_gltf.html
+except that (1) the buffers are no longer embedded inside the glTF file, and
+(2) the buffers are optimized using meshoptimizer. -->
+
+        <script src="../dist/main.min.js"></script>
+        <script>
+            var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+
+let gltf_contents = `
+{
+    "asset": {
+        "version": "2.0",
+        "generator": "gltfpack 0.23"
+    },
+    "extensionsUsed": [
+        "EXT_meshopt_compression",
+        "KHR_materials_ior",
+        "KHR_materials_specular"
+    ],
+    "extensionsRequired": [
+        "EXT_meshopt_compression"
+    ],
+    "buffers": [
+        {
+            "uri": "meshfile_object_gltf_compressed.bin",
+            "byteLength": 1472
+        },
+        {
+            "byteLength": 948,
+            "extensions": {
+                "EXT_meshopt_compression": {
+                    "fallback": true
+                }
+            }
+        }
+    ],
+    "bufferViews": [
+        {
+            "buffer": 0,
+            "byteOffset": 0,
+            "byteLength": 769
+        },
+        {
+            "buffer": 1,
+            "byteOffset": 0,
+            "byteLength": 336,
+            "byteStride": 12,
+            "target": 34962,
+            "extensions": {
+                "EXT_meshopt_compression": {
+                    "buffer": 0,
+                    "byteOffset": 772,
+                    "byteLength": 373,
+                    "byteStride": 12,
+                    "mode": "ATTRIBUTES",
+                    "count": 28
+                }
+            }
+        },
+        {
+            "buffer": 1,
+            "byteOffset": 336,
+            "byteLength": 336,
+            "byteStride": 12,
+            "target": 34962,
+            "extensions": {
+                "EXT_meshopt_compression": {
+                    "buffer": 0,
+                    "byteOffset": 1148,
+                    "byteLength": 199,
+                    "byteStride": 12,
+                    "mode": "ATTRIBUTES",
+                    "count": 28
+                }
+            }
+        },
+        {
+            "buffer": 1,
+            "byteOffset": 672,
+            "byteLength": 192,
+            "byteStride": 8,
+            "target": 34962,
+            "extensions": {
+                "EXT_meshopt_compression": {
+                    "buffer": 0,
+                    "byteOffset": 1348,
+                    "byteLength": 90,
+                    "byteStride": 8,
+                    "mode": "ATTRIBUTES",
+                    "count": 24
+                }
+            }
+        },
+        {
+            "buffer": 1,
+            "byteOffset": 864,
+            "byteLength": 84,
+            "target": 34963,
+            "extensions": {
+                "EXT_meshopt_compression": {
+                    "buffer": 0,
+                    "byteOffset": 1440,
+                    "byteLength": 32,
+                    "byteStride": 2,
+                    "mode": "TRIANGLES",
+                    "count": 42
+                }
+            }
+        }
+    ],
+    "accessors": [
+        {
+            "bufferView": 1,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 24,
+            "type": "VEC3",
+            "min": [
+                -0.647200465,
+                -0.817307651,
+                0
+            ],
+            "max": [
+                0.781878829,
+                0.806078076,
+                1.7267704
+            ]
+        },
+        {
+            "bufferView": 2,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 24,
+            "type": "VEC3"
+        },
+        {
+            "bufferView": 3,
+            "byteOffset": 0,
+            "componentType": 5126,
+            "count": 24,
+            "type": "VEC2"
+        },
+        {
+            "bufferView": 4,
+            "byteOffset": 0,
+            "componentType": 5123,
+            "count": 36,
+            "type": "SCALAR"
+        },
+        {
+            "bufferView": 1,
+            "byteOffset": 288,
+            "componentType": 5126,
+            "count": 4,
+            "type": "VEC3",
+            "min": [
+                -2.15287828,
+                -2.15287828,
+                0
+            ],
+            "max": [
+                2.15287828,
+                2.15287828,
+                0
+            ]
+        },
+        {
+            "bufferView": 2,
+            "byteOffset": 288,
+            "componentType": 5126,
+            "count": 4,
+            "type": "VEC3"
+        },
+        {
+            "bufferView": 4,
+            "byteOffset": 72,
+            "componentType": 5123,
+            "count": 6,
+            "type": "SCALAR"
+        }
+    ],
+    "samplers": [
+        {
+            "magFilter": 9729,
+            "minFilter": 9987
+        }
+    ],
+    "images": [
+        {
+            "name": "meshcat_cube",
+            "bufferView": 0,
+            "mimeType": "image/png"
+        }
+    ],
+    "textures": [
+        {
+            "sampler": 0,
+            "source": 0
+        }
+    ],
+    "materials": [
+        {
+            "name": "Default OBJ",
+            "pbrMetallicRoughness": {
+                "baseColorTexture": {
+                    "index": 0
+                },
+                "roughnessFactor": 0.0636363551
+            },
+            "doubleSided": true,
+            "extensions": {
+                "KHR_materials_ior": {
+                    "ior": 1.45000005
+                },
+                "KHR_materials_specular": {
+                    "specularColorFactor": [
+                        1.7785182,
+                        1.7785182,
+                        1.7785182
+                    ]
+                }
+            }
+        },
+        {
+            "name": "PlaneMat",
+            "pbrMetallicRoughness": {
+                "baseColorFactor": [
+                    0.350554436,
+                    0.0736308321,
+                    0.0736308321,
+                    1
+                ],
+                "metallicFactor": 0.200000003,
+                "roughnessFactor": 0.598130941
+            },
+            "doubleSided": true
+        }
+    ],
+    "meshes": [
+        {
+            "primitives": [
+                {
+                    "attributes": {
+                        "POSITION": 0,
+                        "NORMAL": 1,
+                        "TEXCOORD_0": 2
+                    },
+                    "indices": 3,
+                    "material": 0
+                },
+                {
+                    "attributes": {
+                        "POSITION": 4,
+                        "NORMAL": 5
+                    },
+                    "indices": 6,
+                    "material": 1
+                }
+            ]
+        }
+    ],
+    "nodes": [
+        {
+            "mesh": 0
+        }
+    ],
+    "scenes": [
+        {
+            "name": "Scene",
+            "nodes": [
+                0
+            ]
+        }
+    ],
+    "scene": 0
+}
+`;
+
+        viewer.handle_command({
+            type: "set_object",
+            path: "/meshcat/mesh_test",
+            object: {
+                metadata: {version: 4.5, type: "Object"},
+                geometries: [],
+                materials: [],
+                object: {
+                    uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+                    type: "_meshfile_object",
+                    format: "gltf",
+                    data: gltf_contents
+                }
+            }
+        });
+		// Enable shadows so we can see the meshes in the gltf cast and receive
+		// shadows.
+		viewer.handle_command({
+			type: "set_property",
+			path: "/Lights/PointLightNegativeX/<object>",
+			property: "castShadow",
+			value: true
+		});
+		viewer.handle_command({
+			type: "set_property",
+			path: "/Lights/PointLightPositiveX/<object>",
+			property: "castShadow",
+			value: true
+		});
+		// Using ["Background"] will also work for legacy reasons, but it will
+		// lead to warnings generated in the browser's console.
+		viewer.set_property(["Background"], "top_color", [1, 0.25, 0.25]);
+		viewer.set_property(["Background", "<object>"], "bottom_color", [0.25, 0.25, 1.0]);
+		// Meaninglessly toggle background on and off to show that it doesn't
+		// spew errors to the console.
+		viewer.hide_background();
+		viewer.show_background();
+        </script>
+
+
+         <style>
+            body {
+                margin: 0;
+            }
+
+            #meshcat-pane {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+        </style>
+	</body>
+</html>

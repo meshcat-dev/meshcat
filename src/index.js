@@ -7,6 +7,7 @@ import {ColladaLoader} from 'three/examples/jsm/loaders/ColladaLoader.js';
 import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {KTX2Loader} from 'three/examples/jsm/loaders/KTX2Loader.js';
+import {MeshoptDecoder} from 'meshoptimizer';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
@@ -1444,6 +1445,7 @@ class Viewer {
             let loader = new GLTFLoader();
             loader.setDRACOLoader(this.draco_loader);
             loader.setKTX2Loader(this.ktx2_loader);
+            loader.setMeshoptDecoder(MeshoptDecoder);
             loader.parse(object_json.object.data, null, (gltf) => {
                 let scene = gltf.scene;
                 if (scene === null) {
