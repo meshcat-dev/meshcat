@@ -368,7 +368,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 fps: 30,
                 name: "default",
                 tracks: [{
-                    name: ".position"
+                    name: ".position",
                     type: "vector3",
                     keys: [{
                         time: 0,
@@ -385,7 +385,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                 fps: 30,
                 name: "default",
                 tracks: [{
-                    name: ".position"
+                    name: ".position",
                     type: "vector3",
                     keys: [{
                         time: 0,
@@ -393,6 +393,79 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                     },{
                         time: 80,
                         value: [0, -1, 0]
+                    }],
+                }]
+            }
+        },{
+            path: "/meshcat/boxes/box1",
+            clip: {
+                fps: 30,
+                name: "default",
+                tracks: [{
+                    name: ".object",
+                    type: "Object",
+                    keys: [{
+                        time: 0,
+                        value: {
+                            metadata: { version: 4.5, type: "Object" },
+                            geometries: [
+                                {
+                                    uuid: "cef79e52-526d-4263-b595-04fa2705974e",
+                                    type: "BoxGeometry",
+                                    width: 1,
+                                    height: 1,
+                                    depth: 1
+                                }
+                            ],
+                            materials: [
+                                {
+                                    uuid: "0767ae32-eb34-450c-b65f-3ae57a1102c3",
+                                    type: "MeshLambertMaterial",
+                                    color: 16777215,
+                                    emissive: 0,
+                                    side: 2,
+                                    depthFunc: 3,
+                                    depthTest: true,
+                                    depthWrite: true
+                                }
+                            ],
+                            object: {
+                                uuid: "00c2baef-9600-4c6b-b88d-7e82c40e004f",
+                                type: "Mesh",
+                                geometry: "cef79e52-526d-4263-b595-04fa2705974e",
+                                material: "0767ae32-eb34-450c-b65f-3ae57a1102c3"
+                            }
+                        }
+                    },{
+                        time: 40,
+                        value: {
+                            metadata: { version: 4.5, type: "Object" },
+                            geometries: [
+                                {
+                                    uuid: "3f46ac72-c64d-4928-b6d2-dfe479845463",
+                                    type: "SphereGeometry",
+                                    radius: 0.6,
+                                }
+                            ],
+                            materials: [
+                                {
+                                    uuid: "0767ae32-eb34-450c-b65f-3ae57a1102c3",
+                                    type: "MeshLambertMaterial",
+                                    color: 16777215,
+                                    emissive: 0,
+                                    side: 2,
+                                    depthFunc: 3,
+                                    depthTest: true,
+                                    depthWrite: true
+                                }
+                            ],
+                            object: {
+                                uuid: "37f03609-0722-4367-a0bc-ddc4f2396b98",
+                                type: "Mesh",
+                                geometry: "3f46ac72-c64d-4928-b6d2-dfe479845463",
+                                material: "0767ae32-eb34-450c-b65f-3ae57a1102c3"
+                            }
+                        }
                     }],
                 }]
             }
@@ -406,7 +479,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             </dd>
             <dt><code>set_target</code></dt>
             <dd>
-                Set the target of the 3D camera, around which it rotates. This is expressed in a left-handed coordinate system where <emph>y</emph> is up.  
+                Set the target of the 3D camera, around which it rotates. This is expressed in a left-handed coordinate system where <emph>y</emph> is up.
                 <p>Example:</p>
                 <pre>
 {
