@@ -13,7 +13,6 @@ import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory';
-import { log } from 'three/tsl';
 require('ccapture.js');
 
 // These are bundled as data:// URIs via our webpack.config.js.

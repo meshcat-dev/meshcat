@@ -331,7 +331,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                                         <dl>
                                             <dt><code>name</code></dt>
                                             <dd>
-                                                The property to be animated, with a leading <code>"."</code> (e.g. <code>".position"</code>)
+                                                The property to be animated, with a leading <code>"."</code> (e.g. <code>".position"</code>) A special case is where this field is <code>".object"</code>, allowing the entire object to be animated.
                                             </dd>
                                             <dt><code>type</code></dt>
                                             <dd>
@@ -339,7 +339,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                                             </dd>
                                             <dt><code>keys</code></dt>
                                             <dd>
-                                                The keyframes of the animation. The format is a list of objects, each with a field <code>time</code> (in frames) and <code>value</code> indicating the value of the animated property at that time.
+                                                The keyframes of the animation. The format is a list of objects, each with a field <code>time</code> (in frames) and <code>value</code> indicating the value of the animated property at that time. For animating an entire object, the <code>value</code> field is the same as what you would pass to the <code>object</code> field in the <code>set_object</code> command above.
                                             </dd>
                                         </dl>
                                     </dd>
