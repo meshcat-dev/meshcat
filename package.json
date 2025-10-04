@@ -20,7 +20,8 @@
     "yarn": "^1.22.21"
   },
   "scripts": {
-    "build": "webpack"
+    "build": "webpack",
+    "watch": "webpack --watch"
   },
   "resolutions": {
     "three": "^0.176.0"

@@ -6,7 +6,6 @@ module.exports = [{
         library: "MeshCat",
         libraryTarget: 'umd'
     },
-    watch: true,
     mode: "development",
     devtool: "eval-cheap-source-map"
 }, {
@@ -16,7 +15,6 @@ module.exports = [{
         library: "MeshCat",
         libraryTarget: 'umd'
     },
-    watch: true,
     mode: "production",
     module: {
       rules: [
