@@ -200,6 +200,7 @@ function handle_special_material(mat) {
             linewidth: mat.linewidth || 1.0,
             vertexColors: mat.vertexColors || false,
             dashed: mat.dashed || false,
+            worldUnits: mat.worldUnits || false,
         });
 
         material.uuid = mat.uuid;
