@@ -339,6 +339,10 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
             }
             if (json.visible !== undefined) object.visible = json.visible;
 
+            // Compute line distances for dashed line support
+            // This must be called on the Line2 object, not the geometry
+            object.computeLineDistances();
+
             return object;
         } else if (json.type == "_meshfile_object") {
             let geometry;
