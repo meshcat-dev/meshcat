@@ -39,8 +39,11 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                     <p>Beyond the nominal format, Meshcat also offers a few extensions for convenience:
                     <ul>
                     <li>Within the <code>geometries</code> stanza, the <code>type</code> field can be set to <code>"_meshfile_geometry"</code> to parse using a mesh file format. In this case, the geometry must also have a field named <code>format</code> set to one of <code>"obj"</code> or <code>"dae"</code> or <code>"stl"</code> and a field named <code>"data"</code> with the string contents of the file.
+                    <li>Within the <code>geometries</code> stanza, the <code>type</code> field can be set to <code>"LineGeometry"</code> to create lines with configurable width (works in all modern browsers). See the Line2 example below for details.
                     <li>Within the <code>materials</code> stanza, the <code>type</code> field can be set to <code>"_text"</code> to use a string as the texture (i.e., a font rendered onto an image). In this case, the material must also have fields named <code>font_size</code> (in pixels), <code>font_face</code> (a string), and <code>text</code> (the words to render into a texture).
+                    <li>Within the <code>materials</code> stanza, the <code>type</code> field can be set to <code>"LineMaterial"</code> to create materials for Line2 objects with configurable line width. See the Line2 example below for details.
                     <li>Within the inner <code>object</code> stanza (i.e., the object with a uuid, not the object argument to set_object), the <code>type</code> field can be set to <code>"_meshfile_object"</code> to parse using a mesh file format. In this case, the <code>geometries</code> and <code>materials</code> and <code>geometry: {uuid}</code> and <code>material: {uuid}</code> are all ignored, and the object must have a field named <code>format</code> set to one of <code>"obj"</code> or <code>"dae"</code> or <code>"stl"</code> and a field named <code>"data"</code> with the string contents of the file. When the format is obj, the object may also have a field named <code>mtl_library</code> with the string contents of the associated mtl file.
+                    <li>Within the inner <code>object</code> stanza, the <code>type</code> field can be set to <code>"Line2"</code> to render lines with configurable width using LineGeometry and LineMaterial. See the Line2 example below for details.
                     </ul>
                 </dl>
                 <p>Example (nominal format):
@@ -197,6 +200,70 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
 }
                 </pre>
                 Check <code>test/meshfile_object_obj.html</code> for the full demo.
+                <p>Example (Line2 with <code>LineGeometry</code> and <code>LineMaterial</code>):
+                <p>
+                Modern browsers don't support the GL_LINEWIDTH parameter, so standard Line objects won't show varying line widths. MeshCat supports Line2 objects with LineGeometry and LineMaterial for lines with configurable width.
+                <pre>
+{
+    type: "set_object",
+    path: "/meshcat/fatline",
+    object: {
+        metadata: {version: 4.5, type: "Object"},
+        geometries: [
+            {
+                uuid: "line-geom-uuid",
+                type: "LineGeometry",
+                data: {
+                    attributes: {
+                        position: {
+                            array: new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0])
+                        },
+                        color: {
+                            array: new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
+                        }
+                    }
+                }
+            }
+        ],
+        materials: [
+            {
+                uuid: "line-mat-uuid",
+                type: "LineMaterial",
+                color: 16777215,
+                linewidth: 5.0,
+                vertexColors: true,
+                dashed: false,
+                worldUnits: false
+            }
+        ],
+        object: {
+            uuid: "line-obj-uuid",
+            type: "Line2",
+            geometry: "line-geom-uuid",
+            material: "line-mat-uuid"
+        }
+    }
+}
+                </pre>
+                <p>LineGeometry supports these attributes:
+                <ul>
+                <li><code>position</code>: Float32Array of vertex positions (x, y, z, x, y, z, ...)
+                <li><code>color</code>: (optional) Float32Array of per-vertex RGB colors (r, g, b, r, g, b, ...)
+                </ul>
+                <p>LineMaterial supports these properties:
+                <ul>
+                <li><code>color</code>: Integer color value (e.g., 0xffffff for white)
+                <li><code>linewidth</code>: Line width in pixels (if worldUnits=false, default) or world units (if worldUnits=true)
+                <li><code>vertexColors</code>: Boolean, use per-vertex colors from geometry
+                <li><code>dashed</code>: Boolean, enable dashed line rendering
+                <li><code>dashScale</code>: Scale factor for dashes (only used if dashed=true)
+                <li><code>dashSize</code>: Length of dash segments (only used if dashed=true)
+                <li><code>gapSize</code>: Length of gaps between dashes (only used if dashed=true)
+                <li><code>worldUnits</code>: Boolean, if false (default) linewidth is in screen pixels; if true, linewidth is in world units and scales with zoom
+                <li><code>transparent</code>: Boolean, enable transparency
+                <li><code>opacity</code>: Opacity value (0.0 to 1.0)
+                </ul>
+                Check <code>test/fatlines.html</code> for a full demo.
             </dd>
             <dt><code>set_transform</code></dt>
             <dd>
