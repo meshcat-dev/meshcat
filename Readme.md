@@ -536,6 +536,8 @@ The default MeshCat scene comes with a few objects at pre-set paths. You can rep
     <dd>The camera from which the scene is rendered (see below for details)</dd>
     <dt><code>/Background</code></dt>
     <dd>The background texture, with properties for "top_color" and "bottom_color" as well as a boolean "visible".</dd>
+    <dt><code>/Render Settings/<object></dt>
+    <dd>Contains properties for how the overall scene renders in your current session. This is not a 3D element in the scene, but provides parameters for configuring the renderer.</dd>
 </dl>
 
 ### Camera Control

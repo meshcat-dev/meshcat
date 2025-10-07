@@ -8,6 +8,7 @@ import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {KTX2Loader} from 'three/examples/jsm/loaders/KTX2Loader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
+import {RGBELoader} from 'three/examples/jsm/loaders/RGBELoader.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
@@ -352,6 +353,27 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
     }
 }
 
+// This provides the ability to edit rendering settings and see the effect in
+// the viewer.
+class RenderConfig {
+    constructor() {
+        this.isRenderConfig = true;
+        this.type = 'RenderConfig';
+
+        this.exposure = 1.0;
+        // TODO(SeanCurtis-TRI): Consider other settings such as clipping plane.
+    }
+
+    on_update() {
+        // RenderConfig isn't a three.js object. It has no mechanism whereby
+        // setting a value will automatically trigger a re-render. When we call
+        // set_property() on the containing SceneNode, we need to trigger a
+        // rerender. SceneNode.set_property() calls this function, to indicate
+        // that something has changed. We rely on the SceneNode to have set up
+        // the appropriate callback to trigger a re-render.
+    }
+}
+
 class Background extends THREE.Object3D {
     constructor() {
         super();
@@ -400,20 +422,23 @@ class Background extends THREE.Object3D {
     // Changes to underlying maps (e.g., gradient or environment map) happen
     // regardless of the type of camera. However, the textures applied to
     // scene.background depend on whether the camera is perspective or not.
-    update(scene, is_visible, is_perspective) {
+    update(scene, is_visible, is_perspective, signal_complete) {
         // TODO(SeanCurtis-TRI): If the background simply isn't visible, defer
         // the work until it is visible, perhaps?
-        this.state.visible = is_visible;
         this.state.render_map = this.render_environment_map;
         // If the named environment map has changed, we need to load appropriately.
         if (this.environment_map !== this.state.environment_map) {
             if (this.environment_map == "" || this.environment_map == null) {
-                this.environment_map = this.state.environment_map = null;
+                this.environment_map = null;
+                this.state.environment_map = null;
                 this.textures.env_map = null;
+                // Clearing the environment map requires a redraw, just like
+                // loading a new one.
+                signal_complete();
             } else {
                 this.textures.env_map =
                     load_env_texture(this.environment_map, this, scene,
-                                     is_visible, is_perspective);
+                                     is_visible, is_perspective, signal_complete);
                 if (this.textures.env_map == null) {
                     this.state.environment_map = this.environment_map = null;
                 } else {
@@ -460,7 +485,7 @@ class Background extends THREE.Object3D {
         scene.background =
             this.use_ar_background ?
                 null :
-                this.state.visible ?
+                is_visible ?
                     (this.state.render_map && this.textures.env_map != null && is_perspective ?
                         this.textures.env_map :
                         this.textures[cam_key].gradient) :
@@ -470,11 +495,16 @@ class Background extends THREE.Object3D {
         // use an available environment map for illumination, regardless of
         // camera projection type.
         scene.environment =
-            this.state.visible ?
+            is_visible ?
                 (this.textures.env_map != null ?
                     this.textures.env_map :
                     this.textures.round.gradient) :
                 this.textures.round.white;
+        if (this.state.visible != is_visible) {
+            // Changing visibility needs a redraw.
+            signal_complete();
+        }
+        this.state.visible = is_visible;
     }
 }
 
@@ -592,6 +622,11 @@ class SceneNode {
             map_controller.onChange(() => this.on_update());
             this.controllers.push(map_controller);
         }
+        if (this.object.isRenderConfig) {
+            let exposure_controller = this.folder.add(this.object, "exposure").min(0).step(0.01).name("Exposure");;
+            exposure_controller.onChange(() => this.on_update());
+            this.controllers.push(exposure_controller);;
+        }
     }
 
     // To *modulate* opacity, we need to store the baseline value. This should
@@ -663,8 +698,9 @@ class SceneNode {
         } else {
             this.set_property_chain(property, value, target_path);
         }
-        if (this.object.isBackground) {
-            // If we've set values on the Background, we need to fire its on_update()).
+        // For non three.js objects, we need to explicitly call their
+        // on_update() methods to trigger redraws.
+        if (this.object.isBackground || this.object.isRenderConfig) {
             this.on_update();
         }
         this.vis_controller.updateDisplay();
@@ -1080,20 +1116,40 @@ function env_texture(top_color, bottom_color, is_perspective) {
     return texture;
 }
 
-function load_env_texture(path, background, scene, is_visible, is_perspective) {
-    // let has_error = false;
-    let texture = new THREE.TextureLoader().load( path, undefined, undefined, () => {
-        // onError; if, ultimately, there is a problem in loading this map, we
-        // need to revert the environment map to being undefined.
+function load_env_texture(path, background, scene, is_visible, is_perspective, signal_complete) {
+    let on_error = () => {
+        // If, ultimately, there is a problem in loading this map, we need to
+        // revert the environment map to being undefined.
         console.error(
             "Failure to load the requested environment map; reverting to none.",
             background.environment_map);
         background.environment_map = null;
         background.update(scene, is_visible, is_perspective);
-     });
-    if (texture != null) {
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.mapping = THREE.EquirectangularReflectionMapping;
+    };
+    const extension = path.slice((path.lastIndexOf('.') - 1 >>> 0) + 2);
+    let texture = null;
+    switch (extension.toLowerCase()) {
+        case 'hdr':
+            texture = new RGBELoader().load(
+                path,
+                (texture) => {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    signal_complete();
+                },
+                undefined,
+                on_error);
+            break;
+        default:
+            texture = new THREE.TextureLoader().load(
+                path,
+                (texture) => {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    texture.colorSpace = THREE.LinearSRGBColorSpace;
+                    signal_complete();
+                },
+                undefined,
+                on_error);
+            break;
     }
     return texture;
 }
@@ -1141,6 +1197,7 @@ class Viewer {
             this.renderer = renderer;
         }
         this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.webxr_session_active = false;
         this.xr_button = null;
         this.scene = create_default_scene();
@@ -1182,8 +1239,8 @@ class Viewer {
         let bg_parent = this.scene_tree.find(["Background"]);
         let bg = this.scene_tree.find(["Background", "<object>"]);
         let is_visible = bg_parent.object.visible && bg.object.visible;
-        bg.object.update(this.scene, is_visible, this.is_perspective());
-        this.set_dirty();
+        bg.object.update(this.scene, is_visible, this.is_perspective(),
+                         () => { this.set_dirty(); });
     }
 
     is_perspective() {
@@ -1330,6 +1387,19 @@ class Viewer {
             this.update_background();
         }
         this.update_background();
+
+        this.set_object(["Render Settings"], new RenderConfig());
+        let settings_node = this.scene_tree.find(["Render Settings", "<object>"]);
+        settings_node.on_update = () => {
+            this.renderer.toneMappingExposure = settings_node.object.exposure;
+            this.set_dirty();
+        };
+        settings_node.object.on_update = () => {
+            // When setting the property directly, simulate setting the GUI.
+            // That is responsible for configuring the renderer and triggering a
+            // redraw.
+            settings_node.on_update();
+        };
     }
 
     set_3d_pane_size(w, h) {
