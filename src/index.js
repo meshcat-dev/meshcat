@@ -8,6 +8,7 @@ import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {KTX2Loader} from 'three/examples/jsm/loaders/KTX2Loader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
+import {RGBELoader} from 'three/examples/jsm/loaders/RGBELoader.js';
 import {STLLoader} from 'three/examples/jsm/loaders/STLLoader.js';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
@@ -352,6 +353,28 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
     }
 }
 
+// This provides the ability to edit rendering settings and see the effect in
+// the viewer.
+class RenderConfig extends THREE.Object3D {
+    constructor() {
+        super();
+        this.isRenderConfig = true;
+        this.type = 'RenderConfig';
+
+        this.exposure = 1.0;
+        // TODO(SeanCurtis-TRI): Consider other settings such as clipping plane.
+    }
+
+    on_update() {
+        // RenderConfig isn't a three.js object. It has no mechanism whereby
+        // setting a value will automatically trigger a re-render. When we call
+        // set_property() on the containing SceneNode, we need to trigger a
+        // re-render. SceneNode.set_property() calls this function, to indicate
+        // that something has changed. We rely on the SceneNode to have set up
+        // the appropriate callback to trigger a re-render.
+    }
+}
+
 class Background extends THREE.Object3D {
     constructor() {
         super();
@@ -372,12 +395,12 @@ class Background extends THREE.Object3D {
         this.textures = {
             "env_map": null,  // no default environment.
             "round": {
-                "gradient": env_texture(this.top_color, this.bottom_color, true),
-                "white": env_texture([255, 255, 255], [255, 255, 255], true)
+                "gradient": make_gradient_texture(this.top_color, this.bottom_color, true),
+                "white": make_gradient_texture([255, 255, 255], [255, 255, 255], true)
             },
             "flat": {
-                "gradient": env_texture(this.top_color, this.bottom_color, false),
-                "white": env_texture([255, 255, 255], [255, 255, 255], false)
+                "gradient": make_gradient_texture(this.top_color, this.bottom_color, false),
+                "white": make_gradient_texture([255, 255, 255], [255, 255, 255], false)
             }
         };
         // The state values that contributed to the current values of
@@ -393,88 +416,114 @@ class Background extends THREE.Object3D {
         };
     }
 
-    // Updates the background's state in the scene based on its requested
-    // properties, its internal state, and the indication of whether the
-    // background is visible or not.
-    //
-    // Changes to underlying maps (e.g., gradient or environment map) happen
-    // regardless of the type of camera. However, the textures applied to
-    // scene.background depend on whether the camera is perspective or not.
-    update(scene, is_visible, is_perspective) {
-        // TODO(SeanCurtis-TRI): If the background simply isn't visible, defer
-        // the work until it is visible, perhaps?
-        this.state.visible = is_visible;
-        this.state.render_map = this.render_environment_map;
-        // If the named environment map has changed, we need to load appropriately.
-        if (this.environment_map !== this.state.environment_map) {
-            if (this.environment_map == "" || this.environment_map == null) {
-                this.environment_map = this.state.environment_map = null;
-                this.textures.env_map = null;
-            } else {
-                this.textures.env_map =
-                    load_env_texture(this.environment_map, this, scene,
-                                     is_visible, is_perspective);
-                if (this.textures.env_map == null) {
-                    this.state.environment_map = this.environment_map = null;
-                } else {
-                    this.state.environment_map = this.environment_map;
-                }
-            }
-        }
-        // Possibly update the gradient textures if requested top/bottom colors
-        // are different from the current state. But only if we're *using*
-        // the gradient. Note: "using" is not the same as obviously drawing it
-        // as a background. We use the gradient in the following circumstances:
-        //
-        //    - The background is visible and
-        //         - there is no environment map (using gradient as environment) or
-        //         - the state has been requested to not draw the env map as
-        //           background, or
-        //         - the camera is orthographic (can't use env_map as background).
-        let using_gradient = !is_perspective ||
-                             !this.render_environment_map ||
-                             this.textures.env_map == null;
-        if (is_visible && using_gradient &&
-            (this.top_color !== this.state.top_color ||
-             this.bottom_color !== this.state.bottom_color)) {
-            this.state.top_color = this.top_color;
-            this.state.bottom_color = this.bottom_color;
-            let t = [this.state.top_color.r, this.state.top_color.g,
-                     this.state.top_color.b];
-            let b = [this.state.bottom_color.r, this.state.bottom_color.g,
-                     this.state.bottom_color.b];
-            this.textures.flat.gradient = env_texture(t, b, false);
-            this.textures.round.gradient = env_texture(t, b, true);
-        }
-        // Both background and environment are white if the background isn't
-        // visible.
+    // A texture has been successfully loaded and should be configured as the
+    // environment map. Note: this won't necessarily be visible as the
+    // environment map if, for example, the background is not visible. This
+    // should only be called asynchronously if a texture has been successfully
+    // loaded.
+    set_environment_texture(url, texture, scene, is_visible, is_perspective) {
+        this.environment_map = url;
+        this.state.environment_map = url;
+        this.textures.env_map = texture;
+        this._configure_environment_map_from_state(scene, is_perspective);
+    }
 
-        // A visible background is either the environment map or the gradient:
+    // Clears the environment texture (if any).
+    clear_environment_texture(scene, is_perspective) {
+        this.environment_map = null;
+        this.state.environment_map = null;
+        this.textures.env_map = null;
+        this._configure_environment_map_from_state(scene, is_perspective);
+    }
+
+    // Configure the scene's background and environment based on this's state.
+    _configure_environment_map_from_state(scene, is_perspective) {
+        let cam_key = is_perspective ? "round" : "flat";
+        // A visible background is either the environment map or the gradient.
         // To be the map, the map must be defined, state.render_map is true,
         // and the camera is perspective. Otherwise gradient.
         // In immersive AR mode, we need the background to be transparent (so
         // that the camera comes through). So, we set the background to null,
-        // but leave the normal semantics for environment so things keep
-        // rendering the same.
-        let cam_key = is_perspective ? "round" : "flat";
+        // but leave the normal semantics for environment so objects get
+        // _illuminated_ the same.
         scene.background =
             this.use_ar_background ?
                 null :
                 this.state.visible ?
-                    (this.state.render_map && this.textures.env_map != null && is_perspective ?
-                        this.textures.env_map :
-                        this.textures[cam_key].gradient) :
+                    (this.state.render_map &&
+                        this.textures.env_map !== null &&
+                        is_perspective ?
+                            this.textures.env_map :
+                            this.textures[cam_key].gradient) :
                     this.textures[cam_key].white;
-        // The environment logic is simpler. It only depends on the background
-        // being visible and an environment map being defined. We'll always
-        // use an available environment map for illumination, regardless of
-        // camera projection type.
+        // The environment is either a white ambient cloud, the specified
+        // gradient, or an environment map.
         scene.environment =
             this.state.visible ?
                 (this.textures.env_map != null ?
                     this.textures.env_map :
                     this.textures.round.gradient) :
                 this.textures.round.white;
+    }
+
+    // Do all the synchronous work to update the background *state* from the
+    // background requests and, finally, conditionally kick off the asynchronous
+    // work of loading a new environment map texture. The "requests" are
+    // captured in this object's members (they get affected by controls and
+    // set_property() commands). In response to changes, this gets called so
+    // that the most current configurations can get pushed down into the state
+    // that reflects what the actual THREE.js scene contains.
+    //
+    // This may lead to work without visible effect. For example, if the
+    // background is "not visible" (via the controls), but a new environment
+    // map URL is specified; we'll load the environment map, but it won't show
+    // until the background is made visible again.
+    update(scene, is_visible, is_perspective, signal_complete) {
+        // Update gradient textures if colors have been changed.
+        if (this.top_color !== this.state.top_color ||
+            this.bottom_color !== this.state.bottom_color) {
+            this.state.top_color = this.top_color;
+            this.state.bottom_color = this.bottom_color;
+            let t = [this.state.top_color.r, this.state.top_color.g,
+                     this.state.top_color.b];
+            let b = [this.state.bottom_color.r, this.state.bottom_color.g,
+                     this.state.bottom_color.b];
+            this.textures.flat.gradient = make_gradient_texture(t, b, false);
+            this.textures.round.gradient = make_gradient_texture(t, b, true);
+        }
+
+        // Update rendering state.
+        this.state.render_map = this.render_environment_map;
+        this.state.use_ar_background = this.use_ar_background;
+        this.state.visible = is_visible;
+        // Note: this.state.environment_map will only change if we attempt to
+        // load a new environment texture (see below).
+
+        let non_empty = (obj) => {
+            return typeof obj === 'string' && obj.length > 0;
+        };
+        let requested_environment_map = non_empty(this.environment_map);
+
+        if (this.environment_map != this.state.environment_map) {
+            if (requested_environment_map) {
+                load_env_texture(this.environment_map, this, scene,
+                                 is_visible, is_perspective, signal_complete);
+                // Everything else is done asynchronously.
+                return;
+            }
+        }
+
+        // At this point, we need to trigger a reconfiguration to capture any
+        // changes in state. We'll also handle the case where the environment
+        // map has been _cleared_ (as that is a _synchronous_ operation).
+        if (requested_environment_map) {
+            this._configure_environment_map_from_state(scene, is_perspective);
+        } else {
+            // Note: clear_environment_texture() updates the state and calls
+            // _configure_environment_map_from_state() for us. 
+            this.clear_environment_texture(scene, is_perspective);
+        }
+        signal_complete();
     }
 }
 
@@ -580,17 +629,25 @@ class SceneNode {
             // Changing the background gradient is cheap, so we'll change the
             // color in the onChange() callback (instead of the onChangeFinished)
             // callback -- it makes a more interactive experience.
-            let top_controller = this.folder.addColor(this.object, "top_color");
+            let top_controller = this.folder.addColor(this.object, "top_color")
+                .name("Top color");
             top_controller.onChange(() => this.on_update());
             this.controllers.push(top_controller);
 
-            let bottom_controller = this.folder.addColor(this.object, "bottom_color");
+            let bottom_controller = this.folder.addColor(this.object, "bottom_color")
+                .name("Bottom color");
             bottom_controller.onChange(() => this.on_update());
             this.controllers.push(bottom_controller);
 
-            let map_controller = this.folder.add(this.object, "render_environment_map");
+            let map_controller = this.folder.add(this.object, "render_environment_map")
+                .name("Show environment map");
             map_controller.onChange(() => this.on_update());
             this.controllers.push(map_controller);
+        }
+        if (this.object.isRenderConfig) {
+            let exposure_controller = this.folder.add(this.object, "exposure").min(0).step(0.01).name("Exposure");;
+            exposure_controller.onChange(() => this.on_update());
+            this.controllers.push(exposure_controller);;
         }
     }
 
@@ -663,8 +720,9 @@ class SceneNode {
         } else {
             this.set_property_chain(property, value, target_path);
         }
-        if (this.object.isBackground) {
-            // If we've set values on the Background, we need to fire its on_update()).
+        // For non three.js objects, we need to explicitly call their
+        // on_update() methods to trigger redraws.
+        if (this.object.isBackground || this.object.isRenderConfig) {
             this.on_update();
         }
         this.vis_controller.updateDisplay();
@@ -804,7 +862,6 @@ function create_default_scene() {
     scene.rotateX(-Math.PI / 2);
     return scene;
 }
-
 
 // https://stackoverflow.com/a/15832662
 function download_data_uri(name, uri) {
@@ -1036,7 +1093,7 @@ class Animator {
 // find supporting documentation for this requirement, but
 // empirically, it is obvious. Reduce the width by even one pixel
 // and any metallic surface reflects a black void.
-function env_texture(top_color, bottom_color, is_perspective) {
+function make_gradient_texture(top_color, bottom_color, is_perspective) {
     if (top_color == null || bottom_color == null) return null;
     let width = 64;
     let height = 2;
@@ -1080,22 +1137,52 @@ function env_texture(top_color, bottom_color, is_perspective) {
     return texture;
 }
 
-function load_env_texture(path, background, scene, is_visible, is_perspective) {
-    // let has_error = false;
-    let texture = new THREE.TextureLoader().load( path, undefined, undefined, () => {
-        // onError; if, ultimately, there is a problem in loading this map, we
-        // need to revert the environment map to being undefined.
+// Load a new environment map (from the given url).
+// @pre The url actually represents a change from whatever environment map (if
+// any) is currently loaded.)
+// TODO(SeanCurtis-TRI): This should only be called by background.update().
+//   Refactor this so that requirement is more strongly enforced.
+function load_env_texture(url, background, scene, is_visible, is_perspective,
+                          signal_complete) {
+    // Action we take on successfully loading a texture (of either flavor).
+    let on_load = (texture) => {
+        background.set_environment_texture(url, texture, scene, is_visible,
+                                           is_perspective);
+        signal_complete();
+    };
+
+    // If we fail to load the HDR version, we report failure.
+    let hdr_load_fail = () => {
         console.error(
-            "Failure to load the requested environment map; reverting to none.",
-            background.environment_map);
-        background.environment_map = null;
-        background.update(scene, is_visible, is_perspective);
-     });
-    if (texture != null) {
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-    }
-    return texture;
+            `Failure to load the requested environment map '${url}'; reverting to none.`);
+        background.clear_environment_texture(scene, is_perspective);
+        signal_complete();
+    };
+
+    // If we fail to load the LDR version, try it as an HDR image.
+    let ldr_load_fail = () => {
+        new RGBELoader().load(
+            url,
+            (texture) => {
+                texture.mapping = THREE.EquirectangularReflectionMapping;
+                on_load(texture);
+            },
+            undefined,
+            hdr_load_fail);
+    };
+
+    // Try loading the LDR version first. THREE.TextureLoader is far more robust
+    // to failure than RGBELoader. So, we'll give it a chance to fail first.
+    new THREE.TextureLoader().load(
+        url,
+        (texture) => {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            texture.colorSpace = THREE.LinearSRGBColorSpace;
+            on_load(texture);
+        },
+        undefined,
+        ldr_load_fail);
+
 }
 
 // Utility function for waiting on the definition of an DOM element's child
@@ -1141,6 +1228,7 @@ class Viewer {
             this.renderer = renderer;
         }
         this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.webxr_session_active = false;
         this.xr_button = null;
         this.scene = create_default_scene();
@@ -1182,8 +1270,8 @@ class Viewer {
         let bg_parent = this.scene_tree.find(["Background"]);
         let bg = this.scene_tree.find(["Background", "<object>"]);
         let is_visible = bg_parent.object.visible && bg.object.visible;
-        bg.object.update(this.scene, is_visible, this.is_perspective());
-        this.set_dirty();
+        bg.object.update(this.scene, is_visible, this.is_perspective(),
+                         () => { this.set_dirty(); });
     }
 
     is_perspective() {
@@ -1330,6 +1418,19 @@ class Viewer {
             this.update_background();
         }
         this.update_background();
+
+        this.set_object(["Render Settings"], new RenderConfig());
+        let settings_node = this.scene_tree.find(["Render Settings", "<object>"]);
+        settings_node.on_update = () => {
+            this.renderer.toneMappingExposure = settings_node.object.exposure;
+            this.set_dirty();
+        };
+        settings_node.object.on_update = () => {
+            // When setting the property directly, simulate setting the GUI.
+            // That is responsible for configuring the renderer and triggering a
+            // redraw.
+            settings_node.on_update();
+        };
     }
 
     set_3d_pane_size(w, h) {
