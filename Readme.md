@@ -199,10 +199,9 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
     }
 }
                 </pre>
-                Check <code>test/meshfile_object_obj.html</code> for the full demo.
-                <p>Example (Line2 with <code>LineGeometry</code> and <code>LineMaterial</code>):
-                <p>
-                Modern browsers don't support the GL_LINEWIDTH parameter, so standard Line objects won't show varying line widths. MeshCat supports Line2 objects with LineGeometry and LineMaterial for lines with configurable width.
+                <p>Check <code>test/meshfile_object_obj.html</code> for the full demo.</p>
+                <p>Example (Line2 with <code>LineGeometry</code> and <code>LineMaterial</code>):</p>
+                <p>Modern browsers don't support the GL_LINEWIDTH parameter, so standard Line objects won't show varying line widths. MeshCat supports Line2 objects with LineGeometry and LineMaterial for lines with configurable properties.</p>
                 <pre>
 {
     type: "set_object",
@@ -211,7 +210,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
         metadata: {version: 4.5, type: "Object"},
         geometries: [
             {
-                uuid: "line-geom-uuid",
+                uuid: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
                 type: "LineGeometry",
                 data: {
                     attributes: {
@@ -227,7 +226,7 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
         ],
         materials: [
             {
-                uuid: "line-mat-uuid",
+                uuid: "6fe7011b-bba7-11ee-b7a2-4b79088b524d",
                 type: "LineMaterial",
                 color: 16777215,
                 linewidth: 5.0,
@@ -237,33 +236,21 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             }
         ],
         object: {
-            uuid: "line-obj-uuid",
+            uuid: "6fe7011c-bba7-11ee-b7a2-4b79088b524d",
             type: "Line2",
-            geometry: "line-geom-uuid",
-            material: "line-mat-uuid"
+            geometry: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
+            material: "6fe7011b-bba7-11ee-b7a2-4b79088b524d"
         }
     }
 }
                 </pre>
-                <p>LineGeometry supports these attributes:
+                <p>LineGeometry supports these attributes:</p>
                 <ul>
                 <li><code>position</code>: Float32Array of vertex positions (x, y, z, x, y, z, ...)
                 <li><code>color</code>: (optional) Float32Array of per-vertex RGB colors (r, g, b, r, g, b, ...)
                 </ul>
-                <p>LineMaterial supports these properties:
-                <ul>
-                <li><code>color</code>: Integer color value (e.g., 0xffffff for white)
-                <li><code>linewidth</code>: Line width in pixels (if worldUnits=false, default) or world units (if worldUnits=true)
-                <li><code>vertexColors</code>: Boolean, use per-vertex colors from geometry
-                <li><code>dashed</code>: Boolean, enable dashed line rendering
-                <li><code>dashScale</code>: Scale factor for dashes (only used if dashed=true)
-                <li><code>dashSize</code>: Length of dash segments (only used if dashed=true)
-                <li><code>gapSize</code>: Length of gaps between dashes (only used if dashed=true)
-                <li><code>worldUnits</code>: Boolean, if false (default) linewidth is in screen pixels; if true, linewidth is in world units and scales with zoom
-                <li><code>transparent</code>: Boolean, enable transparency
-                <li><code>opacity</code>: Opacity value (0.0 to 1.0)
-                </ul>
-                Check <code>test/fatlines.html</code> for a full demo.
+                <p>LineMaterial supports the exact same attributes as documented in the <a href="https://threejs.org/docs/#examples/en/lines/LineMaterial">Three.js LineMaterial docs</a>.</p>
+                <p>Check <code>test/fatlines.html</code> for a full demo.</p>
             </dd>
             <dt><code>set_transform</code></dt>
             <dd>
