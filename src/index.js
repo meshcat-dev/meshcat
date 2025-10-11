@@ -241,32 +241,12 @@ function handle_special_geometry(geom) {
     return null;
 }
 
+// Handler for special material types that we want to support
+// in addition to whatever three.js supports.
 function handle_special_material(mat) {
     if (mat.type == "LineMaterial") {
-        // Handle LineMaterial (for fat lines)
-        let material = new LineMaterial({
-            color: mat.color ? parseInt(mat.color) : 0xffffff,
-            linewidth: mat.linewidth || 1.0,
-            vertexColors: mat.vertexColors || false,
-            dashed: mat.dashed || false,
-            worldUnits: mat.worldUnits || false,
-        });
-
+        let material = new LineMaterial(mat);
         material.uuid = mat.uuid;
-
-        if (mat.transparent !== undefined) material.transparent = mat.transparent;
-        if (mat.opacity !== undefined) material.opacity = mat.opacity;
-
-        if (mat.dashed) {
-            material.dashScale = mat.dashScale || 1.0;
-            material.dashSize = mat.dashSize || 1.0;
-            material.gapSize = mat.gapSize || 1.0;
-        }
-
-        // LineMaterial requires resolution to be set for proper rendering
-        // This will be updated when the object is added to the scene
-        material.resolution = new THREE.Vector2(1, 1);
-
         return material;
     }
     return null;
