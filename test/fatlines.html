@@ -358,6 +358,26 @@
                 ])
             });
 
+            // Pose the camera so its initial pose orbits around the line stack
+            // and has all lines in view.
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/Cameras/default",
+                matrix: new Float32Array([1, 0, 0, 0,
+                                          0, 1, 0, 0,
+                                          0, 0, 1, 0,
+                                          0, 0, 0, 1]) 
+            });
+            viewer.handle_command({type: "set_property",
+                path: "/Cameras/default/rotated/<object>",
+                property: "position",
+                value: [2, 3, 2]
+            });
+            viewer.handle_command({
+                type: "set_target",
+                value: [0.5, 1., -0.5]
+            });
+
             // Add HTML overlay for test descriptions
             let descriptionDiv = document.createElement('div');
             descriptionDiv.style.position = 'absolute';
