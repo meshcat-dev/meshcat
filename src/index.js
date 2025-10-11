@@ -198,21 +198,16 @@ function handle_special_geometry(geom) {
         geom.type = "_meshfile_geometry";
     }
     if (geom.type == "LineGeometry") {
-        // Handle LineGeometry (fat lines)
         let geometry = new LineGeometry();
         geometry.uuid = geom.uuid;
-
-        if (geom.data && geom.data.attributes) {
-            if (geom.data.attributes.position) {
-                let positions = geom.data.attributes.position.array;
-                geometry.setPositions(positions);
-            }
-            if (geom.data.attributes.color) {
-                let colors = geom.data.attributes.color.array;
-                geometry.setColors(colors);
-            }
+        if (geom.position) {
+            let positions = geom.position.array;
+            geometry.setPositions(positions);
         }
-
+        if (geom.color) {
+            let colors = geom.color.array;
+            geometry.setColors(colors);
+        }
         return geometry;
     }
     if (geom.type == "_meshfile_geometry") {

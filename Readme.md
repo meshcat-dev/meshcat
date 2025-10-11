@@ -212,15 +212,11 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             {
                 uuid: "6fe70119-bba7-11ee-b7a2-4b79088b524d",
                 type: "LineGeometry",
-                data: {
-                    attributes: {
-                        position: {
-                            array: new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0])
-                        },
-                        color: {
-                            array: new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
-                        }
-                    }
+                position: {
+                    array: new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0])
+                },
+                color: {
+                    array: new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
                 }
             }
         ],
