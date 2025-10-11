@@ -192,37 +192,6 @@ function handle_special_texture(json) {
 // return either:
 //   * A new `THREE.Mesh` if that json represents a special geometry
 //   * `null` otherwise
-function handle_special_material(mat) {
-    if (mat.type == "LineMaterial") {
-        // Handle LineMaterial (for fat lines)
-        let material = new LineMaterial({
-            color: mat.color ? parseInt(mat.color) : 0xffffff,
-            linewidth: mat.linewidth || 1.0,
-            vertexColors: mat.vertexColors || false,
-            dashed: mat.dashed || false,
-            worldUnits: mat.worldUnits || false,
-        });
-
-        material.uuid = mat.uuid;
-
-        if (mat.transparent !== undefined) material.transparent = mat.transparent;
-        if (mat.opacity !== undefined) material.opacity = mat.opacity;
-
-        if (mat.dashed) {
-            material.dashScale = mat.dashScale || 1.0;
-            material.dashSize = mat.dashSize || 1.0;
-            material.gapSize = mat.gapSize || 1.0;
-        }
-
-        // LineMaterial requires resolution to be set for proper rendering
-        // This will be updated when the object is added to the scene
-        material.resolution = new THREE.Vector2(1, 1);
-
-        return material;
-    }
-    return null;
-}
-
 function handle_special_geometry(geom) {
     if (geom.type == "_meshfile") {
         console.warn("_meshfile is deprecated. Please use _meshfile_geometry for geometries and _meshfile_object for objects with geometry and material");
@@ -268,6 +237,37 @@ function handle_special_geometry(geom) {
             console.error("Unsupported mesh type:", geom);
             return null;
         }
+    }
+    return null;
+}
+
+function handle_special_material(mat) {
+    if (mat.type == "LineMaterial") {
+        // Handle LineMaterial (for fat lines)
+        let material = new LineMaterial({
+            color: mat.color ? parseInt(mat.color) : 0xffffff,
+            linewidth: mat.linewidth || 1.0,
+            vertexColors: mat.vertexColors || false,
+            dashed: mat.dashed || false,
+            worldUnits: mat.worldUnits || false,
+        });
+
+        material.uuid = mat.uuid;
+
+        if (mat.transparent !== undefined) material.transparent = mat.transparent;
+        if (mat.opacity !== undefined) material.opacity = mat.opacity;
+
+        if (mat.dashed) {
+            material.dashScale = mat.dashScale || 1.0;
+            material.dashSize = mat.dashSize || 1.0;
+            material.gapSize = mat.gapSize || 1.0;
+        }
+
+        // LineMaterial requires resolution to be set for proper rendering
+        // This will be updated when the object is added to the scene
+        material.resolution = new THREE.Vector2(1, 1);
+
+        return material;
     }
     return null;
 }
