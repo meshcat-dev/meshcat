@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset=utf-8>
+        <title>MeshCat - Fat Lines (Line2) Test</title>
+    </head>
+    <body>
+        <div id="meshcat-pane">
+        </div>
+
+        <script src="../dist/main.min.js"></script>
+        <script>
+            var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+
+            // Test 1: Basic fat line with custom width (z=2.5, top)
+            viewer.handle_command({
+                type: "set_object",
+                path: "/meshcat/line1_basic",
+                object: {
+                    metadata: {version: 4.5, type: "Object"},
+                    geometries: [
+                        {
+                            uuid: "geom-1",
+                            type: "LineGeometry",
+                            position: {
+                                array: new Float32Array([
+                                    0, 0, 0,
+                                    1, 0, 0,
+                                    1, 1, 0,
+                                    0, 1, 0
+                                ])
+                            }
+                        }
+                    ],
+                    materials: [
+                        {
+                            uuid: "mat-1",
+                            type: "LineMaterial",
+                            color: 0xff0000,  // red
+                            linewidth: 8.0,
+                            vertexColors: false,
+                            dashed: false,
+                            worldUnits: false
+                        }
+                    ],
+                    object: {
+                        uuid: "obj-1",
+                        type: "Line2",
+                        geometry: "geom-1",
+                        material: "mat-1"
+                    }
+                }
+            });
+
+            // Move Test 1 to z=2.5 (top)
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/meshcat/line1_basic",
+                matrix: new Float32Array([
+                    1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 2.5, 1
+                ])
+            });
+
+            // Test 2: Fat line with per-vertex colors (z=2.0)
+            viewer.handle_command({
+                type: "set_object",
+                path: "/meshcat/line2_colored",
+                object: {
+                    metadata: {version: 4.5, type: "Object"},
+                    geometries: [
+                        {
+                            uuid: "geom-2",
+                            type: "LineGeometry",
+                            position: {
+                                array: new Float32Array([
+                                    0, 0, 0,
+                                    1, 0, 0,
+                                    1, 1, 0,
+                                    0, 1, 0
+                                ])
+                            },
+                            color: {
+                                array: new Float32Array([
+                                    1, 0, 0,  // red
+                                    0, 1, 0,  // green
+                                    0, 0, 1,  // blue
+                                    1, 1, 0   // yellow
+                                ])
+                            }
+                        }
+                    ],
+                    materials: [
+                        {
+                            uuid: "mat-2",
+                            type: "LineMaterial",
+                            color: 0xffffff,
+                            linewidth: 5.0,
+                            vertexColors: true,
+                            dashed: false,
+                            worldUnits: false
+                        }
+                    ],
+                    object: {
+                        uuid: "obj-2",
+                        type: "Line2",
+                        geometry: "geom-2",
+                        material: "mat-2"
+                    }
+                }
+            });
+
+            // Move Test 2 to z=2.0
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/meshcat/line2_colored",
+                matrix: new Float32Array([
+                    1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 2.0, 1
+                ])
+            });
+
+
+            // Test 3: Dashed fat line (z=1.5)
+            viewer.handle_command({
+                type: "set_object",
+                path: "/meshcat/line3_dashed",
+                object: {
+                    metadata: {version: 4.5, type: "Object"},
+                    geometries: [
+                        {
+                            uuid: "geom-3",
+                            type: "LineGeometry",
+                            position: {
+                                array: new Float32Array([
+                                    0, 0, 0,
+                                    1, 0, 0,
+                                    1, 1, 0,
+                                    0, 1, 0
+                                ])
+                            }
+                        }
+                    ],
+                    materials: [
+                        {
+                            uuid: "mat-3",
+                            type: "LineMaterial",
+                            color: 0x00ffff,  // cyan
+                            linewidth: 4.0,
+                            vertexColors: false,
+                            dashed: true,
+                            dashScale: 1.0,
+                            dashSize: 0.1,
+                            gapSize: 0.05,
+                            worldUnits: false
+                        }
+                    ],
+                    object: {
+                        uuid: "obj-3",
+                        type: "Line2",
+                        geometry: "geom-3",
+                        material: "mat-3"
+                    }
+                }
+            });
+
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/meshcat/line3_dashed",
+                matrix: new Float32Array([
+                    1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 1.5, 1
+                ])
+            });
+
+            // Test 4: World-space line width (z=1.0, scales with zoom)
+            viewer.handle_command({
+                type: "set_object",
+                path: "/meshcat/line4_worldspace",
+                object: {
+                    metadata: {version: 4.5, type: "Object"},
+                    geometries: [
+                        {
+                            uuid: "geom-4",
+                            type: "LineGeometry",
+                            position: {
+                                array: new Float32Array([
+                                    0, 0, 0,
+                                    1, 0, 0,
+                                    1, 1, 0,
+                                    0, 1, 0
+                                ])
+                            }
+                        }
+                    ],
+                    materials: [
+                        {
+                            uuid: "mat-4",
+                            type: "LineMaterial",
+                            color: 0xffff00,  // yellow
+                            linewidth: 0.02,  // In world units (smaller value)
+                            vertexColors: false,
+                            dashed: false,
+                            worldUnits: true
+                        }
+                    ],
+                    object: {
+                        uuid: "obj-4",
+                        type: "Line2",
+                        geometry: "geom-4",
+                        material: "mat-4"
+                    }
+                }
+            });
+
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/meshcat/line4_worldspace",
+                matrix: new Float32Array([
+                    1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 1.0, 1
+                ])
+            });
+
+            // Test 5: Thin line (z=0.5, pixel-space for comparison)
+            viewer.handle_command({
+                type: "set_object",
+                path: "/meshcat/line5_thin",
+                object: {
+                    metadata: {version: 4.5, type: "Object"},
+                    geometries: [
+                        {
+                            uuid: "geom-5",
+                            type: "LineGeometry",
+                            position: {
+                                array: new Float32Array([
+                                    0, 0, 0,
+                                    1, 0, 0,
+                                    1, 1, 0,
+                                    0, 1, 0
+                                ])
+                            }
+                        }
+                    ],
+                    materials: [
+                        {
+                            uuid: "mat-5",
+                            type: "LineMaterial",
+                            color: 0x00ff00,  // green
+                            linewidth: 1.0,  // Minimal width
+                            vertexColors: false,
+                            dashed: false,
+                            worldUnits: false
+                        }
+                    ],
+                    object: {
+                        uuid: "obj-5",
+                        type: "Line2",
+                        geometry: "geom-5",
+                        material: "mat-5"
+                    }
+                }
+            });
+
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/meshcat/line5_thin",
+                matrix: new Float32Array([
+                    1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0.5, 1
+                ])
+            });
+
+            // Test 6: Transparent fat line (z=0, bottom)
+            viewer.handle_command({
+                type: "set_object",
+                path: "/meshcat/line6_transparent",
+                object: {
+                    metadata: {version: 4.5, type: "Object"},
+                    geometries: [
+                        {
+                            uuid: "geom-6",
+                            type: "LineGeometry",
+                            position: {
+                                array: new Float32Array([
+                                    0, 0, 0,
+                                    1, 0, 0,
+                                    1, 1, 0,
+                                    0, 1, 0
+                                ])
+                            }
+                        }
+                    ],
+                    materials: [
+                        {
+                            uuid: "mat-6",
+                            type: "LineMaterial",
+                            color: 0xff00ff,  // magenta
+                            linewidth: 10.0,
+                            vertexColors: false,
+                            dashed: false,
+                            worldUnits: false,
+                            transparent: true,
+                            opacity: 0.5
+                        }
+                    ],
+                    object: {
+                        uuid: "obj-6",
+                        type: "Line2",
+                        geometry: "geom-6",
+                        material: "mat-6"
+                    }
+                }
+            });
+
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/meshcat/line6_transparent",
+                matrix: new Float32Array([
+                    1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1
+                ])
+            });
+
+            // Pose the camera so its initial pose orbits around the line stack
+            // and has all lines in view.
+            viewer.handle_command({
+                type: "set_transform",
+                path: "/Cameras/default",
+                matrix: new Float32Array([1, 0, 0, 0,
+                                          0, 1, 0, 0,
+                                          0, 0, 1, 0,
+                                          0, 0, 0, 1]) 
+            });
+            viewer.handle_command({type: "set_property",
+                path: "/Cameras/default/rotated/<object>",
+                property: "position",
+                value: [2, 3, 2]
+            });
+            viewer.handle_command({
+                type: "set_target",
+                value: [0.5, 1., -0.5]
+            });
+
+            // Add HTML overlay for test descriptions
+            let descriptionDiv = document.createElement('div');
+            descriptionDiv.style.position = 'absolute';
+            descriptionDiv.style.top = '10px';
+            descriptionDiv.style.left = '10px';
+            descriptionDiv.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+            descriptionDiv.style.color = 'white';
+            descriptionDiv.style.padding = '15px 20px';
+            descriptionDiv.style.fontFamily = 'monospace';
+            descriptionDiv.style.fontSize = '14px';
+            descriptionDiv.style.borderRadius = '8px';
+            descriptionDiv.style.maxWidth = '450px';
+            descriptionDiv.style.lineHeight = '1.8';
+            descriptionDiv.style.pointerEvents = 'none';
+            descriptionDiv.style.boxShadow = '0 4px 6px rgba(0,0,0,0.3)';
+            descriptionDiv.innerHTML = `
+                <h3 style="margin-top: 0; margin-bottom: 12px; color: #4af; font-size: 18px; border-bottom: 2px solid #4af; padding-bottom: 8px;">Fat Lines (Line2) Test</h3>
+                <div style="margin: 8px 0;"><strong>Test 1 (z=2.5, top):</strong> <span style="color: #f66;">Basic fat line (8px width, red)</span></div>
+                <div style="margin: 8px 0;"><strong>Test 2 (z=2.0):</strong> Per-vertex colors (5px width, <span style="color: #f00;">red</span>→<span style="color: #0f0;">green</span>→<span style="color: #00f;">blue</span>→<span style="color: #ff0;">yellow</span>)</div>
+                <div style="margin: 8px 0;"><strong>Test 3 (z=1.5):</strong> <span style="color: #0ff;">Dashed line (4px width, cyan)</span></div>
+                <div style="margin: 8px 0;"><strong>Test 4 (z=1.0):</strong> <span style="color: #ff0;">World-space width (0.02 world units, yellow)</span></div>
+                <div style="margin: 8px 0;"><strong>Test 5 (z=0.5):</strong> <span style="color: #0f0;">Thin line (1px width, green)</span></div>
+                <div style="margin: 8px 0;"><strong>Test 6 (z=0.0, bottom):</strong> <span style="color: #f0f;">Transparent line (10px width, magenta, 50% opacity)</span></div>
+                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #555; font-style: italic; color: #aaa;">💡 Tip: Zoom in/out to see how worldUnits (Test 4) scales with camera, while pixel-space widths (all others) stay constant</div>
+            `;
+            document.getElementById('meshcat-pane').appendChild(descriptionDiv);
+
+        </script>
+
+         <style>
+            body {
+                margin: 0;
+            }
+
+            #meshcat-pane {
+                width: 100vw;
+                height: 100vh;
+                overflow: hidden;
+            }
+        </style>
+    </body>
+</html>

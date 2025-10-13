@@ -13,6 +13,9 @@ import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import { VRButton } from 'three/examples/jsm/webxr/VRButton.js';
 import { XRButton } from 'three/examples/jsm/webxr/XRButton.js';
 import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerModelFactory';
+import {Line2} from 'three/examples/jsm/lines/Line2.js';
+import {LineMaterial} from 'three/examples/jsm/lines/LineMaterial.js';
+import {LineGeometry} from 'three/examples/jsm/lines/LineGeometry.js';
 require('ccapture.js');
 
 // These are bundled as data:// URIs via our webpack.config.js.
@@ -194,6 +197,19 @@ function handle_special_geometry(geom) {
         console.warn("_meshfile is deprecated. Please use _meshfile_geometry for geometries and _meshfile_object for objects with geometry and material");
         geom.type = "_meshfile_geometry";
     }
+    if (geom.type == "LineGeometry") {
+        let geometry = new LineGeometry();
+        geometry.uuid = geom.uuid;
+        if (geom.position) {
+            let positions = geom.position.array;
+            geometry.setPositions(positions);
+        }
+        if (geom.color) {
+            let colors = geom.color.array;
+            geometry.setColors(colors);
+        }
+        return geometry;
+    }
     if (geom.type == "_meshfile_geometry") {
         if (geom.format == "obj") {
             let loader = new OBJLoader2();
@@ -216,6 +232,17 @@ function handle_special_geometry(geom) {
             console.error("Unsupported mesh type:", geom);
             return null;
         }
+    }
+    return null;
+}
+
+// Handler for special material types that we want to support
+// in addition to whatever three.js supports.
+function handle_special_material(mat) {
+    if (mat.type == "LineMaterial") {
+        let material = new LineMaterial(mat);
+        material.uuid = mat.uuid;
+        return material;
     }
     return null;
 }
@@ -257,6 +284,12 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
                              json, images);
     }
 
+    parseMaterials(json, textures) {
+        return this.delegate(handle_special_material,
+                             super.parseMaterials,
+                             json, textures);
+    }
+
     parseGeometries(json, shapes) {
         return this.delegate(handle_special_geometry,
                              super.parseGeometries,
@@ -264,7 +297,30 @@ class ExtensibleObjectLoader extends THREE.ObjectLoader {
     }
 
     parseObject(json, geometries, materials) {
-        if (json.type == "_meshfile_object") {
+        if (json.type == "Line2") {
+            // Handle Line2 (fat lines with configurable width)
+            // Geometry and material have already been parsed by special handlers
+            let geometry = geometries[json.geometry];
+            let material = materials[json.material];
+
+            // Create Line2 object using the already-parsed geometry and material
+            let object = new Line2(geometry, material);
+            object.uuid = json.uuid;
+
+            if (json.name !== undefined) object.name = json.name;
+            if (json.matrix !== undefined) {
+                object.matrix.fromArray(json.matrix);
+                if (json.matrixAutoUpdate !== undefined) object.matrixAutoUpdate = json.matrixAutoUpdate;
+                if (object.matrixAutoUpdate) object.matrix.decompose(object.position, object.quaternion, object.scale);
+            }
+            if (json.visible !== undefined) object.visible = json.visible;
+
+            // Compute line distances for dashed line support
+            // This must be called on the Line2 object, not the geometry
+            object.computeLineDistances();
+
+            return object;
+        } else if (json.type == "_meshfile_object") {
             let geometry;
             let material;
             let manager = new THREE.LoadingManager();
@@ -1435,8 +1491,18 @@ class Viewer {
                 meshes_cast_shadows(node.children[i]);
             }
         };
+        // Update Line2 material resolutions
+        let update_line2_resolution = (node) => {
+            if (node.isLine2 && node.material && node.material.resolution) {
+                node.material.resolution.set(this.renderer.domElement.width, this.renderer.domElement.height);
+            }
+            for (let i = 0; i < node.children.length; ++i) {
+                update_line2_resolution(node.children[i]);
+            }
+        };
         let configure_obj = (obj) => {
             meshes_cast_shadows(obj);
+            update_line2_resolution(obj);
             this.set_object(path, obj);
             this.set_dirty();
         };
@@ -1923,4 +1989,4 @@ style.sheet.insertRule(`
         padding: 0 0 0 0px;
     }`);
 
-export { Viewer, THREE, msgpack };
+export { Viewer, THREE, msgpack, Line2, LineMaterial, LineGeometry };
