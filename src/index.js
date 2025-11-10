@@ -17,6 +17,7 @@ import { XRControllerModelFactory } from 'three/examples/jsm/webxr/XRControllerM
 import {Line2} from 'three/examples/jsm/lines/Line2.js';
 import {LineMaterial} from 'three/examples/jsm/lines/LineMaterial.js';
 import {LineGeometry} from 'three/examples/jsm/lines/LineGeometry.js';
+import Stats from 'three/examples/jsm/libs/stats.module.js';
 require('ccapture.js');
 
 // These are bundled as data:// URIs via our webpack.config.js.
@@ -2111,4 +2112,4 @@ style.sheet.insertRule(`
         padding: 0 0 0 0px;
     }`);
 
-export { Viewer, THREE, msgpack, Line2, LineMaterial, LineGeometry };
+export { Viewer, THREE, msgpack, Line2, LineMaterial, LineGeometry, Stats };
