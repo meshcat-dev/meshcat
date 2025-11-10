@@ -1,5 +1,5 @@
 # This is used by rebuild.sh to snapshot the node environment.
-FROM node:20.11.0 as build
+FROM node:20.11.0 AS build
 WORKDIR /usr/src/app
 COPY tmp/package.json ./
 COPY tmp/yarn.lock ./
