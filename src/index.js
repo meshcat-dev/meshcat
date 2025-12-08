@@ -957,6 +957,7 @@ class Animator {
         this.time_scrubber = null;
         this.setup_capturer("png");
         this.duration = 0;
+        this.object_setting_animation = new ObjectSettingAnimation();
     }
 
     setup_capturer(format) {
@@ -1021,6 +1022,7 @@ class Animator {
             action.time = Math.max(0, Math.min(action._clip.duration, time));
         });
         this.mixer.update(0);
+        this.object_setting_animation.setTime(time);
         this.viewer.set_dirty();
     }
 
@@ -1030,6 +1032,7 @@ class Animator {
         }
         this.display_progress(0);
         this.mixer.update(0);
+        this.object_setting_animation.setTime(0);
         this.setup_capturer(this.capturer.format);
         this.viewer.set_dirty();
     }
@@ -1041,6 +1044,7 @@ class Animator {
         this.duration = 0;
         this.display_progress(0);
         this.mixer = new THREE.AnimationMixer();
+        this.object_setting_animation = new ObjectSettingAnimation();
     }
 
     load(animations, options) {
@@ -1083,6 +1087,8 @@ class Animator {
             options.clampWhenFinished = true
         }
 
+        this.object_setting_animation = new ObjectSettingAnimation(this.viewer, animations);
+
         this.duration = 0;
         this.progress = 0;
         for (let animation of animations) {
@@ -1116,6 +1122,7 @@ class Animator {
                     return Math.max(acc, action.time);
                 }, 0);
                 this.display_progress(current_time);
+                this.object_setting_animation.setTime(current_time);
             } else {
                 this.display_progress(0);
             }
@@ -1135,6 +1142,81 @@ class Animator {
         }
     }
 }
+
+class ObjectSettingAnimation {
+    constructor(viewer, animations) {
+        if (viewer === undefined) return;
+        this.viewer = viewer;
+        this.data = [];
+        if (animations === undefined) return;
+
+        let indices_to_remove = [];
+        for (let i = animations.length-1; i >= 0; --i) {
+            let animation = animations[i];
+            let clip = animation.clip;
+
+            let object_tracks = [];
+            clip.tracks = clip.tracks.filter(track => {
+                if (track.name == ".object") {
+                    object_tracks.push(track);
+                    return false;
+                }
+                return true;
+            });
+            if (clip.tracks.length === 0) indices_to_remove.push(i);
+
+            let keys = object_tracks.map(track => track.keys).flat();
+            keys.sort((a, b) => a.time - b.time);
+            this.data.push({
+                path: animation.path,
+                times: keys.map(item => item.time / clip.fps),
+                objects: keys.map(item => item.value),
+                fps: clip.fps,
+            });
+        }
+        for (let i of indices_to_remove) {
+            animations.splice(i, 1);
+        }
+    }
+
+    setTime(time) {
+        for (let item of this.data) {
+            let i = binary_search_closest(item.times, time);
+            if (Math.abs(item.times[i] - time) <= 0.5 / item.fps) {
+                this.viewer.set_object_from_json(item.path, item.objects[i]);
+            }
+        }
+    }
+}
+
+function binary_search_closest(arr, target) {
+    let low = 0;
+    let high = arr.length - 1;
+
+    if (target <= arr[low]) return low;
+    if (target >= arr[high]) return high;
+
+    while (low <= high) {
+        let mid = Math.floor((low + high) / 2);
+        if (arr[mid] === target) return mid;
+
+        if (arr[mid] < target) {
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+
+    // After the loop, low is the insertion point.
+    // Check which of arr[low] or arr[low - 1] is closer to target.
+    if (low >= arr.length) return arr.length - 1;
+    if (low === 0) return 0;
+
+    const lowDiff = Math.abs(arr[low] - target);
+    const highDiff = Math.abs(arr[low - 1] - target);
+    return lowDiff < highDiff ? low : low - 1;
+}
+
 
 // Generates a gradient texture for defining the environment.
 // Because it's a linear gradient, we can rely on OpenGL to do the
