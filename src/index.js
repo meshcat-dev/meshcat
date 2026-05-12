@@ -585,6 +585,7 @@ class SceneNode {
         this.children = {};
         this.controllers = [];
         this.on_update = on_update;
+        this.pending_properties = {};  // Store properties to replay when object materializes
         this.create_controls();
         for (let c of this.object.children) {
             this.add_child(c);
@@ -729,7 +730,13 @@ class SceneNode {
         if (node.isMaterial) {
             mat_operator(node);
         } else if (node.material) {
-            mat_operator(node.material);
+            if (Array.isArray(node.material)) {
+                for (let material of node.material) {
+                    mat_operator(material);
+                }
+            } else {
+                mat_operator(node.material);
+            }
         }
         for (let child of node.children) {
             this.visit_materials(child, mat_operator);
@@ -743,6 +750,18 @@ class SceneNode {
             this.object.quaternion.set(value[0], value[1], value[2], value[3]);
         } else if (property === "scale") {
             this.object.scale.set(value[0], value[1], value[2]);
+        } else if (property === "crawl_axis") {
+            const crawl_axis = new THREE.Vector3(value[0], value[1], value[2]);
+            // Prepares the *realized* subtree, propagating the axis expressed
+            // in the root frame to each geometry's local frame.
+            prepare_crawling_texture(this.object);
+            set_crawl_axis_for_subtree(this.object, crawl_axis, new THREE.Matrix4());
+            this.on_update();
+        } else if (property === "crawl_displacement") {
+            this.visit_materials(this.object, (mat) => {
+                mat.meshcat_crawl_displacement = value;
+            });
+            this.on_update();
         } else if (property === "color") {
             var _this = this;
             function setNodeColor(mat) {
@@ -771,6 +790,9 @@ class SceneNode {
         } else {
             this.set_property_chain(property, value, target_path);
         }
+        // Store property for replay when object materializes (e.g., after async
+        // glTF load)
+        this.pending_properties[property] = {value, target_path};
         // For non three.js objects, we need to explicitly call their
         // on_update() methods to trigger redraws.
         if (this.object.isBackground || this.object.isRenderConfig) {
@@ -807,17 +829,16 @@ class SceneNode {
                     continue;
                 }
                 error_detail = `'${parent_path}' is not an Object and has no properties`;
-            } else {
-                error_detail = `'${parent_path}' has no property '${child}'`;
             }
             break;
         }
 
         // Now assign the final property value (if possible). (We know that
         // parent is an object.)
-
         if (error_detail === null && !(final_property in parent)) {
-            error_detail = `'${parent_path}' has no property '${final_property}'`;
+            // The child doesn't exist yet; we'll queue the property
+            // assignment to handle asynchronous creation.
+            this.pending_properties[property] = {value, target_path};
         }
 
         if (error_detail != null) {
@@ -827,7 +848,8 @@ class SceneNode {
             const value_str = JSON.stringify(value);
             console.error(
                 `Error in set_property("${full_path}", "${property}", ${value_str})\n` +
-                `${error_detail}. The value will not be set.`);
+                `${error_detail}.`);
+
             return;
         }
 
@@ -847,6 +869,15 @@ class SceneNode {
         this.object = object;
         parent.add(object);
         this.create_controls();
+        // Replay any properties that were set before this object materialized
+        // (e.g., during async glTF loading). This allows clients to set properties
+        // immediately without waiting for the object to load.
+        let queued_props = this.pending_properties;
+        this.pending_properties = {};  // Clear queue to avoid re-queueing during replay
+        for (let property in queued_props) {
+            let {value, target_path} = queued_props[property];
+            this.set_property(property, value, target_path);
+        }
     }
 
     dispose_recursive() {
@@ -904,6 +935,354 @@ function dispose(object) {
             }
             object.material.dispose();
         }
+    }
+}
+
+// Sets the crawl axis on all materials in the subtree rooted at `node`,
+// transforming the axis from the root's local frame into each mesh's own
+// local frame.  The Jacobians are computed in each mesh's local frame, so
+// the axis must be expressed in that same frame for the cross product in the
+// shader to be geometrically correct.
+//
+// `root_to_node` is the accumulated product of local matrices from the root
+// <object> down to `node`.  Pass `new THREE.Matrix4()` (identity) at the top.
+function set_crawl_axis_for_subtree(node, crawl_axis_root, root_to_node) {
+    if (node.isMesh && node.material) {
+        const inv = new THREE.Matrix4().copy(root_to_node).invert();
+        const local_axis = crawl_axis_root.clone()
+            .applyMatrix3(new THREE.Matrix3().setFromMatrix4(inv))
+            .normalize();
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        for (const mat of mats) {
+            mat.meshcat_crawl_axis = local_axis.clone();
+        }
+    }
+    for (const child of node.children) {
+        set_crawl_axis_for_subtree(
+            child, crawl_axis_root,
+            root_to_node.clone().multiply(child.matrix));
+    }
+}
+
+// Computes and stores the UV Jacobian vertex attributes required by the
+// crawling texture shader (see install_crawling_texture_shader).
+//
+// Background
+// ----------
+// The crawling texture effect works by offsetting the UV coordinates of every
+// vertex in the vertex shader. The desired offset is specified as a
+// world-space displacement distance in a direction related to the crawl axis,
+// but the shader needs the corresponding displacement in UV space. The
+// relationship between a small displacement δ in geometry (local) space and the
+// resulting UV offset (δu, δv) is given by the UV Jacobian matrix J:
+//
+//   [δu]   [JU · δ]
+//   [δv] = [JV · δ]
+//
+// where JU and JV are 3-vectors (the rows of J) representing ∂u/∂p and
+// ∂v/∂p respectively, with p a position in local geometry space.
+//
+// Derivation
+// ----------
+// For a triangle with vertices (p0, p1, p2) and corresponding UVs
+// (uv0, uv1, uv2), we want the linear map J such that:
+//
+//   uv1 - uv0 = J * (p1 - p0)
+//   uv2 - uv0 = J * (p2 - p0)
+//
+// Because J maps from 3D to 2D and the triangle is planar, J is not uniquely
+// determined — any component normal to the triangle face is unobservable.  We
+// choose the minimum-norm solution, which lives entirely in the tangent plane
+// of the triangle:
+//
+//   J = [du1, du2] * [e1^T] ^ {-1 (pseudoinverse)}
+//       [dv1, dv2]   [e2^T]
+//
+// where e1 = p1 - p0, e2 = p2 - p0, and [du/dv]i = uvi - uv0.
+//
+// The pseudoinverse of the 3×2 matrix [e1 | e2] (in least-squares sense) is:
+//
+//   [e1 | e2]^+ = (G^{-1}) [e1 | e2]^T,  G = [a b; b c],
+//                           a = e1·e1, b = e1·e2, c = e2·e2
+//
+// giving the dual basis vectors:
+//
+//   r1 = (c*e1 - b*e2) / (a*c - b^2)
+//   r2 = (a*e2 - b*e1) / (a*c - b^2)
+//
+// and thus:
+//
+//   JU = du1*r1 + du2*r2    (negated — see below)
+//   JV = dv1*r1 + dv2*r2    (negated — see below)
+//
+// The negation aligns the crawl direction convention: positive displacement
+// in the crawl direction should advance the texture in the same direction
+// (texture crawls *with* the geometry, not against it).
+//
+// Averaging
+// ---------
+// Vertices shared between triangles receive contributions from each adjacent
+// triangle.  Contributions are weighted by triangle area and then normalized,
+// yielding a smooth, area-weighted average Jacobian at each vertex.  For
+// planar (or near-planar) regions all triangles contribute the same Jacobian,
+// so the average is exact.
+//
+// UV-layout requirement
+// ---------------------
+// For the crawl speed to be spatially uniform, the UV coordinates must be
+// proportional to arc length along the crawl direction.  Specifically,
+// |JU · crawl_axis| must be the same constant across all faces.  This is a
+// property of the UV layout in the mesh, not of this function.
+//
+// Output
+// ------
+// Adds two vec3 vertex attributes to `geometry`:
+//   meshcatCrawlJacobianU  —  JU at each vertex (∂u/∂p, negated)
+//   meshcatCrawlJacobianV  —  JV at each vertex (∂v/∂p, negated)
+//
+// Returns true if the attributes were successfully computed, false if the
+// geometry lacks position or UV data.  Idempotent: a geometry that already
+// has the attributes is left unchanged.
+function compute_crawling_texture_jacobians(geometry) {
+    // Idempotent: skip if already computed for this geometry.
+    if (geometry.attributes.meshcatCrawlJacobianU !== undefined) {
+        return true;
+    }
+    let position = geometry.attributes.position;
+    let uv = geometry.attributes.uv;
+    if (position === undefined || uv === undefined) {
+        return false;
+    }
+
+    let vertex_count = position.count;
+    let accum_u = new Float32Array(vertex_count * 3);
+    let accum_v = new Float32Array(vertex_count * 3);
+    let weights = new Float32Array(vertex_count);
+
+    let index = geometry.index;
+    let triangle_count = index ? index.count / 3 : vertex_count / 3;
+
+    let get_vertex_index = (triangle_index, corner_index) => {
+        if (index) {
+            return index.getX(triangle_index * 3 + corner_index);
+        }
+        return triangle_index * 3 + corner_index;
+    };
+
+    for (let triangle_index = 0; triangle_index < triangle_count; triangle_index++) {
+        let i0 = get_vertex_index(triangle_index, 0);
+        let i1 = get_vertex_index(triangle_index, 1);
+        let i2 = get_vertex_index(triangle_index, 2);
+
+        let p0 = new THREE.Vector3().fromBufferAttribute(position, i0);
+        let p1 = new THREE.Vector3().fromBufferAttribute(position, i1);
+        let p2 = new THREE.Vector3().fromBufferAttribute(position, i2);
+        let uv0 = new THREE.Vector2().fromBufferAttribute(uv, i0);
+        let uv1 = new THREE.Vector2().fromBufferAttribute(uv, i1);
+        let uv2 = new THREE.Vector2().fromBufferAttribute(uv, i2);
+
+        let e1 = p1.clone().sub(p0);
+        let e2 = p2.clone().sub(p0);
+        let du1 = uv1.x - uv0.x;
+        let dv1 = uv1.y - uv0.y;
+        let du2 = uv2.x - uv0.x;
+        let dv2 = uv2.y - uv0.y;
+
+        let a = e1.dot(e1);
+        let b = e1.dot(e2);
+        let c = e2.dot(e2);
+        let det = a * c - b * b;
+        if (Math.abs(det) < 1e-12) {
+            continue;
+        }
+
+        let inv_det = 1.0 / det;
+        let r1 = e1.clone().multiplyScalar(c).sub(e2.clone().multiplyScalar(b)).multiplyScalar(inv_det);
+        let r2 = e2.clone().multiplyScalar(a).sub(e1.clone().multiplyScalar(b)).multiplyScalar(inv_det);
+
+        // Negate the Jacobian so that a positive displacement advances the texture
+        // in the expected direction (texture crawls with the belt, not against it).
+        let ju = r1.clone().multiplyScalar(du1).add(r2.clone().multiplyScalar(du2)).negate();
+        let jv = r1.clone().multiplyScalar(dv1).add(r2.clone().multiplyScalar(dv2)).negate();
+        let area_weight = e1.clone().cross(e2).length() * 0.5;
+        let indices = [i0, i1, i2];
+        for (let vertex_index of indices) {
+            accum_u[vertex_index * 3 + 0] += ju.x * area_weight;
+            accum_u[vertex_index * 3 + 1] += ju.y * area_weight;
+            accum_u[vertex_index * 3 + 2] += ju.z * area_weight;
+            accum_v[vertex_index * 3 + 0] += jv.x * area_weight;
+            accum_v[vertex_index * 3 + 1] += jv.y * area_weight;
+            accum_v[vertex_index * 3 + 2] += jv.z * area_weight;
+            weights[vertex_index] += area_weight;
+        }
+    }
+
+    for (let vertex_index = 0; vertex_index < vertex_count; vertex_index++) {
+        let weight = weights[vertex_index];
+        if (weight > 0) {
+            accum_u[vertex_index * 3 + 0] /= weight;
+            accum_u[vertex_index * 3 + 1] /= weight;
+            accum_u[vertex_index * 3 + 2] /= weight;
+            accum_v[vertex_index * 3 + 0] /= weight;
+            accum_v[vertex_index * 3 + 1] /= weight;
+            accum_v[vertex_index * 3 + 2] /= weight;
+        }
+    }
+
+    geometry.setAttribute("meshcatCrawlJacobianU", new THREE.BufferAttribute(accum_u, 3));
+    geometry.setAttribute("meshcatCrawlJacobianV", new THREE.BufferAttribute(accum_v, 3));
+    return true;
+}
+
+function install_crawling_texture_shader(material, geometry) {
+    if (material === undefined || material === null || geometry === undefined || geometry === null) {
+        return;
+    }
+    if (material.meshcat_crawl_shader_patched) {
+        return;
+    }
+    if (geometry.attributes.meshcatCrawlJacobianU === undefined ||
+        geometry.attributes.meshcatCrawlJacobianV === undefined) {
+        return;
+    }
+    if (material.map === undefined || material.map === null) {
+        return;
+    }
+
+    material.meshcat_crawl_axis = material.meshcat_crawl_axis || new THREE.Vector3(1, 0, 0);
+    material.meshcat_crawl_displacement = material.meshcat_crawl_displacement || 0.0;
+    material.meshcat_crawl_shader_patched = true;
+
+    material.onBeforeCompile = (shader) => {
+        shader.uniforms.meshcatCrawlAxis = { value: material.meshcat_crawl_axis.clone() };
+        shader.uniforms.meshcatCrawlDisplacement = { value: material.meshcat_crawl_displacement };
+        material.meshcat_crawl_shader_uniforms = shader.uniforms;
+
+        shader.vertexShader = `
+attribute vec3 meshcatCrawlJacobianU;
+attribute vec3 meshcatCrawlJacobianV;
+uniform vec3 meshcatCrawlAxis;
+uniform float meshcatCrawlDisplacement;
+varying vec2 meshcatCrawlUvOffset;
+${shader.vertexShader}`;
+
+        shader.vertexShader = shader.vertexShader.replace(
+            "#include <uv_vertex>",
+            `#include <uv_vertex>
+                vec3 meshcatCrawlAxisNormal = normalize(meshcatCrawlAxis);
+                vec3 meshcatFlowDir = cross(meshcatCrawlAxisNormal, normal);
+                vec3 meshcatFlowDirWorld = (modelMatrix * vec4(meshcatFlowDir, 0.0)).xyz;
+                float meshcatCrawlWorldScale = max(length(meshcatFlowDirWorld) / max(length(meshcatFlowDir), 1e-6), 1e-6);
+                vec3 meshcatGeometryDisplacement = (meshcatCrawlDisplacement / meshcatCrawlWorldScale) * meshcatFlowDir;
+                meshcatCrawlUvOffset = vec2(
+                    dot(meshcatCrawlJacobianU, meshcatGeometryDisplacement),
+                    dot(meshcatCrawlJacobianV, meshcatGeometryDisplacement));
+                vec3 homogeneousUvOffset = vec3(meshcatCrawlUvOffset, 0.0);
+                #if defined( USE_UV ) || defined( USE_ANISOTROPY )
+                vUv += meshcatCrawlUvOffset;
+                #endif
+                #ifdef USE_MAP
+                vMapUv += (mapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_ALPHAMAP
+                vAlphaMapUv += (alphaMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_LIGHTMAP
+                vLightMapUv += (lightMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_AOMAP
+                vAoMapUv += (aoMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_BUMPMAP
+                vBumpMapUv += (bumpMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_NORMALMAP
+                vNormalMapUv += (normalMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_DISPLACEMENTMAP
+                vDisplacementMapUv += (displacementMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_EMISSIVEMAP
+                vEmissiveMapUv += (emissiveMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_METALNESSMAP
+                vMetalnessMapUv += (metalnessMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_ROUGHNESSMAP
+                vRoughnessMapUv += (roughnessMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_ANISOTROPYMAP
+                vAnisotropyMapUv += (anisotropyMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_CLEARCOATMAP
+                vClearcoatMapUv += (clearcoatMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_CLEARCOAT_NORMALMAP
+                vClearcoatNormalMapUv += (clearcoatNormalMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_CLEARCOAT_ROUGHNESSMAP
+                vClearcoatRoughnessMapUv += (clearcoatRoughnessMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_IRIDESCENCEMAP
+                vIridescenceMapUv += (iridescenceMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_IRIDESCENCE_THICKNESSMAP
+                vIridescenceThicknessMapUv += (iridescenceThicknessMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_SHEEN_COLORMAP
+                vSheenColorMapUv += (sheenColorMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_SHEEN_ROUGHNESSMAP
+                vSheenRoughnessMapUv += (sheenRoughnessMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_SPECULARMAP
+                vSpecularMapUv += (specularMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_SPECULAR_COLORMAP
+                vSpecularColorMapUv += (specularColorMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_SPECULAR_INTENSITYMAP
+                vSpecularIntensityMapUv += (specularIntensityMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_TRANSMISSIONMAP
+                vTransmissionMapUv += (transmissionMapTransform * homogeneousUvOffset).xy;
+                #endif
+                #ifdef USE_THICKNESSMAP
+                vThicknessMapUv += (thicknessMapTransform * homogeneousUvOffset).xy;
+                #endif`
+        );
+        material.needsUpdate = true;
+    };
+
+    material.onBeforeRender = () => {
+        if (material.meshcat_crawl_shader_uniforms !== undefined) {
+            material.meshcat_crawl_shader_uniforms.meshcatCrawlAxis.value.copy(material.meshcat_crawl_axis);
+            material.meshcat_crawl_shader_uniforms.meshcatCrawlDisplacement.value = material.meshcat_crawl_displacement;
+        }
+    };
+
+    material.customProgramCacheKey = () => "meshcat_crawl_texture_v3";
+    material.needsUpdate = true;
+}
+
+function prepare_crawling_texture(node) {
+    if (node === undefined || node === null) {
+        return;
+    }
+    if (node.isMesh && node.geometry !== undefined) {
+        compute_crawling_texture_jacobians(node.geometry);
+        if (node.material !== undefined) {
+            if (Array.isArray(node.material)) {
+                for (let material of node.material) {
+                    install_crawling_texture_shader(material, node.geometry);
+                }
+            } else {
+                install_crawling_texture_shader(node.material, node.geometry);
+            }
+        }
+    }
+    for (let child of node.children || []) {
+        prepare_crawling_texture(child);
     }
 }
 
@@ -1599,7 +1978,12 @@ class Viewer {
     }
 
     set_object(path, object) {
+        const path_node = this.scene_tree.find(path);
         this.scene_tree.find(path.concat(["<object>"])).set_object(object);
+        for (let property in path_node.pending_properties) {
+            let {value, target_path} = path_node.pending_properties[property];
+            path_node.set_property(property, value, target_path);
+        }
     }
 
     set_object_from_json(path, object_json) {

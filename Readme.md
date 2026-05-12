@@ -305,9 +305,16 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                         <li><code>color: number[4]</code>
                         <li><code>opacity: number</code> (this is the same as the 4th element of <code>color</code>)
                         <li><code>modulated_opacity: number</code>
+                        <li><code>crawl_axis: number[3]</code>
+                        <li><code>crawl_displacement: number</code>
                         <li><code>top_color: number[3]</code> (only for the Background)
                         <li><code>bottom_color: number[3]</code> (only for the Background)
                         </ul>
+                        <p>
+                        The <code>crawl_axis</code> and <code>crawl_displacement</code> pseudo-properties enable texture crawling on textured meshes. The axis is given in the geometry frame and rotates with the mesh; the displacement is a world-frame scalar distance that should be integrated externally and updated over time using repeated <code>set_property</code> commands. MeshCat computes the local UV Jacobian automatically after loading supported mesh geometries and applies the resulting offset in a shader. This requires the mesh to have UV coordinates and the material to have a texture map.
+                        The "geometry frame" refers to the \<object\> node created by calling set_object; for example, for a glTF file which may introduce an entire hierarchy of geometries and transform nodes, the geometry frame is the root frame.
+                        <strong>Limitations:</strong> Crawling textures only produce physically meaningful results on geometries whose UV layout is compatible with uniform translation. Specifically, the texture must tile seamlessly (using <code>RepeatWrapping</code>) and the UV parameterization must be laid out so that a constant UV offset corresponds to a coherent physical slide across the surface in the crawl direction. Geometries with UV seams, strong UV distortion (e.g., poles of a sphere), or UV atlases where adjacent surface regions map to disjoint parts of the texture image will exhibit tiling artifacts or discontinuous motion. Flat or gently-curved surfaces textured with a uniformly tiling pattern (such as a box or plane with a repeating texture) are the typical well-behaved use case.
+                        <p>
                         Properties not on the above list will be set directly on the <code>THREE.Object3D</code> object. This provides a powerful capability to customize the scene, but should be considered an advanced usage -- you're on your own to avoid any unwanted side-effects.
                         <p>
                         Properties can be *chained*. For example, for an object with a phong material (MeshPhongMaterial), we may want to tweak its shininess, making it duller. Shininess is not a property of the object itself, but the object's material. There is no *path* to that material, but the property name can include a property name chain, e.g., `material.shininess`. While setting the property, the chained properties will be evaluated in sequence, such that the final name in the chain is the property that receives the `value`.
@@ -346,6 +353,21 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
     path: "/Lights/SpotLight/&lt;object&gt;",
     property: "shadow.radius",
     value: 1.0
+}
+                </pre>
+                Example 4 (crawling texture):
+                <pre>
+{
+    type: "set_property",
+    path: "/meshcat/textured_mesh/<object>",
+    property: "crawl_axis",
+    value: [1.0, 0.0, 0.0]
+}
+{
+    type: "set_property",
+    path: "/meshcat/textured_mesh/<object>",
+    property: "crawl_displacement",
+    value: 0.125
 }
                 </pre>
             </dd>
