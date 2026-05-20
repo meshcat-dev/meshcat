@@ -6,6 +6,7 @@
   "author": "Robin Deits",
   "license": "MIT",
   "devDependencies": {
+    "patch-package": "^8.0.1",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
     "webpack-license-plugin": "^4.4.2"
@@ -20,6 +21,7 @@
     "yarn": "^1.22.21"
   },
   "scripts": {
+    "postinstall": "patch-package",
     "build": "webpack",
     "watch": "webpack --watch"
   },
