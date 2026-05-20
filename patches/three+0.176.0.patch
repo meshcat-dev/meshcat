@@ -1,0 +1,14 @@
+# A PR to upstream this change has been submitted.
+# https://github.com/mrdoob/three.js/pull/33669.
+
+--- a/node_modules/three/build/three.core.js
++++ b/node_modules/three/build/three.core.js
+@@ -47565,6 +47565,8 @@ class ObjectLoader extends Loader {
+ 
+ 		function loadImage( url ) {
+ 
++			url = scope.manager.resolveURL( url );
++
+ 			scope.manager.itemStart( url );
+ 
+ 			return loader.load( url, function () {

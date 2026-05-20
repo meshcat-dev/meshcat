@@ -4,6 +4,7 @@ WORKDIR /usr/src/app
 COPY tmp/package.json ./
 COPY tmp/yarn.lock ./
 COPY tmp/webpack.config.js ./
+COPY tmp/patches/ ./patches/
 ENV YARN_CACHE_FOLDER=/root/.yarn
 ENV NODE_OPTIONS=--openssl-legacy-provider
 RUN \

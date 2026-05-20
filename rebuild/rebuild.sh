@@ -20,6 +20,7 @@ mkdir -p tmp
 cp -p ../package.json ./tmp/
 cp -p ../webpack.config.js ./tmp/
 cp -p ../yarn.lock ./tmp/
+cp -pR ../patches ./tmp/
 
 # Tell webpack to exit immediately once it's finished building.
 sed -i -e 's#watch: true#watch: false#' ./tmp/webpack.config.js

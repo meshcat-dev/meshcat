@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=utf-8>
+    <title>MeshCat - embedded image URL resolution (parseImages patch)</title>
+</head>
+<body>
+    <div id="test-message">
+        <strong>Test: embedded image URL resolution</strong>
+        <br><br>
+        You should see a box with a red/white checkerboard texture.
+        <br><br>
+        The texture is referenced by a content-addressable-storage style URL
+        (<code>cas-v1/sha256abc123</code>) that lives in a pre-populated
+        asset dictionary. A <code>DefaultLoadingManager.setURLModifier</code>
+        intercepts that key and returns the embedded data URL — exactly as a
+        static-page export would do.
+        <br><br>
+        This page serves as a regression test on THREE.js behavior. Initially,
+        introduced with a meshcat-local patch on THREE.js, the test will remain
+        even after that patch gets upstreamed to THREE.js.
+        <br><br>
+        If the texture fails to load, that's indicative of a regression.
+        <br><br>
+        This file should successfully load in a browser with no server (i.e. via
+        a file:// URL).
+    </div>
+    <div id="meshcat-pane"></div>
+
+    <script src="../dist/main.min.js"></script>
+    <script>
+        // ------------------------------------------------------------------ //
+        // Step 1 – build the "pre-embedded asset dictionary" that a static-page
+        //           exporter would have created.  The key is the same CAS-style
+        //           relative URL that will appear in the THREE.js JSON below.
+        // ------------------------------------------------------------------ //
+        const ASSET_KEY = "cas-v1/sha256abc123";
+        const assetDict = {};
+
+        (function buildCheckerboard() {
+            const size = 64;
+            const tileSize = 16;
+            const canvas = document.createElement("canvas");
+            canvas.width = canvas.height = size;
+            const ctx = canvas.getContext("2d");
+            for (let row = 0; row < size / tileSize; row++) {
+                for (let col = 0; col < size / tileSize; col++) {
+                    ctx.fillStyle = ((row + col) % 2 === 0) ? "#ff4444" : "#ffffff";
+                    ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+                }
+            }
+            assetDict[ASSET_KEY] = canvas.toDataURL("image/png");
+        })();
+
+        // ------------------------------------------------------------------ //
+        // Step 2 – register the URL modifier on DefaultLoadingManager.
+        //           This is the only mechanism the static-page export uses;
+        //           no per-loader managers or resourcePath values are set.
+        // ------------------------------------------------------------------ //
+        MeshCat.THREE.DefaultLoadingManager.setURLModifier(url => {
+            if (assetDict[url] !== undefined) {
+                console.log(`[URLModifier] resolved "${url}" to embedded data URL`);
+                return assetDict[url];
+            }
+            return url;
+        });
+
+        // ------------------------------------------------------------------ //
+        // Step 3 – send a set_object command whose "images" section uses the
+        //           CAS-style relative URL.  Without the patch this triggers
+        //           a file:// load attempt (and a CORS / 404 error).
+        // ------------------------------------------------------------------ //
+        const viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+
+        viewer.handle_command({
+            type: "set_object",
+            path: "/meshcat/box",
+            object: {
+                metadata: { version: 4.5, type: "Object" },
+                images: [
+                    {
+                        uuid: "img-aabb-0001",
+                        url: ASSET_KEY   // <-- the relative CAS path that triggers the bug
+                    }
+                ],
+                textures: [
+                    {
+                        uuid: "tex-aabb-0001",
+                        image: "img-aabb-0001"   // references images[].uuid above
+                    }
+                ],
+                geometries: [
+                    {
+                        uuid: "geom-aabb-0001",
+                        type: "BoxGeometry",
+                        width: 0.2,
+                        height: 0.2,
+                        depth: 0.2
+                    }
+                ],
+                materials: [
+                    {
+                        uuid: "mat-aabb-0001",
+                        type: "MeshPhongMaterial",
+                        map: "tex-aabb-0001"
+                    }
+                ],
+                object: {
+                    uuid: "obj-aabb-0001",
+                    type: "Mesh",
+                    geometry: "geom-aabb-0001",
+                    material: "mat-aabb-0001"
+                }
+            }
+        });
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+        }
+        #meshcat-pane {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #test-message {
+            width: 60vw;
+            text-align: left;
+            background-color: rgb(232, 232, 232);
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: block;
+            padding: 10px;
+            z-index: 1000;
+            font-size: 0.85em;
+        }
+    </style>
+</body>
+</html>
