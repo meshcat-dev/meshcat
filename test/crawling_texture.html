@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=utf-8>
+    <title>MeshCat - crawling texture</title>
+</head>
+<body>
+    <details id="test-message">
+        <summary>
+            Test notes: texture motion should stay phase-locked with yellow markers
+        </summary>
+        <p class="test-overview">
+        This page tests texture crawling: moving a texture over a surface at a
+        requested world-space speed. The scene uses a glTF conveyor belt and a
+        green comparison box with the same sample texture, but with different
+        UVs, texture transforms, and geometry. Open the sections below for the
+        test rationale and observation guide.
+        </p>
+
+        <details class="test-section">
+            <summary>Algorithm features under test</summary>
+            <ol>
+                <li>
+                    The crawl axis is defined in the body's frame. Rotating the
+                    heading rotates the belt, the box, and the selected axis
+                    together.
+                </li>
+                <li>
+                    The page integrates a finite real-valued speed into
+                    <code>crawl_displacement</code>. The slider samples positive,
+                    negative, and zero speeds; negative values reverse the crawl.
+                </li>
+                <li>
+                    The shader accounts for the mapping from texture coordinates to
+                    world space, including the underlying UV layout, texture
+                    coordinate scale factors, and geometry scale.
+                </li>
+            </ol>
+        </details>
+
+        <details class="test-section">
+            <summary>How this page exercises those features</summary>
+            <ul>
+                <li>
+                    The glTF conveyor has authored UVs, a glTF node scale, and
+                    <code>KHR_texture_transform</code> scale factors that repeat the
+                    texture along the belt.
+                </li>
+                <li>
+                    The green box uses default box UVs, no texture-coordinate scale
+                    factor, a different length, and a non-identity renderable root
+                    transform canceled by an inverse child transform.
+                </li>
+                <li>
+                    The shared heading node contains both geometries and the yellow
+                    reference markers, so the heading control tests that the
+                    body-frame axis follows the body.
+                </li>
+                <li>
+                    The yellow reference markers provide velocity reference.
+                    Although their motion is related to the axis and speed
+                    controls, their motion does not depend on the crawling texture
+                    feature. They provide an independent witness to the expected
+                    motion.
+                </li>
+            </ul>
+        </details>
+
+        <details class="test-section">
+            <summary>Reading the apparent speed</summary>
+            <p>
+            There is a latent optical illusion inherent in this scene that can
+            affect the perceived speed of the textures.
+            </p>
+            <ul>
+                <li>
+                    A denser texture pattern can look faster at the same true
+                    world-space speed because texture <em>landmarks</em> pass the
+                    eye more frequently.
+                </li>
+                <li>
+                    The box and glTF file intentionally have different texture
+                    density on different faces. Some faces may therefore appear to
+                    move at different speeds even when the computed world-space
+                    speed is the same.
+                </li>
+                <li>
+                    Use the yellow markers as a non-texture motion reference. If
+                    the crawl is correct, texture landmarks should stay phase-locked
+                    with nearby markers on the corresponding moving face.
+                </li>
+                <li>
+                    Start at the default low speed, where the relationship is
+                    easiest to see. Once the motion is clear, increase the speed;
+                    the same principle should continue to hold.
+                </li>
+            </ul>
+        </details>
+
+        <details class="test-section">
+            <summary>Controls</summary>
+            <ul>
+                <li>
+                    <strong>Speed:</strong> changes the finite real speed that is
+                    integrated into the displacement. Zero pauses the crawl, and
+                    negative values reverse it.
+                </li>
+                <li>
+                    <strong>Axis:</strong> selects the crawl axis in the body frame.
+                    Try <code>+Z</code> to inspect the belt's authored wrap, then
+                    try <code>+X</code> and <code>+Y</code> to exercise different
+                    face directions.
+                </li>
+                <li>
+                    <strong>Heading:</strong> rotates the body. The texture motion
+                    should remain consistent relative to the geometry because the
+                    selected axis is body-frame, not fixed in world coordinates.
+                </li>
+                <li>
+                    <strong>Arrow:</strong> shows the selected body-frame axis on
+                    the conveyor. Its length follows speed magnitude, and its color
+                    changes when the speed is negative.
+                </li>
+            </ul>
+        </details>
+
+        <details class="test-section">
+            <summary>Expected result</summary>
+            <p>
+            Despite the visual differences between the two objects, the intended
+            result is that both textures move at the same requested world-space
+            speed. A mismatch would indicate that some part of the texture-to-world
+            mapping was not accounted for.
+            </p>
+        </details>
+    </details>
+    <div id="crawl-controls">
+        <div class="panel-title">Crawl Controls</div>
+        <label class="control-row" for="speed-control">
+            <span>Speed</span>
+            <input id="speed-control" type="range" min="-2.0" max="2.0" step="0.05" value="0.2">
+            <span id="speed-value">0.2</span>
+        </label>
+        <label class="control-row" for="axis-control">
+            <span>Axis</span>
+            <select id="axis-control">
+                <option value="0,0,1" selected>+Z</option>
+                <option value="0,0,-1">-Z</option>
+                <option value="1,0,0">+X</option>
+                <option value="-1,0,0">-X</option>
+                <option value="0,1,0">+Y</option>
+                <option value="0,-1,0">-Y</option>
+            </select>
+        </label>
+        <label class="control-row" for="heading-control">
+            <span>Heading</span>
+            <input id="heading-control" type="range" min="-180" max="180" step="1" value="0">
+            <span id="heading-value">0 deg</span>
+        </label>
+    </div>
+    <div id="meshcat-pane">
+    </div>
+    <script src="../dist/main.min.js"></script>
+    <script>
+        const THREE = MeshCat.THREE;
+        const Line2 = MeshCat.Line2;
+        const LineGeometry = MeshCat.LineGeometry;
+        const LineMaterial = MeshCat.LineMaterial;
+        const viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+        viewer.set_property(["Background", "<object>"], "top_color", [1, 1, 1]);
+        const heading_path = ["meshcat", "heading"];
+        const conveyor_path = heading_path.concat(["conveyor_belt"]);
+        const indicator_path = conveyor_path.concat(["crawl_indicator"]);
+        const box_path = heading_path.concat(["comparison_box"]);
+        const conveyor_length = 10.0;
+        const conveyor_depth = 1.0;
+        const conveyor_position = [0, 0, -0.5];
+        const gltf_height = 0.1;  // This must match the glTF file.
+        const box_length = 5.0;
+        const box_height = gltf_height;
+        const box_depth = 1.0;
+        const box_center_height = (gltf_height - box_height) / 2.0;
+        const box_position = [
+            (conveyor_length - box_length) / 2.0,
+            box_center_height,
+            0.5
+        ];
+        const speed_control = document.getElementById("speed-control");
+        const speed_value = document.getElementById("speed-value");
+        const axis_control = document.getElementById("axis-control");
+        const heading_control = document.getElementById("heading-control");
+        const heading_value = document.getElementById("heading-value");
+        const arrow_helper = new THREE.ArrowHelper(
+            new THREE.Vector3(0, 0, 1),
+            new THREE.Vector3(0, 0, 0),
+            1.0,
+            0xff7a00,
+            0.32,
+            0.2
+        );
+        arrow_helper.line.material.depthTest = false;
+        arrow_helper.cone.material.depthTest = false;
+        arrow_helper.line.renderOrder = 999;
+        arrow_helper.cone.renderOrder = 999;
+        const marker_line_geometry = new LineGeometry();
+        marker_line_geometry.setPositions([0, -0.5, 0, 0, 0.5, 0]);
+        const marker_pattern = [
+            { phase: -0.5, dense_x_only: true },
+            { phase: -0.4 },
+            { phase: -0.3, dense_x_only: true },
+            { phase: -0.2 },
+            { phase: -0.1, dense_x_only: true },
+            { phase: 0.0 },
+            { phase: 0.1, dense_x_only: true },
+            { phase: 0.2 },
+            { phase: 0.3, dense_x_only: true },
+            { phase: 0.4 }
+        ];
+        const marker_color = 0xffff00;
+        const marker_plane_clearance = 0.014;
+        const marker_min_span = 1.2;
+        const marker_min_cross_length = 0.42;
+        const marker_span_padding = 1.02;
+        const marker_edge_fade_fraction = 0.24;
+        const marker_edge_fade_max = 0.34;
+        const marker_opacity = 0.75;
+        const reference_markers = [];
+        let comparison_box_mesh = null;
+        const crawl_state = {
+            speed: Number(speed_control.value),
+            axis: axis_control.value.split(",").map(Number),
+            heading_deg: Number(heading_control.value),
+            displacement: 0,
+            last_time: null
+        };
+
+        function update_control_labels() {
+            speed_value.textContent = crawl_state.speed.toFixed(2);
+            heading_value.textContent = `${crawl_state.heading_deg.toFixed(0)} deg`;
+        }
+
+        function apply_crawl_axis() {
+            viewer.set_property(conveyor_path, "crawl_axis", crawl_state.axis);
+            viewer.set_property(box_path, "crawl_axis", crawl_state.axis);
+            assert_comparison_box_crawl_axis();
+        }
+
+        function assert_comparison_box_crawl_axis() {
+            if (comparison_box_mesh === null ||
+                    comparison_box_mesh.material.meshcat_crawl_axis === undefined) {
+                return;
+            }
+            const expected_axis = new THREE.Vector3(...crawl_state.axis).normalize();
+            const actual_axis = comparison_box_mesh.material.meshcat_crawl_axis;
+            if (actual_axis.distanceTo(expected_axis) > 1e-8) {
+                console.error(
+                    "Comparison box crawl_axis was not interpreted in the parent geometry frame.",
+                    "Expected", expected_axis.toArray(),
+                    "but got", actual_axis.toArray());
+            }
+        }
+
+        function update_indicator_arrow() {
+            const axis = new THREE.Vector3(...crawl_state.axis).normalize();
+            const arrow_length = 0.55 + 0.55 * Math.abs(crawl_state.speed);
+            const arrow_color = crawl_state.speed >= 0 ? 0xff7a00 : 0x0077cc;
+            arrow_helper.setDirection(axis);
+            arrow_helper.setLength(arrow_length, 0.22, 0.14);
+            arrow_helper.setColor(new THREE.Color(arrow_color));
+        }
+
+        function make_heading_transform() {
+            const heading_rad = crawl_state.heading_deg * Math.PI / 180.0;
+            return new THREE.Matrix4().makeRotationZ(heading_rad);
+        }
+
+        function make_geometry_tilt_transform() {
+            return new THREE.Matrix4().makeRotationX(Math.PI / 2);
+        }
+
+        function make_geometry_transform(position) {
+            const tilt = make_geometry_tilt_transform();
+            const offset = new THREE.Matrix4().makeTranslation(...position);
+            return tilt.multiply(offset);
+        }
+
+        function apply_heading_transform() {
+            viewer.set_transform(heading_path, make_heading_transform().toArray());
+        }
+
+        function apply_geometry_transform(path, position) {
+            viewer.set_transform(path, make_geometry_transform(position).toArray());
+        }
+
+        function wrap_centered(value, span) {
+            return ((value + span / 2) % span + span) % span - span / 2;
+        }
+
+        function smoothstep(edge0, edge1, value) {
+            const t = Math.max(0.0, Math.min((value - edge0) / (edge1 - edge0), 1.0));
+            return t * t * (3.0 - 2.0 * t);
+        }
+
+        function span_for_direction(half_extents, direction) {
+            return 2.0 * (
+                Math.abs(direction.x) * half_extents.x +
+                Math.abs(direction.y) * half_extents.y +
+                Math.abs(direction.z) * half_extents.z
+            );
+        }
+
+        function is_world_x_dominant(direction_in_heading) {
+            const heading_rotation = new THREE.Matrix3().setFromMatrix4(
+                make_heading_transform());
+            const direction_in_world = direction_in_heading.clone()
+                .applyMatrix3(heading_rotation)
+                .normalize();
+            return Math.abs(direction_in_world.x) >= Math.max(
+                Math.abs(direction_in_world.y),
+                Math.abs(direction_in_world.z)
+            );
+        }
+
+        function combined_geometry_bounds() {
+            const conveyor_center = new THREE.Vector3(...conveyor_position);
+            const box_center = new THREE.Vector3(...box_position);
+            const conveyor_half_extents = new THREE.Vector3(
+                conveyor_length / 2.0,
+                gltf_height / 2.0,
+                conveyor_depth / 2.0
+            );
+            const box_half_extents = new THREE.Vector3(
+                box_length / 2.0,
+                box_height / 2.0,
+                box_depth / 2.0
+            );
+            const conveyor_min = conveyor_center.clone().sub(conveyor_half_extents);
+            const conveyor_max = conveyor_center.clone().add(conveyor_half_extents);
+            const box_min = box_center.clone().sub(box_half_extents);
+            const box_max = box_center.clone().add(box_half_extents);
+            return {
+                min: conveyor_min.min(box_min),
+                max: conveyor_max.max(box_max)
+            };
+        }
+
+        function make_marker_material() {
+            const material = new LineMaterial({
+                color: marker_color,
+                linewidth: 2.0,
+                transparent: true,
+                opacity: marker_opacity,
+                depthTest: true,
+                depthWrite: false,
+                vertexColors: false,
+                dashed: false,
+                worldUnits: false,
+                toneMapped: false
+            });
+            material.resolution.set(
+                viewer.renderer.domElement.width,
+                viewer.renderer.domElement.height
+            );
+            return material;
+        }
+
+        function make_marker_line(pattern) {
+            const material = make_marker_material();
+            const line = new Line2(marker_line_geometry, material);
+            line.computeLineDistances();
+            line.renderOrder = 996;
+            line.frustumCulled = false;
+            return {
+                phase: pattern.phase,
+                dense_x_only: pattern.dense_x_only === true,
+                material: material,
+                line: line
+            };
+        }
+
+        function create_reference_marker(
+                name, geometry_transform, center, normal, half_extents) {
+            const group = new THREE.Group();
+            const lines = [];
+            for (const pattern of marker_pattern) {
+                const marker = make_marker_line(pattern);
+                group.add(marker.line);
+                lines.push(marker);
+            }
+
+            const geometry_rotation = new THREE.Matrix3().setFromMatrix4(
+                geometry_transform);
+            const center_in_heading = new THREE.Vector3(...center)
+                .applyMatrix4(geometry_transform);
+            const normal_in_heading = new THREE.Vector3(...normal)
+                .applyMatrix3(geometry_rotation)
+                .normalize();
+            viewer.set_object(heading_path.concat([name]), group);
+            reference_markers.push({
+                group: group,
+                lines: lines,
+                center: center_in_heading,
+                normal: normal_in_heading,
+                half_extents: new THREE.Vector3(
+                    half_extents.x,
+                    half_extents.y,
+                    half_extents.z
+                ),
+                heading_from_geometry: geometry_rotation
+            });
+        }
+
+        function update_reference_markers() {
+            const axis_geometry = new THREE.Vector3(...crawl_state.axis).normalize();
+            for (const marker of reference_markers) {
+                const axis = axis_geometry.clone()
+                    .applyMatrix3(marker.heading_from_geometry)
+                    .normalize();
+                const normal = marker.normal;
+                // Match the shader's per-face flow direction.
+                const flow = axis.clone().cross(normal);
+                if (flow.lengthSq() < 1e-12) {
+                    marker.group.visible = false;
+                    continue;
+                }
+                marker.group.visible = true;
+                flow.normalize();
+                const cross = normal.clone().cross(flow).normalize();
+                const basis = new THREE.Matrix4().makeBasis(flow, cross, normal);
+                const use_dense_x_spacing = is_world_x_dominant(flow);
+                const heading_from_geometry_inverse =
+                    marker.heading_from_geometry.clone().transpose();
+                const flow_geometry = flow.clone()
+                    .applyMatrix3(heading_from_geometry_inverse);
+                const cross_geometry = cross.clone()
+                    .applyMatrix3(heading_from_geometry_inverse);
+                const flow_span = span_for_direction(marker.half_extents, flow_geometry);
+                const cross_span = span_for_direction(marker.half_extents, cross_geometry);
+                const display_span = Math.max(
+                    flow_span * marker_span_padding,
+                    marker_min_span
+                );
+                const line_length = Math.max(
+                    cross_span * marker_span_padding,
+                    marker_min_cross_length
+                );
+                const fade_distance = Math.min(
+                    display_span * marker_edge_fade_fraction,
+                    marker_edge_fade_max
+                );
+
+                marker.group.position.copy(marker.center)
+                    .addScaledVector(normal, marker_plane_clearance);
+                marker.group.quaternion.setFromRotationMatrix(basis);
+                for (const line_marker of marker.lines) {
+                    if (line_marker.dense_x_only && !use_dense_x_spacing) {
+                        line_marker.line.visible = false;
+                        continue;
+                    }
+                    const offset = wrap_centered(
+                        line_marker.phase * display_span + crawl_state.displacement,
+                        display_span
+                    );
+                    const edge_distance = display_span / 2.0 - Math.abs(offset);
+                    const fade = smoothstep(0.0, fade_distance, edge_distance);
+                    line_marker.line.visible = fade > 0.001;
+                    line_marker.material.resolution.set(
+                        viewer.renderer.domElement.width,
+                        viewer.renderer.domElement.height
+                    );
+                    line_marker.material.opacity = marker_opacity * fade;
+                    line_marker.line.position.set(offset, 0, 0);
+                    line_marker.line.scale.set(1, line_length, 1);
+                }
+            }
+        }
+
+        function load_reference_markers() {
+            const shared_transform = make_geometry_tilt_transform();
+            const bounds = combined_geometry_bounds();
+            const center = bounds.min.clone().add(bounds.max).multiplyScalar(0.5);
+            const half_extents = bounds.max.clone().sub(bounds.min).multiplyScalar(0.5);
+            create_reference_marker(
+                "reference_marker_top",
+                shared_transform,
+                [center.x, bounds.max.y, center.z],
+                [0, 1, 0],
+                { x: half_extents.x, y: 0, z: half_extents.z }
+            );
+            create_reference_marker(
+                "reference_marker_end",
+                shared_transform,
+                [bounds.max.x, center.y, center.z],
+                [1, 0, 0],
+                { x: 0, y: half_extents.y, z: half_extents.z }
+            );
+            create_reference_marker(
+                "reference_marker_side",
+                shared_transform,
+                [center.x, center.y, bounds.max.z],
+                [0, 0, 1],
+                { x: half_extents.x, y: half_extents.y, z: 0 }
+            );
+            update_reference_markers();
+        }
+
+        speed_control.addEventListener("input", () => {
+            crawl_state.speed = Number(speed_control.value);
+            update_control_labels();
+            update_indicator_arrow();
+        });
+
+        axis_control.addEventListener("change", () => {
+            crawl_state.axis = axis_control.value.split(",").map(Number);
+            update_control_labels();
+            update_indicator_arrow();
+            update_reference_markers();
+            apply_crawl_axis();
+        });
+
+        heading_control.addEventListener("input", () => {
+            crawl_state.heading_deg = Number(heading_control.value);
+            update_control_labels();
+            apply_heading_transform();
+        });
+
+        function to_data_url(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function inline_gltf_assets(gltf_url) {
+            const gltf_response = await fetch(gltf_url);
+            if (!gltf_response.ok) {
+                throw new Error(`Failed to load ${gltf_url}: ${gltf_response.status}`);
+            }
+
+            const gltf = await gltf_response.json();
+            const inline_uri = async (uri) => {
+                if (uri.startsWith("data:")) {
+                    return uri;
+                }
+                const asset_url = new URL(uri, gltf_response.url);
+                const asset_response = await fetch(asset_url);
+                if (!asset_response.ok) {
+                    throw new Error(`Failed to load ${asset_url}: ${asset_response.status}`);
+                }
+                return to_data_url(await asset_response.blob());
+            };
+
+            if (gltf.buffers) {
+                for (const buffer of gltf.buffers) {
+                    if (buffer.uri) {
+                        buffer.uri = await inline_uri(buffer.uri);
+                    }
+                }
+            }
+
+            if (gltf.images) {
+                for (const image of gltf.images) {
+                    if (image.uri) {
+                        image.uri = await inline_uri(image.uri);
+                    }
+                }
+            }
+
+            return JSON.stringify(gltf);
+        }
+
+        async function load_comparison_box() {
+            new THREE.TextureLoader().load("crawling_texture_diffuse.png", (texture) => {
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.colorSpace = THREE.SRGBColorSpace;
+                const object_root_rotation = Math.PI / 2;
+                const box_root = new THREE.Group();
+                box_root.rotation.y = object_root_rotation;
+                const box = new THREE.Mesh(
+                    new THREE.BoxGeometry(box_length, box_height, box_depth),
+                    new THREE.MeshStandardMaterial({ map: texture,
+                                                     side: THREE.DoubleSide })
+                );
+                box.rotation.y = -object_root_rotation;
+                box_root.add(box);
+                comparison_box_mesh = box;
+                viewer.set_object(box_path, box_root);
+                apply_geometry_transform(box_path, box_position);
+                viewer.set_property(box_path, "crawl_axis", crawl_state.axis);
+                assert_comparison_box_crawl_axis();
+                viewer.set_property(box_path, "color", [0.6, 1, 0.6, 1.0]);
+            });
+        }
+
+        async function load_conveyor_belt() {
+            const gltf_contents = await inline_gltf_assets("crawling_texture.gltf");
+            viewer.handle_command({
+                type: "set_object",
+                path: "/" + conveyor_path.join("/"),
+                object: {
+                    metadata: {version: 4.5, type: "Object"},
+                    geometries: [],
+                    materials: [],
+                    object: {
+                        uuid: "f2cf9a8b-8832-46bf-9db7-4b6c9c325c59",
+                        type: "_meshfile_object",
+                        format: "gltf",
+                        data: gltf_contents
+                    }
+                }
+            });
+            viewer.set_object(indicator_path, arrow_helper);
+            apply_geometry_transform(conveyor_path, conveyor_position);
+            // Crawl properties are forwarded to the renderable node and
+            // replayed when the glTF materializes.
+            apply_crawl_axis();
+        }
+        viewer.set_camera_target(conveyor_position);
+        update_control_labels();
+        update_indicator_arrow();
+        apply_heading_transform();
+        load_reference_markers();
+
+        load_conveyor_belt().catch((error) => {
+            console.error("Failed to load crawling_texture.gltf", error);
+        });
+        load_comparison_box();
+
+        function update_crawl(now) {
+            if (crawl_state.last_time !== null) {
+                const dt = (now - crawl_state.last_time) / 1000.0;
+                // Note: if this runs long enough, there will eventually be
+                // rendering artifacts due to floating point precision issues.
+                // There is no simple solution to this problem, due to the
+                // various scale factors that contribute to the actual mapping
+                // in the shader. But, in practice, it should not be an issue
+                // until the crawl displacement gets extraordinarily large.
+                crawl_state.displacement += crawl_state.speed * dt;
+            }
+            crawl_state.last_time = now;
+
+            // Update conveyor belt crawl displacement.
+            viewer.set_property(conveyor_path, "crawl_displacement",
+                                crawl_state.displacement);
+
+            // Update comparison box crawl displacement.
+            viewer.set_property(box_path, "crawl_displacement",
+                                crawl_state.displacement);
+
+            // Update independent reference markers.
+            update_reference_markers();
+
+            requestAnimationFrame(update_crawl);
+        }
+
+        requestAnimationFrame(update_crawl);
+    </script>
+    <style>
+        body {
+            margin: 0;
+            --meshcat-controls-width: 245px;
+            --overlay-gap: 12px;
+            --overlay-total-gap: 24px;
+        }
+        #meshcat-pane {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #test-message {
+            width: auto;
+            max-height: 58vh;
+            overflow-y: auto;
+            text-align: left;
+            background-color: rgba(232, 232, 232, 0.94);
+            position: fixed;
+            left: 0;
+            right: calc(var(--meshcat-controls-width) + var(--overlay-gap));
+            top: 0;
+            display: block;
+            box-sizing: border-box;
+            padding: 10px;
+            z-index: 2;
+        }
+        #test-message:not([open]) {
+            right: auto;
+            width: auto;
+            max-width: calc(
+                100vw - var(--meshcat-controls-width) - var(--overlay-total-gap)
+            );
+            max-height: none;
+            overflow: visible;
+        }
+        #test-message > summary {
+            cursor: pointer;
+            font-weight: 700;
+        }
+        #test-message[open] > summary {
+            margin-bottom: 0.75rem;
+        }
+        #test-message .test-overview {
+            margin: 0 0 0.75rem;
+        }
+        #test-message .test-section {
+            border-top: 1px solid rgba(0, 0, 0, 0.14);
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+        }
+        #test-message .test-section summary {
+            cursor: pointer;
+            font-weight: 600;
+        }
+        #test-message .test-section[open] summary {
+            margin-bottom: 0.5rem;
+        }
+        #test-message .test-section > :last-child {
+            margin-bottom: 0;
+        }
+        #crawl-controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 22rem;
+            padding: 12px;
+            background: rgba(245, 245, 245, 0.94);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+            font-family: sans-serif;
+            z-index: 2;
+        }
+        .panel-title {
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+        .control-row,
+        .status-row {
+            display: grid;
+            grid-template-columns: 4rem 1fr auto;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .status-row {
+            margin-bottom: 0;
+        }
+        .status-label {
+            font-weight: 600;
+        }
+        #speed-control,
+        #axis-control {
+            width: 100%;
+        }
+        #axis-indicator,
+        #speed-indicator,
+        #speed-value {
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        @media (max-width: 640px) {
+            #test-message[open],
+            #crawl-controls {
+                right: auto;
+                width: calc(100vw - var(--overlay-total-gap));
+                max-width: none;
+            }
+            #test-message:not([open]) {
+                width: auto;
+                max-width: calc(100vw - var(--overlay-total-gap));
+            }
+            .control-row,
+            .status-row {
+                grid-template-columns: 1fr;
+                gap: 0.35rem;
+            }
+        }
+    </style>
+</body>
+
+</html>
