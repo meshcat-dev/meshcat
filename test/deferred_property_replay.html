@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=utf-8>
+    <title>MeshCat - deferred property replay</title>
+</head>
+<body>
+    <div id="test-message">
+        <p>
+        This test queues properties on unresolved &lt;object&gt; nodes,
+         materializes the objects shortly afterward,and then verifies that the
+         properties were replayed.
+        </p>
+        <p>
+        You should see four cubes. From left to right: a cyan cube, an opaque
+        green cube, a yellow cube, and a scaled transparent blue cube.
+        The status below should report PASS.
+        </p>
+        <p>
+        If you need to debug a FAIL message, open the developer console
+        (F12) for more details.
+        </p>
+        <div id="status-message">Running...</div>
+        <ul id="test-results"></ul>
+    </div>
+    <div id="meshcat-pane">
+    </div>
+
+    <script src="../dist/main.min.js"></script>
+    <script>
+        const THREE = MeshCat.THREE;
+        const viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+        const status_dom = document.getElementById("status-message");
+        const results_dom = document.getElementById("test-results");
+        const failures = [];
+        const original_console_error = console.error.bind(console);
+        const observed_errors = [];
+
+        console.error = (...args) => {
+            observed_errors.push(args.map((x) => String(x)).join(" "));
+            original_console_error(...args);
+        };
+
+        viewer.set_property(["Grid"], "visible", false);
+        const camera_target = [0, 2, 0];
+        viewer.set_camera_target(camera_target);
+        viewer.set_transform(["Cameras", "default"], [
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            camera_target[0], camera_target[1], camera_target[2], 1
+        ]);
+        viewer.set_property(["Cameras", "default", "rotated", "<object>"],
+            "position", [0, 4, 6]);
+
+        function record_result(ok, message) {
+            const item = document.createElement("li");
+            item.textContent = `${ok ? "PASS" : "FAIL"}: ${message}`;
+            item.className = ok ? "pass" : "fail";
+            results_dom.appendChild(item);
+            if (ok) {
+                console.info(item.textContent);
+            } else {
+                failures.push(message);
+                console.error(item.textContent);
+            }
+        }
+
+        function assert_close(actual, expected, label) {
+            const ok = Math.abs(actual - expected) < 1e-6;
+            record_result(ok, `${label}: expected ${expected}, got ${actual}`);
+        }
+
+        function assert_equal(actual, expected, label) {
+            record_result(actual === expected, `${label}: expected ${expected}, got ${actual}`);
+        }
+
+        function assert_true(actual, label) {
+            record_result(!!actual, `${label}: expected true, got ${actual}`);
+        }
+
+        function assert_error_delta(before_count, expected_delta, label) {
+            const actual_delta = observed_errors.length - before_count;
+            assert_equal(actual_delta, expected_delta, label);
+        }
+
+        function later(milliseconds, callback) {
+            return new Promise((resolve) => {
+                window.setTimeout(() => {
+                    callback();
+                    resolve();
+                }, milliseconds);
+            });
+        }
+
+        function make_cube(color, position) {
+            const cube = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 1, 1),
+                new THREE.MeshStandardMaterial({color: color})
+            );
+            cube.position.set(position[0], position[1], position[2]);
+            return cube;
+        }
+
+        function begin_async_object_load(path) {
+            // set_object_from_json() does this before parsing async object data.
+            const normalized_path =
+                path.length > 0 && path[path.length - 1] === "<object>"
+                    ? path.slice(0, path.length - 1)
+                    : path;
+            const object_node = viewer.scene_tree.find(normalized_path.concat(["<object>"]));
+            object_node.pending_properties = {};
+        }
+
+        async function run_test() {
+            console.info("\n\nTEST START\n\n");
+
+            console.info("Convenience properties on containing nodes do not replay.");
+            const parent_path = ["meshcat", "deferred_parent"];
+            begin_async_object_load(parent_path);
+            viewer.set_property(parent_path, "color", [1, 0, 0, 0.35]);
+
+            await later(50, () => {
+                const cube = make_cube(0x00ff00, [-1.25, 0, 0.5]);
+                viewer.set_object(parent_path, cube);
+                viewer.set_dirty();
+
+                assert_close(cube.material.color.r, 0, "Containing node set leaves future red channel unchanged");
+                assert_close(cube.material.color.g, 1, "Containing node set leaves future green channel unchanged");
+                assert_close(cube.material.color.b, 0, "Containing node set leaves future blue channel unchanged");
+                assert_close(cube.material.opacity, 1, "Containing node set leaves future opacity unchanged");
+                assert_equal(cube.material.transparent, false, "Containing node set leaves future transparency unchanged");
+            });
+
+            console.info("Queueing direct and chained properties on a future <object> node.");
+            const object_parent_path = ["meshcat", "deferred_object"];
+            const object_path = object_parent_path.concat(["<object>"]);
+            begin_async_object_load(object_parent_path);
+            viewer.set_property(object_path, "scale", [1.6, 1.6, 1.6]);
+            viewer.set_property(object_path, "color", [0, 0.4, 1, 0.25]);
+            viewer.set_property(object_path, "material.opacity", 0.25);
+
+            console.info("Queueing a chained property on an unresolved target should not error immediately.");
+            const deferred_chain_parent_path = ["meshcat", "deferred_chain"];
+            const deferred_chain_object_path = deferred_chain_parent_path.concat(["<object>"]);
+            begin_async_object_load(deferred_chain_parent_path);
+            const error_count_before = observed_errors.length;
+            viewer.set_property(deferred_chain_object_path, "material.opacity", 0.6);
+            assert_error_delta(error_count_before, 0,
+                "Deferred chained property reports no immediate errors");
+
+            await later(50, () => {
+                const cube = make_cube(0x0066ff, [1.25, 0, 0.8]);
+                viewer.set_object(object_parent_path, cube);
+                viewer.set_dirty();
+
+                assert_close(cube.scale.x, 1.6, "Future <object> replay sets x scale");
+                assert_close(cube.scale.y, 1.6, "Future <object> replay sets y scale");
+                assert_close(cube.scale.z, 1.6, "Future <object> replay sets z scale");
+                assert_close(cube.material.color.r, 0, "Future <object> replay clears red channel");
+                assert_close(cube.material.color.g, 0.4, "Future <object> replay sets green channel");
+                assert_close(cube.material.color.b, 1, "Future <object> replay sets blue channel");
+                assert_equal(cube.material.transparent, true, "Future <object> replay enables transparency");
+                assert_close(cube.material.opacity, 0.25, "Future <object> replay sets chained material opacity");
+            });
+
+            await later(50, () => {
+                const cube = make_cube(0xffff00, [0, 0, 1.2]);
+                viewer.set_object(deferred_chain_parent_path, cube);
+                viewer.set_dirty();
+
+                assert_close(cube.material.opacity, 0.6,
+                    "Deferred chained property replays after materialization");
+            });
+
+            console.info("set_object accepts both container and /<object> paths as aliases.");
+            const alias_parent_path = ["meshcat", "set_object_alias"];
+            const alias_object_path = alias_parent_path.concat(["<object>"]);
+
+            const cube_from_parent_path = make_cube(0xff00ff, [-2.5, 0, 0.5]);
+            viewer.set_object(alias_parent_path, cube_from_parent_path);
+
+            const alias_parent_node = viewer.scene_tree.find(alias_parent_path);
+            const alias_object_node = alias_parent_node.children["<object>"];
+
+            assert_true(alias_object_node !== undefined,
+                "set_object(container path) creates a renderable <object> node");
+            if (alias_object_node !== undefined) {
+                assert_equal(alias_object_node.object, cube_from_parent_path,
+                    "set_object(container path) installs the expected object");
+            }
+
+            const cube_from_object_path = make_cube(0x00ffff, [-3.0, 0, 0.5]);
+            viewer.set_object(alias_object_path, cube_from_object_path);
+
+            const alias_object_node_after = alias_parent_node.children["<object>"];
+            assert_true(alias_object_node_after !== undefined,
+                "set_object(/<object> path) still targets the same renderable node");
+            if (alias_object_node_after !== undefined) {
+                assert_equal(alias_object_node_after.object, cube_from_object_path,
+                    "set_object(/<object> path) replaces the same renderable object");
+                assert_equal(alias_object_node_after.children["<object>"], undefined,
+                    "set_object(/<object> path) does not create nested <object>/<object>");
+            }
+
+            if (failures.length === 0) {
+                status_dom.textContent = "PASS";
+                status_dom.className = "pass";
+            } else {
+                status_dom.textContent = `FAIL: ${failures.length} assertion(s) failed`;
+                status_dom.className = "fail";
+            }
+
+            console.error = original_console_error;
+
+            console.info("\n\nTEST END\n\n");
+        }
+
+        run_test();
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #meshcat-pane {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #test-message {
+            width: 70vw;
+            text-align: left;
+            background-color: rgba(232, 232, 232, 0.94);
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: block;
+            padding: 10px;
+            z-index: 2;
+        }
+
+        #status-message {
+            font-weight: bold;
+            margin-top: 0.5rem;
+        }
+
+        #test-results {
+            margin-bottom: 0;
+            padding-left: 1.25rem;
+        }
+
+        .pass {
+            color: #136f2d;
+        }
+
+        .fail {
+            color: #b00020;
+        }
+    </style>
+</body>
+</html>
