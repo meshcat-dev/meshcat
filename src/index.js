@@ -585,6 +585,9 @@ class SceneNode {
         this.children = {};
         this.controllers = [];
         this.on_update = on_update;
+        // Non-null only for auto-created <object> placeholders. The object
+        // stores properties to replay when the real object materializes.
+        this.pending_properties = null;
         this.create_controls();
         for (let c of this.object.children) {
             this.add_child(c);
@@ -602,7 +605,11 @@ class SceneNode {
         let obj = new THREE.Group();
         obj.name = name;
         this.object.add(obj);
-        return this.add_child(obj);
+        let node = this.add_child(obj);
+        if (name === "<object>") {
+            node.pending_properties = {};
+        }
+        return node;
     }
 
     find(path) {
@@ -724,7 +731,8 @@ class SceneNode {
 
     // Visits all the materials in the graph rooted at node (including if node
     // is, itself, a material). For each material, applies the mat_operator
-    // to that material.
+    // to that material. If no materials are currently realized under `node`
+    // (e.g., while waiting for a future <object> to be set), this is a no-op.
     visit_materials(node, mat_operator) {
         if (node.isMaterial) {
             mat_operator(node);
@@ -736,7 +744,11 @@ class SceneNode {
         }
     }
 
-    set_property(property, value, target_path) {
+    set_property(property, value, target_path) {;
+        // Two-phase behavior:
+        //   1) Apply to whatever portion of the subtree is already realized.
+        //   2) If this is an auto-created <object> placeholder, queue this
+        //      command so set_object() replay applies it to the real object.
         if (property === "position") {
             this.object.position.set(value[0], value[1], value[2]);
         } else if (property === "quaternion") {
@@ -770,6 +782,9 @@ class SceneNode {
             this.object[property] = new dat.color.Color(value.map((x) => x * 255));
         } else {
             this.set_property_chain(property, value, target_path);
+        }
+        if (this.pending_properties !== null) {
+            this.pending_properties[property] = {value, target_path};
         }
         // For non three.js objects, we need to explicitly call their
         // on_update() methods to trigger redraws.
@@ -813,14 +828,19 @@ class SceneNode {
             break;
         }
 
-        // Now assign the final property value (if possible). (We know that
-        // parent is an object.)
-
+        // Test the validity of the assignment of the final property value. We
+        // know that `parent` is an object.
         if (error_detail === null && !(final_property in parent)) {
             error_detail = `'${parent_path}' has no property '${final_property}'`;
         }
 
         if (error_detail != null) {
+            if (this.pending_properties !== null) {
+                // Pending properties exists; this is a place holder. The errors
+                // we've detected may not be real errors. So, we won't yell for
+                // the place holder. During replay, we'll try this again.
+                return;
+            }
             // Note: full_path may not be an exact reproduction of the path
             // passed via msgpack.
             const full_path = "/" + target_path.join('/');
@@ -847,6 +867,16 @@ class SceneNode {
         this.object = object;
         parent.add(object);
         this.create_controls();
+        // Replay any properties that were set before this object materialized
+        // (e.g., during async glTF loading). This allows clients to set properties
+        // immediately without waiting for the object to load.
+        let queued_props = this.pending_properties || {};
+        // Clear queue to avoid re-queueing during replay.
+        this.pending_properties = null;
+        for (let property in queued_props) {
+            let {value, target_path} = queued_props[property];
+            this.set_property(property, value, target_path);
+        }
     }
 
     dispose_recursive() {
@@ -1603,6 +1633,10 @@ class Viewer {
     }
 
     set_object_from_json(path, object_json) {
+        // Ensure async object loads have a placeholder node that can queue
+        // direct /.../<object> set_property() commands until parsing finishes.
+        this.scene_tree.find(path.concat(["<object>"]));
+
         // Recursively walk the tree rooted at node and enable shadows for all
         // Mesh nodes.
         let meshes_cast_shadows = (node) => {
