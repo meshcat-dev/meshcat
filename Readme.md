@@ -303,10 +303,11 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                         <p>The property name to set, as a string.</p>
                         <p><strong>Property categories</strong></p>
                         <p>
-                        MeshCat supports two categories for <code>property</code>:
+                        MeshCat supports three categories for <code>property</code>:
                         </p>
                         <ul>
                             <li><strong>Convenience properties</strong> are short aliases for assigning values to standard scene-graph properties.
+                            <li><strong>Custom properties</strong> are Meshcat-specific properties that enable custom behavior and are not part of three.js.
                             <li><strong>Literal properties</strong> are interpreted as literal javascript properties of the object named by the path. The property could be a direct property of the named object (e.g., "type"), or a "chained" property (e.g., "material.map.repeat.x").
                         </ul>
                         <p>The following names are <strong>convenience properties</strong>:</p>
@@ -320,6 +321,22 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                             <li><code>modulated_opacity: number</code>
                             <li><code>top_color: number[3]</code> (only for the Background)
                             <li><code>bottom_color: number[3]</code> (only for the Background)
+                        </ul>
+                        <p>The following names are <strong>custom</strong> properties:</p>
+                        <ul>
+                            <li>
+                                <strong>Texture crawl</strong>.
+                                MeshCat provides a feature that will cause the texture on an object to appear to "crawl" along the surface (useful for visualizing tank treads or conveyor belts). The textures are displaced across the surface of the geometry by rotating around a "crawl" axis. By repeatedly updating the displacement amount with respect to time, the texture will appear to crawl around the object.
+                                <p>The properties are:</p>
+                                <ul>
+                                    <li><code>crawl_axis</code> a direction, specified in the <strong>geometry</strong> frame (thereby moving with the geometry).</li>
+                                    <li><code>crawl_displacement</code> is a distance measure (world-frame scalar distance) indicating the amount the texture should be displaced.</li>
+                                </ul>
+                                <p>The object(s) must have texture coordinates and texture(s) applied.</p>
+                                <p>The "geometry frame" refers to the <strong>container</strong> frame as this typically contains the pose for the geometry as defined by the external application. For example, when setting <code>crawl_axis</code> on <code>/meshcat/textured_mesh</code>, the axis is expressed in the frame of <code>/meshcat/textured_mesh</code>. One *can* set the property to the renderable node as well
+                                <code>/meshcat/textured_mesh/&lt;object&gt;</code>, but the axis must still be expressed in the root geometry node's frame. We recommend treating these properties like other container-based properties like <code>position</code> or <code>visible</code>.</p>
+                                <p><strong>Limitations:</strong> Crawling textures only produce physically meaningful results on geometries whose UV layout is compatible with uniform translation. Specifically, the texture must tile seamlessly (using <code>RepeatWrapping</code>) and the UV parameterization must be laid out so that a constant UV offset corresponds to a coherent physical slide across the surface in the crawl direction. Geometries with UV seams, strong UV distortion (e.g., poles of a sphere), or UV atlases where adjacent surface regions map to disjoint parts of the texture image will exhibit tiling artifacts or discontinuous motion. Flat or gently-curved surfaces textured with a uniformly tiling pattern (such as a box or plane with a repeating texture) are the typical well-behaved use case.</p>
+                            </li>
                         </ul>
                         <p>Any property name not in the list of convenience properties is evaluated as a literal property on the target object. Chained names (e.g., <code>material.shininess</code>), and are resolved left-to-right so the final name in the chain receives <code>value</code>.</p>
                         <p><strong>Timing and replay semantics</strong></p>
@@ -358,6 +375,21 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
     path: "/Lights/SpotLight/&lt;object&gt;",
     property: "shadow.radius",
     value: 1.0
+}
+                </pre>
+                Example 4 (crawling texture):
+                <pre>
+{
+    type: "set_property",
+    path: "/meshcat/textured_mesh",
+    property: "crawl_axis",
+    value: [1.0, 0.0, 0.0]
+}
+{
+    type: "set_property",
+    path: "/meshcat/textured_mesh",
+    property: "crawl_displacement",
+    value: 0.125
 }
                 </pre>
             </dd>
