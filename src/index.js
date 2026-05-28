@@ -585,6 +585,8 @@ class SceneNode {
         this.children = {};
         this.controllers = [];
         this.on_update = on_update;
+        this.pending_properties = {};  // Store properties to replay when object materializes
+        this.is_object_placeholder = false;
         this.create_controls();
         for (let c of this.object.children) {
             this.add_child(c);
@@ -602,7 +604,9 @@ class SceneNode {
         let obj = new THREE.Group();
         obj.name = name;
         this.object.add(obj);
-        return this.add_child(obj);
+        let node = this.add_child(obj);
+        node.is_object_placeholder = (name === "<object>");
+        return node;
     }
 
     find(path) {
@@ -724,7 +728,8 @@ class SceneNode {
 
     // Visits all the materials in the graph rooted at node (including if node
     // is, itself, a material). For each material, applies the mat_operator
-    // to that material.
+    // to that material. If no materials are currently realized under `node`
+    // (e.g., while waiting for a future <object> to be set), this is a no-op.
     visit_materials(node, mat_operator) {
         if (node.isMaterial) {
             mat_operator(node);
@@ -736,7 +741,38 @@ class SceneNode {
         }
     }
 
+    should_queue_property_for_replay(target_path) {
+        // When attempting to set a property on `target_path`, we may need to
+        // queue the operation for deferred evaluation under the following
+        // cases:
+        //
+        //  1. `target_path` ends with "<object>", and *this* node is itself an
+        //     auto-created placeholder object (it will eventually get replaced
+        //     by a future set_object() call).
+        //  2. `target_path` is a *non*-<object> path. Its <object> child is
+        //     either missing or still a placeholder.
+        const target_is_object_node =
+            target_path.length > 0 && target_path[target_path.length - 1] === "<object>";
+
+        // Case 1: direct ".../<object>" target.
+        if (target_is_object_node) {
+            return this.is_object_placeholder;
+        }
+
+        // Case 2: containing-node target.
+        const object_child = this.children["<object>"];
+        const object_child_missing = object_child === undefined;
+        const object_child_placeholder =
+            object_child !== undefined && object_child.is_object_placeholder;
+        return object_child_missing || object_child_placeholder;
+    }
+
     set_property(property, value, target_path) {
+        const should_queue_for_replay = this.should_queue_property_for_replay(target_path);
+        // Two-phase behavior:
+        //   1) Apply to whatever portion of the subtree is already realized.
+        //   2) If parts of the target are not realized yet, queue this command
+        //      so set_object() replay applies the same intent later.
         if (property === "position") {
             this.object.position.set(value[0], value[1], value[2]);
         } else if (property === "quaternion") {
@@ -769,7 +805,15 @@ class SceneNode {
             // Top/bottom colors are stored as dat.color.Color
             this.object[property] = new dat.color.Color(value.map((x) => x * 255));
         } else {
-            this.set_property_chain(property, value, target_path);
+            this.set_property_chain(property, value, target_path,
+                                    should_queue_for_replay);
+        }
+        // Convenience properties (e.g., color / opacity) are applied to any
+        // currently-realized materials via visit_materials(). For paths that
+        // are not fully realized yet, we also queue the original property
+        // command for replay at materialization time.
+        if (should_queue_for_replay) {
+            this.pending_properties[property] = {value, target_path};
         }
         // For non three.js objects, we need to explicitly call their
         // on_update() methods to trigger redraws.
@@ -780,7 +824,7 @@ class SceneNode {
         this.controllers.forEach(c => c.updateDisplay());
     }
 
-    set_property_chain(property, value, target_path) {
+    set_property_chain(property, value, target_path, silence_errors) {
         // Break the property `obj0.obj1[obj2].foo` into the list
         // `[obj0, obj1, obj2]` and the property name `foo`.
 
@@ -813,21 +857,24 @@ class SceneNode {
             break;
         }
 
-        // Now assign the final property value (if possible). (We know that
-        // parent is an object.)
-
+        // Test the validity of the assignment of the final property value. We
+        // know that `parent` is an object.
         if (error_detail === null && !(final_property in parent)) {
             error_detail = `'${parent_path}' has no property '${final_property}'`;
         }
 
         if (error_detail != null) {
+            if (silence_errors) {
+                // We found an error, can't continue, but have been told not to yell.
+                return;
+            }
             // Note: full_path may not be an exact reproduction of the path
             // passed via msgpack.
             const full_path = "/" + target_path.join('/');
             const value_str = JSON.stringify(value);
             console.error(
                 `Error in set_property("${full_path}", "${property}", ${value_str})\n` +
-                `${error_detail}. The value will not be set.`);
+                `${error_detail}.`);
             return;
         }
 
@@ -846,7 +893,17 @@ class SceneNode {
         this.object.parent.remove(this.object);
         this.object = object;
         parent.add(object);
+        this.is_object_placeholder = false;
         this.create_controls();
+        // Replay any properties that were set before this object materialized
+        // (e.g., during async glTF loading). This allows clients to set properties
+        // immediately without waiting for the object to load.
+        let queued_props = this.pending_properties;
+        this.pending_properties = {};  // Clear queue to avoid re-queueing during replay
+        for (let property in queued_props) {
+            let {value, target_path} = queued_props[property];
+            this.set_property(property, value, target_path);
+        }
     }
 
     dispose_recursive() {
@@ -1599,7 +1656,12 @@ class Viewer {
     }
 
     set_object(path, object) {
+        const path_node = this.scene_tree.find(path);
         this.scene_tree.find(path.concat(["<object>"])).set_object(object);
+        for (let property in path_node.pending_properties) {
+            let {value, target_path} = path_node.pending_properties[property];
+            path_node.set_property(property, value, target_path);
+        }
     }
 
     set_object_from_json(path, object_json) {

@@ -312,7 +312,11 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
                         <p>
                         Properties can be *chained*. For example, for an object with a phong material (MeshPhongMaterial), we may want to tweak its shininess, making it duller. Shininess is not a property of the object itself, but the object's material. There is no *path* to that material, but the property name can include a property name chain, e.g., `material.shininess`. While setting the property, the chained properties will be evaluated in sequence, such that the final name in the chain is the property that receives the `value`.
                         <p>
-                        As noted, specifying a `path` that doesn't exist creates that path. However, specifying a property that doesn't exist does *not* create that property. If a name in the property chain is missing, an error message will be printed to the console and no value will be assigned. This is not a no-op per se. If the `path` led to the implicit creation of a new folder and object, that pair will still be in place.
+                        As noted, specifying a `path` that doesn't exist creates that path. However, specifying a property that doesn't exist does *not* create that property.
+                        <p>
+                        If a name in the property chain is missing on an object that has already been created, an error message will be printed to the console and no value will be assigned.
+                        <p>
+                        There is one exception: while waiting for an object to be created (for example, during asynchronous `set_object` processing), `set_property` may defer the assignment for replay once creation is complete. This applies both to direct `/.../&lt;object&gt;` properties and to convenience properties set on the containing path.
                         <p>
                         More subtly, if the property name chain has an interior name (e.g., the `foo` in `material.foo.color`) that exists but is not an object and does not have properties (such as if `foo` were a `Number`), then, again, an error gets written to the console and no value will be assigned.
                         <p>
