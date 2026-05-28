@@ -24,16 +24,19 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
 <dl>
     <dt><code>Viewer.handle_command(cmd)</code></dt>
     <dd>
-        Handle a single command and update the viewer. <code>cmd</code> should be a JS object with at least the field <code>type</code>. Available command types are:
+        <p>Handle a single command and update the viewer. <code>cmd</code> should be a JS object with at least the field <code>type</code>.</p>
+        <p><strong>Path model (applies to every command that takes a <code>path</code>):</strong> MeshCat uses a two-layer node model: a "container" node and a "renderable" node. Typical user paths (e.g., <code>/meshcat/foo</code>) refer to container nodes. When present (see <code>set_object()</code>), the corresponding renderable node is at <code>/meshcat/foo/&lt;object&gt;</code>. The container node services hierarchical operations (e.g., transformations, visibility, etc.). The renderable node contains the concrete 3D object and its intrinsic properties. This separation preserves the distinction between container-level transforms and the object's intrinsic frame (for example, geometry-local pose encoded in the object's <code>matrix</code>).</p>
+        <p>In every command that takes a path, following that path creates any missing container nodes along the path. Automatically-created nodes will not necessarily produce visible artifacts; default placeholder nodes have no visible features. A renderable node is created when a command explicitly targets <code>.../&lt;object&gt;</code>, or when <code>set_object()</code> is called on a container path (equivalently, on that path with a trailing <code>/&lt;object&gt;</code>).</p>
+        <p>Available command types are:</p>
         <dl>
             <dt><code>set_object</code></dt>
             <dd>
-                Set the 3D object at a given path in the scene tree from its JSON description. Any transforms previously applied to that path will be preserved and any children of that path will continue to exist. To remove transforms and delete all children from a given path, you should send a <code>delete</code> command first (see below).
-                <p>Internally, we append a final path segment, <code>&lt;object&gt;</code>, to the provided path before creating the object. This is done because clients may disagree about what the "intrinsic" transform of a particular geometry is (for example, is a "Box" centered on the origin, or does it have one corner at the origin?). Clients can use the <code>matrix</code> field of the JSON object to store that intrinsic transform, and that matrix will be preserved by attaching it to the <code>&lt;object&gt;</code> path. Generally, you shouldn't need to worry about this: if you set an object at the path <code>/meshcat/foo</code>, then you can set the transform at <code>/meshcat/foo</code> and everything will just work.
+                Set (or replace) the renderable object associated with the container node named by <code>path</code> using the provided JSON description. Any transforms previously applied at that container path are preserved, and existing children of that container remain. To remove transforms and delete children first, send a <code>delete</code> command on that path (see below).
+                <p>The object will be assigned to the renderable node associated with the path. As such, the two paths <code>/foo/bar</code> and <code>/foo/bar/&lt;object&gt;</code> are equivalent. By convention, use the container form (<code>/foo/bar</code>) when calling <code>set_object</code>.</p>
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>path</code></dt>
-                    <dd>A <code>"/"</code>-separated string indicating the object's path in the scene tree. An object at path <code>"/foo/bar"</code> is a child of an object at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> will also affect its children.
+                    <dd>A <code>"/"</code>-delimited string indicating the container path in the scene tree (for example, <code>"/foo/bar"</code>). The form <code>"/foo/bar/&lt;object&gt;"</code> is also accepted and treated identically. A container at path <code>"/foo/bar"</code> is a child of a container at path <code>"/foo"</code>, so setting the transform of (or deleting) <code>"/foo"</code> also affects its descendants.
                     <dt><code>object</code></dt>
                     <dd>The Three.js Object, with its geometry and material, in JSON form as a JS object. The nominal format accepted is anything that <a href="https://threejs.org/docs/#api/loaders/ObjectLoader">ObjectLoader</a> can handle (i.e., anything you might get by calling the <code>toJSON()</code> method of a Three.js Object3D).
                     <p>Beyond the nominal format, Meshcat also offers a few extensions for convenience:
@@ -290,33 +293,42 @@ where `dom_element` is the `div` in which the viewer should live. The primary in
             </dd>
             <dt><code>set_property</code></dt>
             <dd>
-                Set a single named property of the object at the given path. If no object exists at that path, an empty one is automatically created.
-                <p>Note: as we append an extra path element with the name <code>&lt;object&gt;</code> to every item created with <code>set_object</code>, if you want to modify a property of the object itself, rather than the group containing it, you should ensure that your path is of the form <code>/meshcat/foo/&lt;object&gt;</code></p>
+                Set a single named property at the given path.
+                If no node exists at that path, missing container nodes are created automatically.
+                <p>Under the two-layer path model, use a container path (for example, <code>/meshcat/foo</code>) for container-level operations, and use <code>/meshcat/foo/&lt;object&gt;</code> for properties on the renderable object itself.</p>
                 <p>Additional fields:</p>
                 <dl>
                     <dt><code>property</code></dt>
                     <dd>
-                        The name of the property to set, as a string. The following properties are convenience properties. Meshcat provides a mapping from these *names* to various properties contained throughout its scene graph:
+                        <p>The property name to set, as a string.</p>
+                        <p><strong>Property categories</strong></p>
+                        <p>
+                        MeshCat supports two categories for <code>property</code>:
+                        </p>
                         <ul>
-                        <li><code>visible: bool</code>
-                        <li><code>position: number[3]</code>
-                        <li><code>quaternion: number[4]</code>
-                        <li><code>scale: number[3]</code>
-                        <li><code>color: number[4]</code>
-                        <li><code>opacity: number</code> (this is the same as the 4th element of <code>color</code>)
-                        <li><code>modulated_opacity: number</code>
-                        <li><code>top_color: number[3]</code> (only for the Background)
-                        <li><code>bottom_color: number[3]</code> (only for the Background)
+                            <li><strong>Convenience properties</strong> are short aliases for assigning values to standard scene-graph properties.
+                            <li><strong>Literal properties</strong> are interpreted as literal javascript properties of the object named by the path. The property could be a direct property of the named object (e.g., "type"), or a "chained" property (e.g., "material.map.repeat.x").
                         </ul>
-                        Properties not on the above list will be set directly on the <code>THREE.Object3D</code> object. This provides a powerful capability to customize the scene, but should be considered an advanced usage -- you're on your own to avoid any unwanted side-effects.
-                        <p>
-                        Properties can be *chained*. For example, for an object with a phong material (MeshPhongMaterial), we may want to tweak its shininess, making it duller. Shininess is not a property of the object itself, but the object's material. There is no *path* to that material, but the property name can include a property name chain, e.g., `material.shininess`. While setting the property, the chained properties will be evaluated in sequence, such that the final name in the chain is the property that receives the `value`.
-                        <p>
-                        As noted, specifying a `path` that doesn't exist creates that path. However, specifying a property that doesn't exist does *not* create that property. If a name in the property chain is missing, an error message will be printed to the console and no value will be assigned. This is not a no-op per se. If the `path` led to the implicit creation of a new folder and object, that pair will still be in place.
-                        <p>
-                        More subtly, if the property name chain has an interior name (e.g., the `foo` in `material.foo.color`) that exists but is not an object and does not have properties (such as if `foo` were a `Number`), then, again, an error gets written to the console and no value will be assigned.
-                        <p>
-                        Finally, property chains can include arrays, such as `"children[1].material.specular"`. The index will be evaluated as a property (with all of the potential consequences as outlined above). In error messages, it may be reported as `children.1` instead of `children[1]`.
+                        <p>The following names are <strong>convenience properties</strong>:</p>
+                        <ul>
+                            <li><code>visible: bool</code>
+                            <li><code>position: number[3]</code>
+                            <li><code>quaternion: number[4]</code>
+                            <li><code>scale: number[3]</code>
+                            <li><code>color: number[4]</code>
+                            <li><code>opacity: number</code> (this is the same as the 4th element of <code>color</code>)
+                            <li><code>modulated_opacity: number</code>
+                            <li><code>top_color: number[3]</code> (only for the Background)
+                            <li><code>bottom_color: number[3]</code> (only for the Background)
+                        </ul>
+                        <p>Any property name not in the list of convenience properties is evaluated as a literal property on the target object. Chained names (e.g., <code>material.shininess</code>), and are resolved left-to-right so the final name in the chain receives <code>value</code>.</p>
+                        <p><strong>Timing and replay semantics</strong></p>
+                        <ul>
+                        <li>Referencing missing nodes in the <code>path</code> will create those missing nodes. In contrast, naming a missing property does not create that property.
+                        <li>If the property name is an <strong>invalid</strong> chained property that cannot be resolved, Meshcat writes an error to the console and does not assign the value. The chained property cannot be resolved when a named component in the chain is missing or if a named component's property is referenced, but the component has no properties itself.
+                        <li>Property chains can include array indexing syntax such as <code>children[1].material.specular</code>. In error messages, this may appear as <code>children.1</code>.</li>
+                        <li>Calling set_property() before calling set_object() on the same path should generally be considered an error. Unless you are setting a property on a container node, the property will most likely have no effect.
+                        </ul>
                     </dd>
                     <dt><code>value</code></dt>
                     <dd>The new value.</dd>
@@ -586,7 +598,7 @@ The default MeshCat scene comes with a few objects at pre-set paths. You can rep
     <dd>The camera from which the scene is rendered (see below for details)</dd>
     <dt><code>/Background</code></dt>
     <dd>The background texture, with properties for "top_color" and "bottom_color" as well as a boolean "visible".</dd>
-    <dt><code>/Render Settings/<object></dt>
+    <dt><code>/Render Settings/&lt;object&gt;</code></dt>
     <dd>Contains properties for how the overall scene renders in your current session. This is not a 3D element in the scene, but provides parameters for configuring the renderer.</dd>
 </dl>
 

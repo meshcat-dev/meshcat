@@ -6,17 +6,70 @@
     </head>
     <body>
         <div id="test-message">
-            Open the developer console (F12), and monitor *all* messages. All
-            errors after "TEST START" and before "TEST END" should be predicted
-            before they happen. Predicted but missing errors and unpredicted
-            errors should be considered a defect.
+            <p>
+            This test exercises chained property assignment error behavior and
+            reports PASS or FAIL automatically.
+            </p>
+            <p>
+            If you need to debug a FAIL message, open the developer console
+            (F12) for more details.
+            </p>
+            <div id="status-message">Running...</div>
+            <ul id="test-results"></ul>
         </div>
         <div id="meshcat-pane">
         </div>
 
         <script src="../dist/main.min.js"></script>
         <script>
-        var viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+        const viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+        const status_dom = document.getElementById("status-message");
+        const results_dom = document.getElementById("test-results");
+        const failures = [];
+        const original_console_error = console.error.bind(console);
+        const original_console_warn = console.warn.bind(console);
+        const observed_errors = [];
+        const observed_warnings = [];
+
+        console.error = (...args) => {
+            observed_errors.push(args.map((x) => String(x)).join(" "));
+            original_console_error(...args);
+        };
+        console.warn = (...args) => {
+            observed_warnings.push(args.map((x) => String(x)).join(" "));
+            original_console_warn(...args);
+        };
+
+        function record_result(ok, message) {
+            const item = document.createElement("li");
+            item.textContent = `${ok ? "PASS" : "FAIL"}: ${message}`;
+            item.className = ok ? "pass" : "fail";
+            results_dom.appendChild(item);
+            if (ok) {
+                console.info(item.textContent);
+            } else {
+                failures.push(message);
+                original_console_error(item.textContent);
+            }
+        }
+
+        function assert_equal(actual, expected, label) {
+            record_result(actual === expected, `${label}: expected ${expected}, got ${actual}`);
+        }
+
+        function assert_undefined(actual, label) {
+            record_result(actual === undefined, `${label}: expected undefined`);
+        }
+
+        function run_with_expected_logs(expected_errors, expected_warnings, label, callback) {
+            const error_start = observed_errors.length;
+            const warn_start = observed_warnings.length;
+            callback();
+            const error_delta = observed_errors.length - error_start;
+            const warn_delta = observed_warnings.length - warn_start;
+            assert_equal(error_delta, expected_errors, `${label} error count`);
+            assert_equal(warn_delta, expected_warnings, `${label} warning count`);
+        }
 
 let obj_contents = `
 mtllib ./cube.mtl
@@ -59,6 +112,7 @@ f 4/2/6 1/2/6 5/2/6
 f 5/2/6 8/2/6 4/2/6
 `;
 
+    function run_test() {
         const path = "/meshcat/mesh_test";
         viewer.handle_command({
             type: "set_object",
@@ -92,8 +146,8 @@ f 5/2/6 8/2/6 4/2/6
         // incorrect ways with expected outcome.
 
         const object_path = path + "/<object>";
-        var box_object = viewer.scene_tree.find(object_path.split('/').filter(x => x.length > 0));
-        var set_prop = (property, value) => {
+        const box_object = viewer.scene_tree.find(object_path.split('/').filter(x => x.length > 0));
+        const set_prop = (property, value) => {
             viewer.handle_command({
                 type: "set_property",
                 path: object_path,
@@ -102,63 +156,44 @@ f 5/2/6 8/2/6 4/2/6
             });
         };
 
-        var assert_property_absent = (object) => {
-            if (object !== undefined) {
-                console.error("Value actually got set.");
-            } else {
-                console.info("Property correctly remains undefined.");
-            }
-        };
-
-        var assert_property = (property, value) => {
-            if (property !== value) {
-                console.error("The value didn't get set!");
-            } else {
-                console.info("The property has the expected value.");
-            }
-        };
-
         console.info("\n\nTEST START\n\n");
 
         console.info("\nAttempting to reference a non-existing property name.");
 
-        console.info("\nSetting a property that doesn't exist at all. We should " +
-                     "get an error indicating that fact and the guidance that the " +
-                     "property has not been set.");
-        set_prop("test1", 42);
-        assert_property_absent(box_object.object.test1);
+        run_with_expected_logs(1, 0, "missing direct property", () => {
+            set_prop("test1", 42);
+        });
+        assert_undefined(box_object.object.test1, "missing direct property value");
 
-        console.info("\nSetting a *chained* property. The intermediate property " +
-                     "doesn't exist. We should get *one* error about " +
-                     "the missing intermediate `missing1` property. No value " +
-                     "will be assigned.");
-        set_prop("missing1.test2", "value2");
-        assert_property_absent(box_object.object.missing1);
+        run_with_expected_logs(1, 0, "missing intermediate property", () => {
+            set_prop("missing1.test2", "value2");
+        });
+        assert_undefined(box_object.object.missing1, "missing intermediate property value");
 
-        console.info("\nReferencing an index that does not exist will fail. A " +
-                     "(slightly unhelpful) message error message will be " +
-                     "given: 'children' doesn't have property '2'.");
-        set_prop("children[2].visible", false);
-        assert_property_absent(box_object.object.children[2]);
+        run_with_expected_logs(1, 0, "missing array element", () => {
+            set_prop("children[2].visible", false);
+        });
+        assert_undefined(box_object.object.children[2], "missing array element value");
 
         console.info("\nReferencing a property of a non-object.\n");
 
-        console.info("\nSetting a chained property where the penultimate name " +
-                     "is not an Object and can't accept properties. An error " +
-                     "should print, but the cube should be unchanged.");
-        set_prop("material.opacity.temp", "value3");
+        run_with_expected_logs(1, 0, "penultimate element is non-object", () => {
+            set_prop("material.opacity.temp", "value3");
+        });
+        assert_equal(box_object.object.material.opacity, 0.5, "opacity unchanged after invalid chain");
 
-        console.info("\nSetting a chained property where an intermediate object " +
-                     "is not an Object and can't accept properties. An error " +
-                     "should print, but the cube should be unchanged.");
-        set_prop("castShadow.bad.other", "value4");
+        const cast_shadow_before = box_object.object.castShadow;
+        run_with_expected_logs(1, 0, "intermediate element is non-object", () => {
+            set_prop("castShadow.bad.other", "value4");
+        });
+        assert_equal(box_object.object.castShadow, cast_shadow_before, "castShadow unchanged after invalid chain");
 
         console.info("\nSuccessful cases\n");
 
-        console.info("\nA valid use will make the cube completely opaque " +
-                     "without error.");
-        set_prop("material.opacity", 1);
-        assert_property(box_object.object.material.opacity, 1);
+        run_with_expected_logs(0, 0, "valid chained property", () => {
+            set_prop("material.opacity", 1);
+        });
+        assert_equal(box_object.object.material.opacity, 1, "valid chained property value");
 
         console.info("\nWe'll test the array access. We've added a non-Three.js " +
                      "array to the object (so that we don't mess up the " +
@@ -167,10 +202,26 @@ f 5/2/6 8/2/6 4/2/6
         box_object.object.test_array = [];
         box_object.object.test_array[2] = {};
         box_object.object.test_array[2].test_value = -1;
-        set_prop("test_array[2].test_value", 17);
-        assert_property(box_object.object.test_array[2].test_value, 17);
+        run_with_expected_logs(0, 0, "valid array chain", () => {
+            set_prop("test_array[2].test_value", 17);
+        });
+        assert_equal(box_object.object.test_array[2].test_value, 17, "valid array chain value");
+
+        if (failures.length === 0) {
+            status_dom.textContent = "PASS";
+            status_dom.className = "pass";
+        } else {
+            status_dom.textContent = `FAIL: ${failures.length} assertion(s) failed`;
+            status_dom.className = "fail";
+        }
+
+        console.error = original_console_error;
+        console.warn = original_console_warn;
 
         console.info("\n\nTEST END\n\n");
+        }
+
+        run_test();
         </script>
 
 
@@ -193,6 +244,25 @@ f 5/2/6 8/2/6 4/2/6
                 left: 0%;
                 display: block;
                 padding: 10px;
+                z-index: 2;
+            }
+
+            #status-message {
+                font-weight: bold;
+                margin-top: 0.5rem;
+            }
+
+            #test-results {
+                margin-bottom: 0;
+                padding-left: 1.25rem;
+            }
+
+            .pass {
+                color: #136f2d;
+            }
+
+            .fail {
+                color: #b00020;
             }
         </style>
     </body>
