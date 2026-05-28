@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset=utf-8>
+    <title>MeshCat - deferred property replay</title>
+</head>
+<body>
+    <div id="test-message">
+        <p>
+        Open the developer console (F12). This test queues properties before
+        their target objects exist, materializes the objects shortly afterward,
+        and then verifies that the properties were replayed.
+        </p>
+        <p>
+        You should see a red transparent cube on the left and a blue transparent
+        scaled cube on the right. The status below should report PASS.
+        </p>
+        <div id="status-message">Running...</div>
+        <ul id="test-results"></ul>
+    </div>
+    <div id="meshcat-pane">
+    </div>
+
+    <script src="../dist/main.min.js"></script>
+    <script>
+        const THREE = MeshCat.THREE;
+        const viewer = new MeshCat.Viewer(document.getElementById("meshcat-pane"));
+        const status_dom = document.getElementById("status-message");
+        const results_dom = document.getElementById("test-results");
+        const failures = [];
+
+        viewer.set_property(["Grid"], "visible", false);
+        viewer.set_camera_target([0, 0, 0.5]);
+
+        function record_result(ok, message) {
+            const item = document.createElement("li");
+            item.textContent = `${ok ? "PASS" : "FAIL"}: ${message}`;
+            item.className = ok ? "pass" : "fail";
+            results_dom.appendChild(item);
+            if (ok) {
+                console.info(item.textContent);
+            } else {
+                failures.push(message);
+                console.error(item.textContent);
+            }
+        }
+
+        function assert_close(actual, expected, label) {
+            const ok = Math.abs(actual - expected) < 1e-6;
+            record_result(ok, `${label}: expected ${expected}, got ${actual}`);
+        }
+
+        function assert_equal(actual, expected, label) {
+            record_result(actual === expected, `${label}: expected ${expected}, got ${actual}`);
+        }
+
+        function later(milliseconds, callback) {
+            return new Promise((resolve) => {
+                window.setTimeout(() => {
+                    callback();
+                    resolve();
+                }, milliseconds);
+            });
+        }
+
+        function make_cube(color, position) {
+            const cube = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 1, 1),
+                new THREE.MeshStandardMaterial({color: color})
+            );
+            cube.position.set(position[0], position[1], position[2]);
+            return cube;
+        }
+
+        async function run_test() {
+            console.info("\n\nTEST START\n\n");
+
+            console.info("Queueing a pseudo-property on a containing node.");
+            const parent_path = ["meshcat", "deferred_parent"];
+            viewer.set_property(parent_path, "color", [1, 0, 0, 0.35]);
+
+            await later(50, () => {
+                const cube = make_cube(0x00ff00, [-1.25, 0, 0.5]);
+                viewer.set_object(parent_path, cube);
+                viewer.set_dirty();
+
+                assert_close(cube.material.color.r, 1, "Containing node replay sets red channel");
+                assert_close(cube.material.color.g, 0, "Containing node replay clears green channel");
+                assert_close(cube.material.color.b, 0, "Containing node replay clears blue channel");
+                assert_close(cube.material.opacity, 0.35, "Containing node replay sets opacity");
+                assert_equal(cube.material.transparent, true, "Containing node replay enables transparency");
+            });
+
+            console.info("Queueing direct and chained properties on a future <object> node.");
+            const object_parent_path = ["meshcat", "deferred_object"];
+            const object_path = object_parent_path.concat(["<object>"]);
+            viewer.set_property(object_path, "scale", [1.6, 1.6, 1.6]);
+            viewer.set_property(object_path, "material.transparent", true);
+            viewer.set_property(object_path, "material.opacity", 0.25);
+
+            await later(50, () => {
+                const cube = make_cube(0x0066ff, [1.25, 0, 0.8]);
+                viewer.set_object(object_parent_path, cube);
+                viewer.set_dirty();
+
+                assert_close(cube.scale.x, 1.6, "Future <object> replay sets x scale");
+                assert_close(cube.scale.y, 1.6, "Future <object> replay sets y scale");
+                assert_close(cube.scale.z, 1.6, "Future <object> replay sets z scale");
+                assert_equal(cube.material.transparent, true, "Future <object> replay sets material transparency");
+                assert_close(cube.material.opacity, 0.25, "Future <object> replay sets chained material opacity");
+            });
+
+            if (failures.length === 0) {
+                status_dom.textContent = "PASS";
+                status_dom.className = "pass";
+            } else {
+                status_dom.textContent = `FAIL: ${failures.length} assertion(s) failed`;
+                status_dom.className = "fail";
+            }
+
+            console.info("\n\nTEST END\n\n");
+        }
+
+        run_test();
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+        }
+
+        #meshcat-pane {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #test-message {
+            width: 70vw;
+            text-align: left;
+            background-color: rgba(232, 232, 232, 0.94);
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: block;
+            padding: 10px;
+            z-index: 2;
+        }
+
+        #status-message {
+            font-weight: bold;
+            margin-top: 0.5rem;
+        }
+
+        #test-results {
+            margin-bottom: 0;
+            padding-left: 1.25rem;
+        }
+
+        .pass {
+            color: #136f2d;
+        }
+
+        .fail {
+            color: #b00020;
+        }
+    </style>
+</body>
+</html>

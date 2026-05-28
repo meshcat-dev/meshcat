@@ -585,6 +585,7 @@ class SceneNode {
         this.children = {};
         this.controllers = [];
         this.on_update = on_update;
+        this.pending_properties = {};  // Store properties to replay when object materializes
         this.create_controls();
         for (let c of this.object.children) {
             this.add_child(c);
@@ -771,6 +772,9 @@ class SceneNode {
         } else {
             this.set_property_chain(property, value, target_path);
         }
+        // Store property for replay when object materializes (e.g., after async
+        // glTF load)
+        this.pending_properties[property] = {value, target_path};
         // For non three.js objects, we need to explicitly call their
         // on_update() methods to trigger redraws.
         if (this.object.isBackground || this.object.isRenderConfig) {
@@ -807,17 +811,16 @@ class SceneNode {
                     continue;
                 }
                 error_detail = `'${parent_path}' is not an Object and has no properties`;
-            } else {
-                error_detail = `'${parent_path}' has no property '${child}'`;
             }
             break;
         }
 
         // Now assign the final property value (if possible). (We know that
         // parent is an object.)
-
         if (error_detail === null && !(final_property in parent)) {
-            error_detail = `'${parent_path}' has no property '${final_property}'`;
+            // The child doesn't exist yet; we'll queue the property
+            // assignment to handle asynchronous creation.
+            this.pending_properties[property] = {value, target_path};
         }
 
         if (error_detail != null) {
@@ -827,7 +830,7 @@ class SceneNode {
             const value_str = JSON.stringify(value);
             console.error(
                 `Error in set_property("${full_path}", "${property}", ${value_str})\n` +
-                `${error_detail}. The value will not be set.`);
+                `${error_detail}.`);
             return;
         }
 
@@ -847,6 +850,15 @@ class SceneNode {
         this.object = object;
         parent.add(object);
         this.create_controls();
+        // Replay any properties that were set before this object materialized
+        // (e.g., during async glTF loading). This allows clients to set properties
+        // immediately without waiting for the object to load.
+        let queued_props = this.pending_properties;
+        this.pending_properties = {};  // Clear queue to avoid re-queueing during replay
+        for (let property in queued_props) {
+            let {value, target_path} = queued_props[property];
+            this.set_property(property, value, target_path);
+        }
     }
 
     dispose_recursive() {
@@ -1599,7 +1611,12 @@ class Viewer {
     }
 
     set_object(path, object) {
+        const path_node = this.scene_tree.find(path);
         this.scene_tree.find(path.concat(["<object>"])).set_object(object);
+        for (let property in path_node.pending_properties) {
+            let {value, target_path} = path_node.pending_properties[property];
+            path_node.set_property(property, value, target_path);
+        }
     }
 
     set_object_from_json(path, object_json) {
